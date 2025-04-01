@@ -33,7 +33,8 @@ def create_interface(df):
                         headers=["First Name", "Last Name"],
                         datatype=["str", "str"],
                         col_count=(2, "fixed"),
-                        row_count=30,
+                        # row_count=(40, "fixed"),  # cut of df
+                        height=900,
                         interactive=True
                     )
 
