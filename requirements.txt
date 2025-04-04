@@ -10,6 +10,6 @@ scipy  == 1.13.0
 fastapi == 0.115.11
 uvicorn == 0.30.6
 tiktoken == 0.5.1
-gradio == 4.44.1
+gradio == 5.23.2
 boto3>=1.37.23
 

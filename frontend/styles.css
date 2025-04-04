@@ -1,0 +1,11 @@
+/* styles.css */
+.checkbox-column {
+    display: flex;
+    flex-direction: column;
+}
+
+.checkbox-column label {
+    margin-left: 33px;
+    margin-right: 77px;
+    padding: 5px;        /* Add padding inside each checkbox label */
+}
