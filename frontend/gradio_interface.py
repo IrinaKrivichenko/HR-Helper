@@ -35,9 +35,11 @@ def create_interface(df, fields_values_df):
                 with gr.Column(scale=1):
                     # Textbox for setting the cosine distance threshold value
                     threshold = gr.Textbox(
-                        label="Cosine distance threshold value",
-                        value="0.6",  # Set default value
-                        info="Recommended value: 0.6",
+                        label="Cosine Similarity Threshold Value",
+                        value="0.5",  # Set default value
+                        info="""Range: Takes values from 0 to 1.
+Effect: The closer to 1, the stricter the filtering.
+Recommended: Start with 0.5 and adjust as needed.""",
                         scale=1
                     )
 
