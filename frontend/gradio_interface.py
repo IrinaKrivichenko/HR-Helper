@@ -1,6 +1,6 @@
 import gradio as gr
 from frontend.functions import filter_and_update_specialists, update_specialist_info, adjust_dataframe_structure, \
-    get_field_options, sort_dataframe
+    get_field_options, sort_dataframe, download_staff_df
 import pandas as pd
 
 def create_interface(df, fields_values_df):
@@ -70,8 +70,9 @@ Recommended: Start with 0.5 and adjust as needed.""",
                 with gr.Column(scale=1):
                     with gr.Row():
                         # Buttons to download staff and bench data
-                        download_staff_btn = gr.Button("Download Staff", scale=0)
-                        download_bench_btn = gr.Button("Download Bench", scale=0)
+                        download_staff_btn = gr.DownloadButton("Download Staff", scale=0)
+                        download_staff_btn_hidden = gr.DownloadButton(visible=False, elem_id="download_btn_hidden")
+                        download_bench_btn = gr.DownloadButton("Download Bench", scale=0)
 
                     # Markdown elements to display filter status and specialist count
                     filter_status_markdown = gr.Markdown(value="**Showing full specialist base**")
@@ -162,7 +163,16 @@ Recommended: Start with 0.5 and adjust as needed.""",
             inputs=[df_state, project_desc, threshold, hours_checkboxes, engagement_checkboxes],
             outputs=[specialists, df_state, filter_status_markdown, specialist_count_markdown]
         )
-
+        download_staff_btn.click( # !!!!! HTTPS protocol is required
+            download_staff_df,
+            inputs=None,
+            outputs=download_staff_btn_hidden
+        ).then(
+            fn=None,
+            inputs=None,
+            outputs=None,
+            js="() => document.querySelector('#download_btn_hidden').click()"
+        )
         # Event handler for sorting the DataFrame
         sort_column.change(
             sort_dataframe,

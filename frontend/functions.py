@@ -1,6 +1,11 @@
 import gradio as gr
 import pandas as pd
 import numpy as np
+import io
+import tempfile
+from pathlib import Path
+import logging
+logging.basicConfig(level=logging.INFO)
 
 from api_handlers.EmbeddingHandler import EmbeddingHandler
 
@@ -9,16 +14,15 @@ embedding_handler = EmbeddingHandler()
 def adjust_dataframe_structure(df):
     # Strip any leading or trailing whitespace from column names
     df.columns = df.columns.str.strip()
-
     # Define the list of all required columns
     required_columns = [
         'First Name', 'Last Name', 'LVL of engagement', 'Works hrs/day',
         'LinkedIn', 'Telegram', 'Phone', 'Email',
         'Seniority', 'Role', 'Stack', 'Industry', 'Expertise',
         'Belarusian', 'English', 'Location',
-        'Rate In', 'Rate In expected', 'Sell Rate', 'Month In (entry point)',  'Month In (expected)',
+        'Rate In', 'Rate In expected', 'Sell Rate', 'Month In (entry point)', 'Month In (expected)',
         'CV (original)', 'CV white label (gdocs)', 'Folder', 'NDA',
-        'Comment',  'Embedding'
+        'Comment', 'Embedding'
     ]
     # Add missing columns with None values
     for col in required_columns:
@@ -33,17 +37,59 @@ def adjust_dataframe_structure(df):
             text_for_embedding = " ".join(str(field) for field in text_fields if pd.notna(field))
             if text_for_embedding:
                 embedding = embedding_handler.get_text_embedding(text_for_embedding)
-                # print(embedding.size())
                 df.at[index, 'Embedding'] = embedding
 
+    # Convert string representations of embeddings back to arrays if necessary
+    def string_to_array(s):
+        if isinstance(s, str) and s.strip():
+            # Remove brackets and split the string into elements
+            s = s.replace("[", "").replace("]", "")
+            elements = np.fromstring(s, sep=',')
+            return elements.reshape(1, -1)  # Assuming it's a 2D array with one row
+        return s
+
+    df['Embedding'] = df['Embedding'].apply(string_to_array)
+
+    # Sort the DataFrame by 'First Name'
     df = df.sort_values(by='First Name', ascending=True)
+
     return df
+
 
 def get_field_options(df, field_name):
     # Filter the DataFrame for the specified field name
     options = df[df['field'] == field_name]['value'].unique()
     return options.tolist()
 
+
+def download_staff_df(df_state):
+    try:
+        # Создаем объект BytesIO для записи данных в памяти
+        output = io.BytesIO()
+
+        # Используем ExcelWriter для записи DataFrame в формат Excel
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+            df_state.to_excel(writer, index=False, sheet_name='Staff')
+
+        # Перемещаем курсор в начало объекта BytesIO
+        output.seek(0)
+
+        # Создаем временный файл с именем 'staff_data.xlsx'
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx", prefix="staff_data_",
+                                         dir=tempfile.gettempdir()) as tmp_file:
+            tmp_file.write(output.getvalue())
+            temp_file_path = tmp_file.name
+
+        # Переименовываем файл, чтобы он назывался 'staff_data.xlsx'
+        final_path = Path(tempfile.gettempdir()) / "staff_data.xlsx"
+        Path(temp_file_path).rename(final_path)
+        temp_file_path = final_path
+
+        logging.info(f"File successfully created at: {str(temp_file_path)}")
+        return str(temp_file_path)
+    except Exception as e:
+        logging.error(f"Error occurred: {e}")
+        raise
 
 def sort_dataframe(df, sort_column, ascending=True):
     sorted_df = df.sort_values(by=sort_column, ascending=ascending)
@@ -101,4 +147,25 @@ def update_specialist_info(evt: gr.SelectData, df):
         row["CV (original)"], row["CV white label (gdocs)"], row["Folder"], row["NDA"],
         row["Comment"]
     )
+
+def save_dataframe_to_csv(df, file_path):
+    """
+    Save the DataFrame to a CSV file, ensuring embeddings are properly converted to strings.
+
+    Parameters:
+    - df (pd.DataFrame): The DataFrame to save.
+    - file_path (str): The path where the CSV file will be saved.
+    """
+
+    # Convert embeddings to strings for saving to CSV
+    # This ensures that the embeddings are stored in a format that can be easily read back
+    df['Embedding'] = df['Embedding'].apply(lambda x: np.array2string(x, separator=' ', max_line_width=np.inf) if isinstance(x, np.ndarray) else x)
+
+    # Save the DataFrame to a CSV file
+    # Using a semicolon as the separator to handle potential commas in the embedding strings
+    df.to_csv(file_path, index=False, sep=';')
+
+    print(f"DataFrame successfully saved to {file_path}")
+
+# save_dataframe_to_csv(df, 'data/Staff_with_embeddings.csv')
 
