@@ -1,6 +1,5 @@
 import numpy as np
 
-from frontend.functions import adjust_dataframe_structure
 from frontend.gradio_interface import create_interface
 import pandas as pd
 import openpyxl

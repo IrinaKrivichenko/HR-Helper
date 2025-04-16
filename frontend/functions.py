@@ -1,3 +1,5 @@
+import re
+
 import gradio as gr
 import pandas as pd
 import numpy as np
@@ -6,6 +8,11 @@ import tempfile
 from pathlib import Path
 import logging
 logging.basicConfig(level=logging.INFO)
+
+from nltk.util import ngrams
+from nltk.tokenize import word_tokenize
+from nltk.data import path as nltk_path
+nltk_path.append('nltk_data')
 
 from api_handlers.EmbeddingHandler import EmbeddingHandler
 
@@ -27,28 +34,30 @@ def adjust_dataframe_structure(df):
     # Add missing columns with None values
     for col in required_columns:
         if col not in df.columns:
-            df[col] = None
+            df[col] = ''
 
-    # Calculate embeddings for rows where 'Embedding' is None
-    for index, row in df.iterrows():
-        if row['Embedding'] is None:
-            # Concatenate text fields to create a single string for embedding
-            text_fields = [row['Role'], row['Stack'], row['Industry'], row['Expertise']]
-            text_for_embedding = " ".join(str(field) for field in text_fields if pd.notna(field))
-            if text_for_embedding:
-                embedding = embedding_handler.get_text_embedding(text_for_embedding)
-                df.at[index, 'Embedding'] = embedding
+    df = df.fillna('')
 
-    # Convert string representations of embeddings back to arrays if necessary
-    def string_to_array(s):
-        if isinstance(s, str) and s.strip():
-            # Remove brackets and split the string into elements
-            s = s.replace("[", "").replace("]", "")
-            elements = np.fromstring(s, sep=',')
-            return elements.reshape(1, -1)  # Assuming it's a 2D array with one row
-        return s
-
-    df['Embedding'] = df['Embedding'].apply(string_to_array)
+    # # Calculate embeddings for rows where 'Embedding' is None
+    # for index, row in df.iterrows():
+    #     if row['Embedding'] is None:
+    #         # Concatenate text fields to create a single string for embedding
+    #         text_fields = [row['Role'], row['Stack'], row['Industry'], row['Expertise']]
+    #         text_for_embedding = " ".join(str(field) for field in text_fields if pd.notna(field))
+    #         if text_for_embedding:
+    #             embedding = embedding_handler.get_text_embedding(text_for_embedding)
+    #             df.at[index, 'Embedding'] = embedding
+    #
+    # # Convert string representations of embeddings back to arrays if necessary
+    # def string_to_array(s):
+    #     if isinstance(s, str) and s.strip():
+    #         # Remove brackets and split the string into elements
+    #         s = s.replace("[", "").replace("]", "")
+    #         elements = np.fromstring(s, sep=',')
+    #         return elements.reshape(1, -1)  # Assuming it's a 2D array with one row
+    #     return s
+    #
+    # df['Embedding'] = df['Embedding'].apply(string_to_array)
 
     # Sort the DataFrame by 'First Name'
     df = df.sort_values(by='First Name', ascending=True)
@@ -57,31 +66,55 @@ def adjust_dataframe_structure(df):
 
 
 def get_field_options(df, field_name):
-    # Filter the DataFrame for the specified field name
-    options = df[df['field'] == field_name]['value'].unique()
-    return options.tolist()
+    # Check if the column exists in the DataFrame
+    if field_name in df.columns:
+        # Return a list of unique values from the column
+        return df[field_name].unique().tolist()
+    else:
+        # Filter the DataFrame for the specified field name
+        options = df[df['field'] == field_name]['value'].unique()
+        return options.tolist()
 
 
-def download_staff_df(df_state):
+def download_bench_df(df):
+    old_new_columns_dict = {
+        'First Name': "Name",
+        'Works hrs/day': "Works hrs/day",
+        'Seniority': "Seniority",
+        'Role': "Roles",
+        'Stack': "Stack",
+        'Industry': "Industry",
+        'Expertise': "Expertise",
+        'English': "English",
+        'Location': "Location",
+        'Sell Rate': "Rate",
+        'CV white label (gdocs)': "CV white label (gdocs)"
+    }
+    # Filter the DataFrame, leaving only the columns that are in the dict
+    bench_df = df[old_new_columns_dict.keys()]
+    bench_df = bench_df.rename(columns=old_new_columns_dict)
+    return download_staff_df(bench_df, filename='bench_data.xlsx')
+
+
+def download_staff_df(df, filename='staff_data.xlsx'):
     try:
         # Создаем объект BytesIO для записи данных в памяти
         output = io.BytesIO()
 
         # Используем ExcelWriter для записи DataFrame в формат Excel
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-            df_state.to_excel(writer, index=False, sheet_name='Staff')
+            df.to_excel(writer, index=False, sheet_name='Staff')
 
         # Перемещаем курсор в начало объекта BytesIO
         output.seek(0)
 
-        # Создаем временный файл с именем 'staff_data.xlsx'
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx", prefix="staff_data_",
-                                         dir=tempfile.gettempdir()) as tmp_file:
+        # Создаем временный файл с указанным именем
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx", dir=tempfile.gettempdir()) as tmp_file:
             tmp_file.write(output.getvalue())
             temp_file_path = tmp_file.name
 
-        # Переименовываем файл, чтобы он назывался 'staff_data.xlsx'
-        final_path = Path(tempfile.gettempdir()) / "staff_data.xlsx"
+        # Переименовываем файл, чтобы он назывался в соответствии с параметром filename
+        final_path = Path(tempfile.gettempdir()) / filename
         Path(temp_file_path).rename(final_path)
         temp_file_path = final_path
 
@@ -91,9 +124,26 @@ def download_staff_df(df_state):
         logging.error(f"Error occurred: {e}")
         raise
 
+
 def sort_dataframe(df, sort_column, ascending=True):
     sorted_df = df.sort_values(by=sort_column, ascending=ascending)
     return sorted_df[["First Name", "Last Name"]], sorted_df
+
+def get_tokens(text):
+    tokens = word_tokenize(text.lower())
+    english_letter_pattern = re.compile(r'[a-zA-Z]')
+    filtered_tokens = [token for token in tokens if english_letter_pattern.search(token)]
+    return set(filtered_tokens)
+
+# Function to count identical tokens
+def count_matching_tokens(row, project_tokens):
+    text_fields = [row['Role'], row['Stack'], row['Industry'], row['Expertise']]
+    combined_text = " ".join(str(field) for field in text_fields if pd.notna(field))
+    combined_text = combined_text if combined_text else ""
+    row_tokens = get_tokens(combined_text)
+    matching_tokens_count = len(row_tokens & project_tokens)
+    print(type(matching_tokens_count), matching_tokens_count)
+    return matching_tokens_count
 
 def filter_and_update_specialists(
                 df,
@@ -105,27 +155,22 @@ def filter_and_update_specialists(
     filtered_df = df[hours_condition & engagement_condition]
 
     if project_desc:
-        # Get embedding for the project description
-        project_embedding = embedding_handler.get_text_embedding(project_desc)
+        if project_desc:
+            project_desc_tokens = get_tokens(project_desc)
 
-        # Filter out rows with missing embeddings
-        valid_embeddings = filtered_df['Embedding'].apply(lambda x: x is not None and not np.isnan(x).any())
-        filtered_df_with_embeddings = filtered_df[valid_embeddings]
-
-        if not filtered_df_with_embeddings.empty:
-            # Calculate cosine similarity between project embedding and specialist embeddings
-            specialist_embeddings = np.array(filtered_df_with_embeddings['Embedding'].tolist()).squeeze()
-
-            # Use FAISS to compute cosine similarity
-            # faiss.normalize_L2(specialist_embeddings)
-            # faiss.normalize_L2(project_embedding)
-            similarities = np.dot(specialist_embeddings, project_embedding.T)
-
-            # Filter specialists based on the threshold value
-            threshold_value = float(threshold_value)
-            similarity_condition = similarities >= threshold_value
-            final_filtered_indices = filtered_df_with_embeddings.index[similarity_condition.flatten()]
-            filtered_df = filtered_df.loc[final_filtered_indices]
+        # Apply the function and add a new column
+        filtered_df = filtered_df.copy()  # Create a copy to avoid SettingWithCopyWarning
+        filtered_df['Matching_Tokens_Count'] = filtered_df.apply(
+            lambda row: count_matching_tokens(row, project_desc_tokens),
+            axis=1
+        )
+        # Convert the column to a numeric data type
+        filtered_df['Matching_Tokens_Count'] = pd.to_numeric(filtered_df['Matching_Tokens_Count'], errors='coerce')
+        # Filter the DataFrame
+        pd.set_option('display.max_rows', None)
+        print(filtered_df[["First Name" , "Last Name"  ,  "Matching_Tokens_Count"]])
+        threshold_value = int(threshold_value)
+        filtered_df = filtered_df.loc[filtered_df['Matching_Tokens_Count'] >= threshold_value]
 
     # Update filter status and specialist count labels
     filter_status = "Showing full specialist base" if len(filtered_df) == len(df) else "Showing filtered specialists based on project description"

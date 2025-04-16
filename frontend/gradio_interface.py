@@ -1,6 +1,6 @@
 import gradio as gr
 from frontend.functions import filter_and_update_specialists, update_specialist_info, adjust_dataframe_structure, \
-    get_field_options, sort_dataframe, download_staff_df
+    get_field_options, sort_dataframe, download_staff_df, download_bench_df
 import pandas as pd
 
 def create_interface(df, fields_values_df):
@@ -9,6 +9,8 @@ def create_interface(df, fields_values_df):
 
     # Retrieve options for the engagement level filter
     engagement_options = get_field_options(fields_values_df, "LVL of engagement")
+    location_options = get_field_options(df, "Location")
+    print(location_options)
 
     # Define options for the working hours filter
     hours_options = ["4", "8"]
@@ -30,21 +32,20 @@ def create_interface(df, fields_values_df):
                     project_desc = gr.TextArea(
                         label="Project Description",
                         placeholder="Enter project description here...",
-                        lines=30
+                        lines=40
                     )
                 with gr.Column(scale=1):
                     # Textbox for setting the cosine distance threshold value
                     threshold = gr.Textbox(
-                        label="Cosine Similarity Threshold Value",
-                        value="0.5",  # Set default value
-                        info="""Range: Takes values from 0 to 1.
-Effect: The closer to 1, the stricter the filtering.
-Recommended: Start with 0.5 and adjust as needed.""",
+                        label="Minimum number of technologies",
+                        value="5",  # Set default value
+                        info="""This parameter specifies the minimum number of technologies that must match between a specialist's skills and the project's requirements for the specialist to be considered suitable for the project.""",
                         scale=1
                     )
 
                     # Checkboxes for filtering by working hours per day
                     hours_checkboxes = gr.CheckboxGroup(
+                        visible=False,
                         label="Filter by Works hrs/day",
                         choices=hours_options,
                         value=hours_options,
@@ -59,9 +60,19 @@ Recommended: Start with 0.5 and adjust as needed.""",
                         interactive=True,
                         elem_classes="checkbox-column"
                     )
+                    # # Checkboxes for filtering by Location
+                    # location_checkboxes = gr.CheckboxGroup(
+                    #     visible=False,
+                    #     label="Filter by Location",
+                    #     choices=location_options,
+                    #     value=location_options,
+                    #     interactive=True,
+                    #     elem_classes="checkbox-column"
+                    # )
 
                     # Button to apply filters
                     filter_btn = gr.Button("Filter", scale=0)
+
 
         # Tab for staff information
         with gr.Tab("Staff", elem_id="staff-tab"):
@@ -71,8 +82,8 @@ Recommended: Start with 0.5 and adjust as needed.""",
                     with gr.Row():
                         # Buttons to download staff and bench data
                         download_staff_btn = gr.DownloadButton("Download Staff", scale=0)
-                        download_staff_btn_hidden = gr.DownloadButton(visible=False, elem_id="download_btn_hidden")
                         download_bench_btn = gr.DownloadButton("Download Bench", scale=0)
+                        download_btn_hidden = gr.DownloadButton(visible=False, elem_id="download_btn_hidden")
 
                     # Markdown elements to display filter status and specialist count
                     filter_status_markdown = gr.Markdown(value="**Showing full specialist base**")
@@ -165,8 +176,18 @@ Recommended: Start with 0.5 and adjust as needed.""",
         )
         download_staff_btn.click( # !!!!! HTTPS protocol is required
             download_staff_df,
+            inputs=df_state,
+            outputs=download_btn_hidden
+        ).then(
+            fn=None,
             inputs=None,
-            outputs=download_staff_btn_hidden
+            outputs=None,
+            js="() => document.querySelector('#download_btn_hidden').click()"
+        )
+        download_bench_btn.click( # !!!!! HTTPS protocol is required
+            download_bench_df,
+            inputs=df_state,
+            outputs=download_btn_hidden
         ).then(
             fn=None,
             inputs=None,
