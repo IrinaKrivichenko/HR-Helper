@@ -64,8 +64,8 @@ def load_data(file_path):
 
 
 if __name__ == "__main__":
-    # df = load_data('data/Staff.xlsx')
-    df = load_data('data/Staff_with_embeddings.csv')
+    df = load_data('data/Staff.xlsx')
+    # df = load_data('data/Staff_with_embeddings.csv')
     fields_values_df = load_fields('frontend/fields_values.xlsx')
     # engagement_value = fields_values_df.loc[fields_values_df['field'] == 'LVL of engagement', 'value'].iloc[0]
     interface = create_interface(df, fields_values_df)

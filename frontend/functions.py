@@ -1,4 +1,5 @@
 import re
+from lib2to3.pgen2.token import NUMBER
 
 import gradio as gr
 import pandas as pd
@@ -15,6 +16,8 @@ from nltk.data import path as nltk_path
 nltk_path.append('nltk_data')
 
 from api_handlers.EmbeddingHandler import EmbeddingHandler
+
+NUMBER_OF_SPECIALIST_FIELDS = 26
 
 embedding_handler = EmbeddingHandler()
 
@@ -61,7 +64,7 @@ def adjust_dataframe_structure(df):
 
     # Sort the DataFrame by 'First Name'
     df = df.sort_values(by='First Name', ascending=True)
-
+    df = df.reset_index(drop=True)
     return df
 
 
@@ -127,6 +130,7 @@ def download_staff_df(df, filename='staff_data.xlsx'):
 
 def sort_dataframe(df, sort_column, ascending=True):
     sorted_df = df.sort_values(by=sort_column, ascending=ascending)
+    sorted_df = sorted_df.reset_index(drop=True)
     return sorted_df[["First Name", "Last Name"]], sorted_df
 
 def get_tokens(text):
@@ -149,10 +153,12 @@ def filter_and_update_specialists(
                 df,
                 project_desc, threshold_value,
                 hours_checkboxes, engagement_checkboxes):
-    df["Works hrs/day"] = df["Works hrs/day"].astype(str)
-    hours_condition = df["Works hrs/day"].apply(lambda x: any(substring in x for substring in hours_checkboxes))
+    # df["Works hrs/day"] = df["Works hrs/day"].astype(str)
+    # hours_condition = df["Works hrs/day"].apply(lambda x: any(substring in x for substring in hours_checkboxes))
     engagement_condition = df["LVL of engagement"].isin(engagement_checkboxes)
-    filtered_df = df[hours_condition & engagement_condition]
+    # filtered_df = df[hours_condition & engagement_condition]
+    filtered_df = df[engagement_condition]
+    filtered_df = filtered_df.reset_index(drop=True)
 
     if project_desc:
         if project_desc:
@@ -173,10 +179,16 @@ def filter_and_update_specialists(
         filtered_df = filtered_df.loc[filtered_df['Matching_Tokens_Count'] >= threshold_value]
 
     # Update filter status and specialist count labels
-    filter_status = "Showing full specialist base" if len(filtered_df) == len(df) else "Showing filtered specialists based on project description"
+    is_full_list = len(filtered_df) == len(df)
+    filter_status = "Showing full specialist base" if is_full_list else "Showing filtered specialists based on project description"
     specialist_count = f"Total number of specialists: {len(filtered_df)}"
+    gr_btn_update = gr.update(visible=not is_full_list)
+    gr_field_update = gr.update(interactive=is_full_list)
 
-    return filtered_df[["First Name", "Last Name"]] , filtered_df , filter_status, specialist_count
+    return (filtered_df[["First Name", "Last Name"]], filtered_df , filter_status, specialist_count,
+            *([gr_btn_update] * 4),  # Visibility for buttons to edit with list of specialists
+            *([gr_field_update] * NUMBER_OF_SPECIALIST_FIELDS))  # Interactive state for specialist's fields
+
 
 
 def update_specialist_info(evt: gr.SelectData, df):
@@ -190,8 +202,32 @@ def update_specialist_info(evt: gr.SelectData, df):
         row["Belarusian"], row["English"], row["Location"],
         row["Rate In"], row["Rate In expected"], row["Sell Rate"], row["Month In (entry point)"], row["Month In (expected)"],
         row["CV (original)"], row["CV white label (gdocs)"], row["Folder"], row["NDA"],
-        row["Comment"]
+        row["Comment"], selected_index
     )
+
+
+# function for updating DataFrame
+def update_specialist_field(new_value, current_row, field_name, df):
+    if current_row >= len(df):
+        new_df = df.append(pd.Series("" * len(df.columns), index=df.columns), ignore_index=True)
+    else:
+        new_df = df.copy()
+    new_df.iloc[current_row, df.columns.get_loc(field_name)] = new_value
+    return (new_df, new_df[["First Name", "Last Name"]])
+
+def delete_specialist(current_row, df):
+    if 0 <= current_row < len(df):
+        new_df = df.drop(index=current_row).reset_index(drop=True)
+    else:
+        new_df = df
+    current_row = len(new_df)
+    empty_values = [""] * NUMBER_OF_SPECIALIST_FIELDS
+    return new_df, new_df[["First Name", "Last Name"]], *empty_values, current_row
+
+def add_specialist(df):
+    new_row_index = len(df)
+    empty_values = [""] * NUMBER_OF_SPECIALIST_FIELDS
+    return *empty_values, new_row_index
 
 def save_dataframe_to_csv(df, file_path):
     """

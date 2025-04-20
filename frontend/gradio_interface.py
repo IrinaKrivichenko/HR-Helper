@@ -1,6 +1,7 @@
 import gradio as gr
 from frontend.functions import filter_and_update_specialists, update_specialist_info, adjust_dataframe_structure, \
-    get_field_options, sort_dataframe, download_staff_df, download_bench_df
+    get_field_options, sort_dataframe, download_staff_df, download_bench_df, update_specialist_field, delete_specialist, \
+    add_specialist
 import pandas as pd
 
 def create_interface(df, fields_values_df):
@@ -23,6 +24,7 @@ def create_interface(df, fields_values_df):
     with gr.Blocks(css=custom_css) as demo:
         # Initialize the state of the DataFrame
         df_state = gr.State(df)
+        current_row = gr.Number(value=len(df), precision=0, visible=False)
 
         # Tab for project description
         with gr.Tab("Project Description"):
@@ -69,10 +71,10 @@ def create_interface(df, fields_values_df):
                     #     interactive=True,
                     #     elem_classes="checkbox-column"
                     # )
-
-                    # Button to apply filters
-                    filter_btn = gr.Button("Filter", scale=0)
-
+                    with gr.Row():
+                        # Button to apply filters
+                        filter_btn = gr.Button("Filter", scale=0)
+                        reload_btn = gr.Button("Reset", scale=0)
 
         # Tab for staff information
         with gr.Tab("Staff", elem_id="staff-tab"):
@@ -104,76 +106,95 @@ def create_interface(df, fields_values_df):
                         datatype=["str", "str"],
                         col_count=(2, "fixed"),
                         max_height=500,
-                        interactive=True
+                        interactive=False
                     )
-
+                    check_specialist_btn = gr.Button("Check list of specialists", scale=1)
+                    with gr.Row():
+                        del_specialist_btn = gr.Button("Del specialist", scale=0)
+                        add_specialist_btn = gr.Button("Add specialist", scale=0)
+                    save_specialist_btn = gr.Button("Save list of specialists", scale=1)
                 # Second column - specialist information
                 with gr.Column(scale=3):
                     with gr.Row():
                         # Textboxes for first and last name
-                        fname = gr.Textbox(label="First Name")
-                        lname = gr.Textbox(label="Last Name")
+                        fname = gr.Textbox(label="First Name", interactive=True)
+                        lname = gr.Textbox(label="Last Name", interactive=True)
                     with gr.Row():
                         # Dropdown for engagement level and textbox for working hours
                         engagement = gr.Dropdown(
                             label="LVL of engagement",
                             choices=engagement_options,
-                            multiselect=False
+                            multiselect=False, interactive=True
                         )
-                        work_hours = gr.Textbox(label="Works hrs/day")
+                        work_hours = gr.Textbox(label="Works hrs/day", interactive=True)
 
                     # Group for contact information
                     with gr.Group():
                         gr.Markdown("## Contacts")
-                        linkedin = gr.Textbox(label="LinkedIn")
-                        telegram = gr.Textbox(label="Telegram")
-                        phone = gr.Textbox(label="Phone")
-                        email = gr.Textbox(label="Email")
+                        linkedin = gr.Textbox(label="LinkedIn", interactive=True)
+                        telegram = gr.Textbox(label="Telegram", interactive=True)
+                        phone = gr.Textbox(label="Phone", interactive=True)
+                        email = gr.Textbox(label="Email", interactive=True)
 
                     # Group for professional information
                     with gr.Group():
                         gr.Markdown("## Professional Information")
-                        seniority = gr.Textbox(label="Seniority")
-                        role = gr.TextArea(label="Role", lines=3)
-                        stack = gr.TextArea(label="Stack", lines=3)
-                        industry = gr.TextArea(label="Industry", lines=3)
-                        expertise = gr.TextArea(label="Expertise", lines=3)
+                        seniority = gr.Textbox(label="Seniority", interactive=True)
+                        role = gr.TextArea(label="Role", lines=3, interactive=True)
+                        stack = gr.TextArea(label="Stack", lines=3, interactive=True)
+                        industry = gr.TextArea(label="Industry", lines=3, interactive=True)
+                        expertise = gr.TextArea(label="Expertise", lines=3, interactive=True)
 
                     # Group for languages and location
                     with gr.Group():
                         gr.Markdown("## Languages & Location")
-                        belarusian = gr.Textbox(label="Belarusian")
-                        english = gr.Textbox(label="English")
-                        location = gr.Textbox(label="Location")
+                        belarusian = gr.Textbox(label="Belarusian", interactive=True)
+                        english = gr.Textbox(label="English", interactive=True)
+                        location = gr.Textbox(label="Location", interactive=True)
 
                     # Group for financial information
                     with gr.Group():
                         gr.Markdown("## Financial Information")
                         with gr.Row():
-                            rate_in = gr.Textbox(label="Rate In")
-                            month_in = gr.Textbox(label="Month In (entry point)")
+                            rate_in = gr.Textbox(label="Rate In", interactive=True)
+                            month_in = gr.Textbox(label="Month In (entry point)", interactive=True)
                         with gr.Row():
-                            rate_in_exp = gr.Textbox(label="Rate In expected")
-                            month_exp = gr.Textbox(label="Month In (expected)")
-                        sell_rate = gr.Textbox(label="Sell Rate")
+                            rate_in_exp = gr.Textbox(label="Rate In expected", interactive=True)
+                            month_exp = gr.Textbox(label="Month In (expected)", interactive=True)
+                        sell_rate = gr.Textbox(label="Sell Rate", interactive=True)
 
                     # Group for documents
                     with gr.Group():
                         gr.Markdown("## Documents")
-                        cv_orig = gr.Textbox(label="CV (original)")
-                        cv_white = gr.Textbox(label="CV white label (gdocs)")
-                        folder = gr.Textbox(label="Folder")
-                        nda = gr.Textbox(label="NDA")
+                        cv_orig = gr.Textbox(label="CV (original)", interactive=True)
+                        cv_white = gr.Textbox(label="CV white label (gdocs)", interactive=True)
+                        folder = gr.Textbox(label="Folder", interactive=True)
+                        nda = gr.Textbox(label="NDA", interactive=True)
 
                     # Textbox for comments
-                    comment = gr.Textbox(label="Comment")
+                    comment = gr.Textbox(label="Comment", interactive=True)
 
+        specialist_fields = [
+                fname, lname, engagement, work_hours,
+                linkedin, telegram, phone, email,
+                seniority, role, stack, industry, expertise,
+                belarusian, english, location,
+                rate_in, rate_in_exp, sell_rate, month_in, month_exp,
+                cv_orig, cv_white, folder, nda,
+                comment
+            ]
+
+        edit_specialists_btns = [check_specialist_btn, del_specialist_btn, add_specialist_btn, save_specialist_btn]
         # Event handler for the filter button
         filter_btn.click(
             filter_and_update_specialists,
             inputs=[df_state, project_desc, threshold, hours_checkboxes, engagement_checkboxes],
-            outputs=[specialists, df_state, filter_status_markdown, specialist_count_markdown]
+            outputs=[specialists, df_state, filter_status_markdown, specialist_count_markdown,
+                     *edit_specialists_btns, *specialist_fields]
         )
+        # Event handler for the reload button
+        reload_btn.click(None, [], [], js="window.location.reload()")
+
         download_staff_btn.click( # !!!!! HTTPS protocol is required
             download_staff_df,
             inputs=df_state,
@@ -205,14 +226,29 @@ def create_interface(df, fields_values_df):
         specialists.select(
             update_specialist_info,
             inputs=[df_state],
-            outputs=[
-                fname, lname, engagement, work_hours,
-                linkedin, telegram, phone, email,
-                seniority, role, stack, industry, expertise,
-                belarusian, english, location,
-                rate_in, rate_in_exp, sell_rate, month_in, month_exp,
-                cv_orig, cv_white, folder, nda,
-                comment
-            ]
+            outputs=[*specialist_fields, current_row]
         )
+
+        # Event handler for deleting a specialist
+        del_specialist_btn.click(
+            delete_specialist,
+            inputs=[current_row, df_state],
+            outputs=[df_state, specialists, *specialist_fields, current_row]
+        )
+
+        # Event handler for adding a new specialist
+        add_specialist_btn.click(
+            add_specialist,
+            inputs=[df_state],
+            outputs=[*specialist_fields, current_row]
+        )
+        # blur event: Used to call a function when the field loses focus
+        for field in specialist_fields:
+            field.blur(
+                update_specialist_field,
+                inputs=[field, current_row, gr.State(field.label), df_state],
+                outputs=[df_state, specialists]
+            )
+
     return demo
+
