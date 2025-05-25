@@ -1,25 +1,76 @@
 import re
-from lib2to3.pgen2.token import NUMBER
 
 import gradio as gr
 import pandas as pd
-import numpy as np
 import io
 import tempfile
+import openpyxl
 from pathlib import Path
 import logging
+
 logging.basicConfig(level=logging.INFO)
 
-from nltk.util import ngrams
+
 from nltk.tokenize import word_tokenize
 from nltk.data import path as nltk_path
 nltk_path.append('nltk_data')
 
-from api_handlers.EmbeddingHandler import EmbeddingHandler
+from src.nlp.tokenization import LocalModelHandler as LLMHandler
 
 NUMBER_OF_SPECIALIST_FIELDS = 26
+ATTENTION_SIGN = "⚠️"
 
-embedding_handler = EmbeddingHandler()
+
+def load_fields(file_path='frontend/fields_values.xlsx'):
+    fields = pd.read_excel(file_path)
+    return fields
+
+def validate_stack_field(stack_content, llm_handler):
+    prompt = [
+        {"role": "system", "content": "You are an expert in analyzing technical stacks."},
+        {"role": "user", "content": (
+            f"Please verify if the following 'Stack' field contains specific technologies and libraries required for projects. "
+            f"A valid stack should include specific technologies and libraries that are relevant to the project requirements. "
+            f"Here are some examples of valid stacks:\n"
+            f"1. 'Java 21, Kafka, MySQL, Google Guice, DropWizard, Maven, JUnit, Mockito, React, Git, Intellij IDEA, Orion, OpenGrok, LogFetch, JIRA, Sentry & Singularity'\n"
+            f"2. 'Linux, Python, R, C++, C, SQL, Jupyter, Git, Docker, Amazon Web Services (AWS), Matlab, NumPy, Pandas, MatPlotLib, Plotly, Seaborn, Scikit-learn, TensorFlow, Keras, OpenCV, XGBoost, Catboost, SciPy, ARIMA'\n"
+            f"3. 'Swift SnapKit UserDefaults CocoaPods, SwiftPM MVVM, MVVM+C, MVC Realm, SwiftData Stinsen UIKit SwiftUI StoreKit Autolayout URLSession GCD ARC Tools Swift SnapKit UserDefaults CocoaPods, SwiftPM MVVM, MVVM+C, MVC Realm, SwiftData Stinsen UIKit SwiftUI StoreKit Autolayout URLSession GCD ARC Xcode Jira Notion MongoDB Git Figma Postico Postman'\n"
+            f"4. 'Python, C++, PyTorch, Lightning, Catalyst, Ultralytics, NumPy, Seaborn, Sklearn, Matplotlib, Pandas, LightGBM, XGBoost, CatBoost, Detectron2, OpenCV, W&B, TensorRT, CVAT'\n"
+            f"5. 'Python, Django, Docker, FastApi, Kubernetes'\n"
+            f"6. 'LLM, Computer Vision, NLP, Recommendation Systems, Time Series, Speech'\n"
+            f"7. 'Computer Vision, \nGCP, \nDevOps, \nAWS'\n"
+            f"8. 'Jira, Confluence, Azure DevOps, Trello, Slack, MS Teams, Figma, Miro'\n"
+            f"9. 'JavaScript\nReact\nRedux\nHTML\nCSS\nSASS'\n\n"
+            f"10. 'Python, R,  MLflow,  Angular, Spring, FastAPI'\n"
+            f"An example of an invalid stack:\n"
+            f"'Python, C#, Delphi, C++, Visual'\n\n"
+            f"Now, evaluate the following stack content: '{stack_content}'. "
+            
+            f"Respond with 'Yes' if it is a valid stack, or 'No' if it is not."
+        )}
+    ]
+    response = llm_handler.get_answer(prompt , max_tokens=1)
+    if "yes" in response.lower():
+        return True
+    else:
+        return False
+
+def get_relevant_roles(stack_content, role_content, role_options, llm_handler):
+    prompt = [
+        {"role": "system", "content": "You are an expert in matching technical stacks to job roles."},
+        {"role": "user", "content": (
+            f"Given the following 'Stack' content: '{stack_content}' and the current 'Role': '{role_content}', "
+            f"determine the most relevant roles from the following list: {', '.join(role_options)}. "
+            f"Return the relevant roles in order of relevance, separated by commas."
+        )}
+    ]
+    response = llm_handler.get_answer(prompt)
+    return response
+
+def _get_cell_content(cell):
+    text = cell.value
+    link = cell.hyperlink.target if cell.hyperlink else None
+    return link if link else text
 
 def adjust_dataframe_structure(df):
     # Strip any leading or trailing whitespace from column names
@@ -66,6 +117,41 @@ def adjust_dataframe_structure(df):
     df = df.sort_values(by='First Name', ascending=True)
     df = df.reset_index(drop=True)
     return df
+
+def load_data(file_path):
+    """
+    Load data from an Excel or CSV file into a DataFrame.
+
+    Parameters:
+    - file_path (str): The path to the Excel or CSV file.
+
+    Returns:
+    - pd.DataFrame: The loaded DataFrame.
+    """
+
+    # Determine the file type based on the file extension
+    if file_path.endswith('.xlsx') or file_path.endswith('.xls'):
+        # Read the Excel file into a DataFrame
+        df = pd.read_excel(file_path)
+
+        # Load the workbook and select the active sheet
+        wb = openpyxl.load_workbook(file_path)
+        ws = wb.active
+
+        # Iterate over each cell in the DataFrame and replace the values
+        for row_idx, row in df.iterrows():
+            for col_idx, col in enumerate(df.columns, start=1):
+                cell = ws.cell(row=row_idx + 2, column=col_idx)  # +2 to account for the header
+                df.at[row_idx, col] = _get_cell_content(cell)
+    elif file_path.endswith('.csv'):
+        # Read the CSV file into a DataFrame
+        df = pd.read_csv(file_path, sep=';')
+    else:
+        raise ValueError("Unsupported file format. Please provide an Excel or CSV file.")
+
+    df = adjust_dataframe_structure(df)
+    return df
+
 
 
 def get_field_options(df, field_name):
@@ -146,7 +232,8 @@ def count_matching_tokens(row, project_tokens):
     combined_text = combined_text if combined_text else ""
     row_tokens = get_tokens(combined_text)
     matching_tokens_count = len(row_tokens & project_tokens)
-    print(type(matching_tokens_count), matching_tokens_count)
+    # if matching_tokens_count > 1:
+    #     print(row_tokens & project_tokens)
     return matching_tokens_count
 
 def filter_and_update_specialists(
@@ -174,7 +261,7 @@ def filter_and_update_specialists(
         filtered_df['Matching_Tokens_Count'] = pd.to_numeric(filtered_df['Matching_Tokens_Count'], errors='coerce')
         # Filter the DataFrame
         pd.set_option('display.max_rows', None)
-        print(filtered_df[["First Name" , "Last Name"  ,  "Matching_Tokens_Count"]])
+        # print(filtered_df[["First Name" , "Last Name"  ,  "Matching_Tokens_Count"]])
         threshold_value = int(threshold_value)
         filtered_df = filtered_df.loc[filtered_df['Matching_Tokens_Count'] >= threshold_value]
 
@@ -182,7 +269,7 @@ def filter_and_update_specialists(
     is_full_list = len(filtered_df) == len(df)
     filter_status = "Showing full specialist base" if is_full_list else "Showing filtered specialists based on project description"
     specialist_count = f"Total number of specialists: {len(filtered_df)}"
-    gr_btn_update = gr.update(visible=not is_full_list)
+    gr_btn_update = gr.update(visible=is_full_list)
     gr_field_update = gr.update(interactive=is_full_list)
 
     return (filtered_df[["First Name", "Last Name"]], filtered_df , filter_status, specialist_count,
@@ -215,38 +302,95 @@ def update_specialist_field(new_value, current_row, field_name, df):
     new_df.iloc[current_row, df.columns.get_loc(field_name)] = new_value
     return (new_df, new_df[["First Name", "Last Name"]])
 
+def validate_specialist_data(df, llm_handler):
+    candidates_valid = []
+    candidates_to_review = []
+    for index, row in df.iterrows():
+        stack = row["Stack"]
+        # Example validation: if any of the fields are empty, add to the list
+        if stack and validate_stack_field(stack, llm_handler):
+            candidates_valid.append(index)
+        else:
+            candidates_to_review.append(index)
+    return candidates_valid, candidates_to_review
+
+def update_relevant_rows(df, indices, llm_handler):
+    # Load possible roles
+    fields_values_df = load_fields()
+    role_options = get_field_options(fields_values_df, "Role")
+    for index in indices:
+        stack_content = df.at[index, "Stack"]
+        role_content = df.at[index, "Role"]
+        # Get relevant roles from LLM
+        relevant_roles = get_relevant_roles(stack_content, role_content, role_options, llm_handler)
+        # Update a row in a DataFrame
+        df.at[index, "Role"] = relevant_roles
+    return df
+
+def switch_to_validation_mode(df):
+    mode = "validate"
+    llm_handler = LLMHandler()
+    candidates_valid, candidates_to_review = validate_specialist_data(df, llm_handler)
+    df_to_review = df.iloc[candidates_to_review]
+    print(df_to_review[["First Name", "Last Name", "Stack"]])
+    full_df = update_relevant_rows(df, candidates_valid, llm_handler)
+    gr_btn_update = gr.update(visible=False)
+    filter_status = f"Switched to validation mode. \n\n{ATTENTION_SIGN} Don't forget to save after editing."
+    specialist_count = f"{ATTENTION_SIGN} Please review the candidates as their 'Stack' field must specify the technologies and libraries required for projects."
+    # specialist_count = "Please review the candidates as their 'Stack' field is incomplete or missing."
+    return (mode, df_to_review,  df_to_review[["First Name", "Last Name"]], full_df,
+            *([gr_btn_update] * 3), filter_status, specialist_count)
+
+
+
 def delete_specialist(current_row, df):
     if 0 <= current_row < len(df):
         new_df = df.drop(index=current_row).reset_index(drop=True)
     else:
         new_df = df
-    current_row = len(new_df)
-    empty_values = [""] * NUMBER_OF_SPECIALIST_FIELDS
-    return new_df, new_df[["First Name", "Last Name"]], *empty_values, current_row
+    # current_row = len(new_df)
+    # empty_values = [""] * NUMBER_OF_SPECIALIST_FIELDS
+    return (new_df, new_df[["First Name", "Last Name"]],
+            *clear_specialists_fields(df))
 
-def add_specialist(df):
+def clear_specialists_fields(df):
     new_row_index = len(df)
-    empty_values = [""] * NUMBER_OF_SPECIALIST_FIELDS
-    return *empty_values, new_row_index
+    filter_status = "Showing full specialist base"
+    specialist_count = f"Total number of specialists: {new_row_index}"
+    gr_btn_update = gr.update(visible=True)
+    gr_field_update = gr.update(interactive=True)
+    return (new_row_index, filter_status, specialist_count,
+            *([gr_btn_update] * 4),  # Visibility for buttons to edit with list of specialists
+            *([gr_field_update] * NUMBER_OF_SPECIALIST_FIELDS))  # Interactive state for specialist's fields
 
-def save_dataframe_to_csv(df, file_path):
+def save_specialist_data(mode, df, full_df, path):
     """
-    Save the DataFrame to a CSV file, ensuring embeddings are properly converted to strings.
-
+    Save the specialist data based on the current mode.
     Parameters:
-    - df (pd.DataFrame): The DataFrame to save.
-    - file_path (str): The path where the CSV file will be saved.
+    - mode (str): The current mode of the application ('standard' or 'validate').
+    - df (pd.DataFrame): The current DataFrame containing specialist data.
+    - full_df (pd.DataFrame or None): The full DataFrame containing all specialist data when in 'validate' mode.
+    Returns:
+    - bool: Returns True to trigger a UI refresh.
     """
+    if mode == "validate" and full_df is not None:
+        # Update rows in df that match "First Name" and "Last Name" from full_df
+        for index, row in df.iterrows():
+            matching_indices = full_df[
+                (full_df["First Name"] == row["First Name"]) &
+                (full_df["Last Name"] == row["Last Name"])
+                ].index
+            if not matching_indices.empty:
+                for col in full_df.columns:
+                    full_df.at[matching_indices[0], col] = row[col]
+        df = full_df
+        full_df = None
 
-    # Convert embeddings to strings for saving to CSV
-    # This ensures that the embeddings are stored in a format that can be easily read back
-    df['Embedding'] = df['Embedding'].apply(lambda x: np.array2string(x, separator=' ', max_line_width=np.inf) if isinstance(x, np.ndarray) else x)
+    # Save the updated DataFrame to an Excel file
+    df.to_excel(path, index=False)
 
-    # Save the DataFrame to a CSV file
-    # Using a semicolon as the separator to handle potential commas in the embedding strings
-    df.to_csv(file_path, index=False, sep=';')
+    return ("standard", df, full_df,
+            df[["First Name", "Last Name"]],
+            *clear_specialists_fields(df))
 
-    print(f"DataFrame successfully saved to {file_path}")
-
-# save_dataframe_to_csv(df, 'data/Staff_with_embeddings.csv')
 

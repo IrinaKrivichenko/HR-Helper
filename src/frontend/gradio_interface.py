@@ -1,16 +1,13 @@
 import gradio as gr
-from frontend.functions import filter_and_update_specialists, update_specialist_info, adjust_dataframe_structure, \
-    get_field_options, sort_dataframe, download_staff_df, download_bench_df, update_specialist_field, delete_specialist, \
-    add_specialist
-import pandas as pd
+from src.frontend import functions as fn
 
-def create_interface(df, fields_values_df):
-    # Adjust the structure of the DataFrame to ensure it's compatible with the interface
-    df = adjust_dataframe_structure(df)
+
+def create_interface(df_path, fields_values_df):
+    df = fn.load_data(df_path)
 
     # Retrieve options for the engagement level filter
-    engagement_options = get_field_options(fields_values_df, "LVL of engagement")
-    location_options = get_field_options(df, "Location")
+    engagement_options = fn.get_field_options(fields_values_df, "LVL of engagement")
+    location_options = fn.get_field_options(df, "Location")
     print(location_options)
 
     # Define options for the working hours filter
@@ -21,8 +18,11 @@ def create_interface(df, fields_values_df):
         custom_css = file.read()
 
     # Create the Gradio interface using Blocks with custom CSS
-    with gr.Blocks(css=custom_css) as demo:
+    with (gr.Blocks(css=custom_css) as demo):
         # Initialize the state of the DataFrame
+        mode_state = gr.State("standard")
+        full_df_state = gr.State(None)
+        df_path_state = gr.State(df_path)
         df_state = gr.State(df)
         current_row = gr.Number(value=len(df), precision=0, visible=False)
 
@@ -58,7 +58,7 @@ def create_interface(df, fields_values_df):
                     engagement_checkboxes = gr.CheckboxGroup(
                         label="Filter by Engagement Level",
                         choices=engagement_options,
-                        value=engagement_options[:-1],
+                        value=engagement_options[:-2],
                         interactive=True,
                         elem_classes="checkbox-column"
                     )
@@ -108,7 +108,7 @@ def create_interface(df, fields_values_df):
                         max_height=500,
                         interactive=False
                     )
-                    check_specialist_btn = gr.Button("Check list of specialists", scale=1)
+                    check_specialist_btn = gr.Button("Check and update list of specialists", scale=1)
                     with gr.Row():
                         del_specialist_btn = gr.Button("Del specialist", scale=0)
                         add_specialist_btn = gr.Button("Add specialist", scale=0)
@@ -140,8 +140,8 @@ def create_interface(df, fields_values_df):
                     with gr.Group():
                         gr.Markdown("## Professional Information")
                         seniority = gr.Textbox(label="Seniority", interactive=True)
-                        role = gr.TextArea(label="Role", lines=3, interactive=True)
                         stack = gr.TextArea(label="Stack", lines=3, interactive=True)
+                        role = gr.TextArea(label="Role", lines=3, interactive=True)
                         industry = gr.TextArea(label="Industry", lines=3, interactive=True)
                         expertise = gr.TextArea(label="Expertise", lines=3, interactive=True)
 
@@ -187,7 +187,7 @@ def create_interface(df, fields_values_df):
         edit_specialists_btns = [check_specialist_btn, del_specialist_btn, add_specialist_btn, save_specialist_btn]
         # Event handler for the filter button
         filter_btn.click(
-            filter_and_update_specialists,
+            fn.filter_and_update_specialists,
             inputs=[df_state, project_desc, threshold, hours_checkboxes, engagement_checkboxes],
             outputs=[specialists, df_state, filter_status_markdown, specialist_count_markdown,
                      *edit_specialists_btns, *specialist_fields]
@@ -196,56 +196,75 @@ def create_interface(df, fields_values_df):
         reload_btn.click(None, [], [], js="window.location.reload()")
 
         download_staff_btn.click( # !!!!! HTTPS protocol is required
-            download_staff_df,
+            fn.download_staff_df,
             inputs=df_state,
             outputs=download_btn_hidden
         ).then(
-            fn=None,
-            inputs=None,
-            outputs=None,
+            fn=None, inputs=None, outputs=None,
             js="() => document.querySelector('#download_btn_hidden').click()"
         )
         download_bench_btn.click( # !!!!! HTTPS protocol is required
-            download_bench_df,
+            fn.download_bench_df,
             inputs=df_state,
             outputs=download_btn_hidden
         ).then(
-            fn=None,
-            inputs=None,
-            outputs=None,
+            fn=None, inputs=None, outputs=None,
             js="() => document.querySelector('#download_btn_hidden').click()"
         )
         # Event handler for sorting the DataFrame
         sort_column.change(
-            sort_dataframe,
+            fn.sort_dataframe,
             inputs=[df_state, sort_column],
             outputs=[specialists, df_state]
         )
 
         # Event handler for updating specialist information
         specialists.select(
-            update_specialist_info,
+            fn.update_specialist_info,
             inputs=[df_state],
             outputs=[*specialist_fields, current_row]
         )
 
+        # Event handler for switching to validation mode
+        check_specialist_btn.click(
+            fn.switch_to_validation_mode,
+            inputs=[df_state],
+            outputs=[mode_state, df_state, specialists, full_df_state, *edit_specialists_btns[:-1],
+                     filter_status_markdown, specialist_count_markdown]
+        )
         # Event handler for deleting a specialist
         del_specialist_btn.click(
-            delete_specialist,
+            fn.delete_specialist,
             inputs=[current_row, df_state],
-            outputs=[df_state, specialists, *specialist_fields, current_row]
+            outputs=[df_state, specialists,
+                     current_row, filter_status_markdown, specialist_count_markdown,
+                     *edit_specialists_btns, *specialist_fields ]
         )
 
         # Event handler for adding a new specialist
         add_specialist_btn.click(
-            add_specialist,
+            fn.clear_specialists_fields,
             inputs=[df_state],
-            outputs=[*specialist_fields, current_row]
+            outputs=[current_row, filter_status_markdown, specialist_count_markdown,
+                     *edit_specialists_btns, *specialist_fields]
         )
+
+        # Event handler for saving specialist data
+        save_specialist_btn.click(
+            fn.save_specialist_data,
+            inputs=[mode_state, df_state, full_df_state, df_path_state],
+            outputs=[mode_state, df_state, full_df_state, specialists,
+                     current_row, filter_status_markdown, specialist_count_markdown,
+                     *edit_specialists_btns, *specialist_fields ]
+        )
+        # .then(
+        #     fn=None, inputs=None, outputs=None,
+        #     js="window.location.reload()"
+        # )
         # blur event: Used to call a function when the field loses focus
         for field in specialist_fields:
             field.blur(
-                update_specialist_field,
+                fn.update_specialist_field,
                 inputs=[field, current_row, gr.State(field.label), df_state],
                 outputs=[df_state, specialists]
             )
