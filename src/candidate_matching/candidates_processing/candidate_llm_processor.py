@@ -30,7 +30,8 @@ def process_candidates_with_llm(
         vacancy: str,  # - vacancy (str): The vacancy description.
         filtered_df,   # - filtered_df (pd.DataFrame): DataFrame containing filtered candidate data.
         vacancy_info: dict,   # - vacancy_info (dict): Dictionary containing extracted information from the vacancy.
-        llm_handler: LLMHandler
+        llm_handler: LLMHandler,
+        model="gpt-4o-mini"
 ):
     """
     Processes the candidates using the language model (LLM) to select the best matches.
@@ -151,7 +152,7 @@ def process_candidates_with_llm(
 
             # Send the prompt to the LLM handler and get the response
             approximate_tokens = len(filtered_df) * 100 + 100
-            response = llm_handler.get_answer(prompt, model="gpt-4o-mini", max_tokens=approximate_tokens)
+            response = llm_handler.get_answer(prompt, model=model, max_tokens=approximate_tokens)
 
             print("try_time", try_time)
             print(response)

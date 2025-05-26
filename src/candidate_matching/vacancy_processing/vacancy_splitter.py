@@ -1,7 +1,7 @@
 import re
 
 
-def split_vacancies(text, llm_handler):
+def split_vacancies(text, llm_handler, model="gpt-4o-mini"):
     """
     Splits the given text into separate vacancy descriptions using LLMHandler.
 
@@ -36,7 +36,7 @@ def split_vacancies(text, llm_handler):
     ]
     # Get the response from the language model
     approximate_tokens = len(text) + 100
-    response = llm_handler.get_answer(prompt, model="gpt-4.1-mini", max_tokens=approximate_tokens)
+    response = llm_handler.get_answer(prompt, model=model, max_tokens=approximate_tokens)
 
     # Use regular expressions to split the response into separate vacancies
     vacancies = re.split(r'## Vacancy \d+', response)

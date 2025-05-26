@@ -73,6 +73,7 @@ def get_df_for_vacancy_search():
 
     initial_count = len(df)
     df = df[~((df['Role'] == '') & (df['Stack'] == ''))]
+    df = df[~((df['First Name'] == '') | (df['Last Name'] == ''))]
 
     df = add_embeddings_column(df, write_columns=False)
 

@@ -46,7 +46,6 @@ def check_existing_vacancy(vacancy_description):
         # Convert the saved vacancy description to a set of words
         saved_word_set = get_tokens(saved_description)
         jaccard_similarity = calculate_jaccard_similarity(input_word_set, saved_word_set)
-        print(jaccard_similarity)
         # Check if the descriptions are similar
         if jaccard_similarity >= 0.95:
             return row

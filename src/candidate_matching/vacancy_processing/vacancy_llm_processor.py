@@ -29,7 +29,7 @@ def parse_llm_response(response: str) -> dict:
     return extracted_data
 
 
-def extract_vacancy_info(vacancy: str, llm_handler: LLMHandler):
+def extract_vacancy_info(vacancy: str, llm_handler: LLMHandler, model="gpt-4o-mini"):
     """
     Extracts key information from the vacancy description using the language model (LLM).
 
@@ -89,7 +89,7 @@ def extract_vacancy_info(vacancy: str, llm_handler: LLMHandler):
     ]
 
     # Send the prompt to the LLM handler and get the response
-    response = llm_handler.get_answer(prompt, model="gpt-4o-mini", max_tokens=500)
+    response = llm_handler.get_answer(prompt, model=model, max_tokens=500)
 
     print(response)
 

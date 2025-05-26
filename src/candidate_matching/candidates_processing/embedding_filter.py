@@ -50,23 +50,10 @@ def filter_candidates_by_embedding(vacancy_info, df, embedding_handler, initial_
     # else:
     #     filter_by_stack = False
 
-    print("shape of vacancy_embedding :", vacancy_embedding.shape)
     # Compute similarities with candidate embeddings
     # df['Similarity'] = df['Embedding'].apply(lambda x: cosine_similarity(vacancy_embedding, np.array(x).reshape(1, -1))[0][0])
     df['Similarity'] = df['Embedding'].apply(lambda x: cosine_similarity(vacancy_embedding, x)[0][0])
-    # def cosine_similarity_debug(a, b):
-    #     dot_product = np.dot(a, b)
-    #     norm_a = np.linalg.norm(a)
-    #     norm_b = np.linalg.norm(b)
-    #     print(f"Dot product: {dot_product}, Norm a: {norm_a}, Norm b: {norm_b}")
-    #     similarity = dot_product / (norm_a * norm_b)
-    #     return similarity
-    #
-    # # Пример использования
-    # df['Similarity'] = df.apply(
-    #     lambda row: cosine_similarity_debug(vacancy_embedding, row['Embedding']),
-    #     axis=1
-    # )
+
 
     # df['Role_Similarity'] = df['Role_Embedding'].apply(lambda x: cosine_similarity(vacancy_role_embedding, np.array(x).reshape(1, -1))[0][0])
     # df['Stack_Similarity'] = df['Stack_Embedding'].apply(lambda x: cosine_similarity(vacancy_stack_embedding, np.array(x).reshape(1, -1))[0][0])
@@ -81,17 +68,6 @@ def filter_candidates_by_embedding(vacancy_info, df, embedding_handler, initial_
     #     print(f"Stack_Similarity for Taisija: {similarity_value}")
     # else:
     #     print("No candidate found with First Name 'Taisija'")
-
-    # Выводим строки, где возникли проблемы
-    problematic_rows = df[df['Similarity'].isna()]
-    print(f"Number of problematic rows: {df['Similarity'].isna().sum()}")
-    for _, row in problematic_rows.iterrows():
-        print(f"First Name: {row['First Name'][:10]}, "
-              f"Last Name: {row['Last Name'][:10]}, "
-              f"Role: {row['Role'][:10]}, "
-              f"Stack: {row['Stack'][:10]}, "
-              f"Row in Spreadsheets: {row['Row in Spreadsheets']}, "
-              f"Embedding: {str(row['Embedding'])[:10]}")
 
     pd.set_option('display.max_rows', 50)
     # Filter candidates based on the similarity threshold
