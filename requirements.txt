@@ -11,7 +11,7 @@ python-dotenv
 # boto3>=1.37.23
 # requests==2.32.3
 
-
+boto3>=1.37.23
 python-telegram-bot==22.0
 numpy==2.0.2
 pandas==2.2.2
