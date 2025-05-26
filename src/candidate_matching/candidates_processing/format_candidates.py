@@ -54,9 +54,10 @@ def format_candidate_string(row, stack, show_reasoning=False):
     english = row.get('English', '_')
     belarusian = row.get('Belarusian', '_')
     original = row.get('CV (original)', '_')
-    original = f"<a href='{original}'>Original</a>" if len(original)>2 in row else original
+    original = f"<a href='{original}'>Original</a>" if len(original)>2  else original
     white_label = row.get('CV White Label', '_')
-    white_label = f"<a href='{white_label}'>White Label</a>" if len(white_label)>2 in row else white_label
+    white_label = f"<a href='{white_label}'>White Label</a>" if len(white_label)>2  else white_label
+
 
     stack = row.get('Stack', '_').replace("\n", ", ").replace(" ,", ",").replace(",,", ",")
 
