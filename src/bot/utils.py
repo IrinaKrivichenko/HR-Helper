@@ -29,14 +29,8 @@ async def send_message(update: Update, message: str):
             # Extract the chunk and send it
             chunk = message[start:last_newline].strip()
 
-            # # Debugging information
-            # print(f"Start index: {start}")
-            # print(f"Last newline index: {last_newline}")
-            # print(f"Chunk to send: {chunk[:50]}...")  # Print first 50 characters of the chunk
-            # print(f"Remaining message length: {len(message) - last_newline}")
             # Check if the chunk is empty or only contains whitespace
             if not chunk:
-                print("Skipping empty chunk.")
                 start = last_newline + 1
                 continue
             try:
