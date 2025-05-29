@@ -15,11 +15,11 @@ boto3>=1.37.23
 python-telegram-bot==22.0
 numpy==2.0.2
 pandas==2.2.2
-google-api-python-client
-google-auth-httplib2
-google-auth-oauthlib
+google-api-python-client==2.169.0
+google-auth-httplib2==0.2.0
+google-auth-oauthlib==1.2.2
 openai==1.76.0
-scikit-learn
+scikit-learn==1.6.1
 nltk==3.9.1
 
 

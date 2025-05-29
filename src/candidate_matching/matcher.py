@@ -11,6 +11,7 @@ from src.candidate_matching.candidates_processing.input_candidates import get_df
 from src.candidate_matching.vacancy_processing.vacancy_llm_processor import extract_vacancy_info
 from src.candidate_matching.vacancy_processing.vacancy_googlesheet import check_existing_vacancy, save_vacancy_description
 from src.candidate_matching.vacancy_processing.vacancy_splitter import split_vacancies
+from src.logger import logger
 from src.nlp.embedding_handler import EmbeddingHandler
 from src.nlp.llm_handler import LLMHandler
 
@@ -34,7 +35,7 @@ async def find_candidates_for_vacancy(vacancy, df, embedding_handler, llm_handle
                                                                                embedding_handler)
     list_of_filtered_candidated = ", ".join(filtered_df['Full Name'])
     step1_num = len(filtered_df)
-    print('number of candidates after consign_similarity_threshold(',consign_similarity_threshold,") = ", len(filtered_df))
+    logger.info('number of candidates after consign_similarity_threshold(',consign_similarity_threshold,") = ", len(filtered_df))
 
     # Step 2: Process candidates with LLM
     better_fit_df, lesser_fit_df, llm_extracted_data = process_candidates_with_llm(vacancy,
@@ -43,10 +44,10 @@ async def find_candidates_for_vacancy(vacancy, df, embedding_handler, llm_handle
                                                                            llm_handler)
 
     step3_num = len(better_fit_df)
-    print(llm_extracted_data)
-    print("len(better_fit_df)", len(better_fit_df))
-    print("len(filtered_df)", step1_num)
-    print("len(lesser_fit_df)", len(lesser_fit_df))
+    logger.info(llm_extracted_data)
+    logger.info(f"len(better_fit_df) = {len(better_fit_df)}" )
+    logger.info(f"len(filtered_df) = {step1_num}" )
+    logger.info(f"len(lesser_fit_df) = {len(lesser_fit_df)}" )
     # Step 3: Generete answer
     better_fit_df, lesser_fit_df = generate_candidates_summary(better_fit_df, lesser_fit_df, llm_extracted_data.get('Extracted Technologies', ''))
 
@@ -66,7 +67,7 @@ async def match_candidats(update: Update,  text, user_name, llm_handler=None) ->
     embedding_handler = EmbeddingHandler()
     vacancies = split_vacancies(text, llm_handler)
 
-    print("number of vacancies", len(vacancies))
+    logger.info(f"number of vacancies {len(vacancies)}")
 
     if len(vacancies) == 0:
       pass
@@ -74,7 +75,7 @@ async def match_candidats(update: Update,  text, user_name, llm_handler=None) ->
       df = get_df_for_vacancy_search()
       if len(vacancies) == 1:
           result = await find_candidates_for_vacancy(vacancies[0], df, embedding_handler, llm_handler, user_name)
-          print("ready_to_send_message")
+          logger.info("ready_to_send_message")
           await send_message(update, result)
       else:
           results = []

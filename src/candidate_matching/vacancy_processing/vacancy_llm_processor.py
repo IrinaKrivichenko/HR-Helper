@@ -1,3 +1,4 @@
+from src.logger import logger
 from src.nlp.llm_handler import LLMHandler
 
 
@@ -91,7 +92,7 @@ def extract_vacancy_info(vacancy: str, llm_handler: LLMHandler, model="gpt-4o-mi
     # Send the prompt to the LLM handler and get the response
     response = llm_handler.get_answer(prompt, model=model, max_tokens=500)
 
-    print(response)
+    logger.info(response)
 
     # Parse the response from the LLM
     extracted_data = parse_llm_response(response)

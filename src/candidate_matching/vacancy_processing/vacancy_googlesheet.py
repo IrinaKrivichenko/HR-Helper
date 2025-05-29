@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 
 from src.data_processing.jaccard_similarity import calculate_jaccard_similarity
 from src.google_services.sheets import read_specific_columns, initialize_google_sheets_api
+from src.logger import logger
 from src.nlp.tokenization import get_tokens
 
 load_dotenv()
@@ -79,7 +80,6 @@ def save_vacancy_description(vacancy_description,
         VACANCIES_SHEET_ID = os.getenv("VACANCIES_SHEET_ID")
         if existing_vacancy is not None:
             # If a similar vacancy exists, unpack the result and update the existing row
-            print(existing_vacancy)
             row_index = existing_vacancy['Row in Spreadsheets']  #['row']
             range_db = f"{VACANCIES_SHEET_NAME}!A{row_index}:R{row_index}"
             user = f"{existing_vacancy['user']}\n{user}"
@@ -139,7 +139,7 @@ def save_vacancy_description(vacancy_description,
             body=value_range_body
         ).execute()
 
-        print("Results saved to Google Sheets.")
+        logger.info("Results saved to Google Sheets.")
 
     except HttpError as err:
-        print(f"An error occurred: {err}")
+        logger.error(f"An error occurred: {err}")

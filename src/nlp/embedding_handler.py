@@ -7,6 +7,9 @@ from src.google_services.sheets import write_specific_columns
 
 import os
 from dotenv import load_dotenv
+
+from src.logger import logger
+
 load_dotenv()
 
 class EmbeddingHandler:
@@ -68,26 +71,26 @@ def add_embeddings_column(df, write_columns=False):
             text_for_embedding = " ".join(str(field) for field in text_fields if pd.notna(field))
             if text_for_embedding:
                 embedding = embedding_handler.get_text_embedding(text_for_embedding)
-                print('Embedding shape:', embedding.shape)
                 # Assign the embedding to the DataFrame
                 df.at[index, 'Embedding'] = str(embedding)
 
         # if str(row['Role_Embedding']) == "" and pd.notna(row['Role']):
         #     # Calculate embedding for 'Role'
         #     role_embedding = embedding_handler.get_text_embedding(str(row['Role']))
-        #     print('Role Embedding length', len(role_embedding[0]))
+        #     logger.info('Role Embedding length', len(role_embedding[0]))
         #     df.at[index, 'Role_Embedding'] = role_embedding
 
         # if str(row['Stack_Embedding']) == "" and pd.notna(row['Stack']):
         #     # Calculate embedding for 'Stack'
         #     stack_embedding = embedding_handler.get_text_embedding(str(row['Stack']))
-        #     print('Stack Embedding length', len(stack_embedding[0]))
+        #     logger.info('Stack Embedding length', len(stack_embedding[0]))
         #     df.at[index, 'Stack_Embedding'] = stack_embedding
 
     # Write the updated DataFrame back to the Google Sheet
     if write_columns:
         write_specific_columns(df[['Embedding', 'Role_Embedding', 'Stack_Embedding']])
     df['Embedding'] = df['Embedding'].apply(string_to_array)
+    logger.info('Embedding shape:', df['Embedding'][0].shape)
     return df
 
 

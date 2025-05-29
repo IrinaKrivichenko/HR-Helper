@@ -3,6 +3,8 @@ from telegram import Update
 from telegram.error import NetworkError
 
 from src.bot.locks import send_lock
+from src.logger import logger
+
 
 async def send_message(update: Update, message: str):
     """
@@ -36,12 +38,12 @@ async def send_message(update: Update, message: str):
             try:
                 await update.message.reply_text(chunk, parse_mode='HTML')
             except NetworkError as e:
-                print(f"NetworkError: {e}")
+                logger.error(f"NetworkError: {e}")
                 # Try again after some time
                 await asyncio.sleep(5)
                 continue
             except Exception as e:
-                print(f"Exception: {e}")
+                logger.error(f"Exception: {e}")
                 break
 
             # Update the start index

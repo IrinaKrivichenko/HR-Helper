@@ -4,6 +4,7 @@ import pandas as pd
 
 from src.data_processing.jaccard_similarity import calculate_jaccard_similarity
 from src.google_services.sheets import read_specific_columns
+from src.logger import logger
 from src.nlp.embedding_handler import add_embeddings_column
 
 
@@ -57,7 +58,7 @@ def get_df_for_vacancy_search():
 
     # Get specific columns with hyperlinks
     df = read_specific_columns(columns_to_extract)
-    print("number of candidates after reading", len(df))
+    logger.info(f"number of candidates after reading {len(df)}" )
     df = filter_candidates_by_engagement(df)
 
     df['Full Name'] = df.apply(lambda row: f"{clean_and_extract_first_word(row['First Name'])} {clean_and_extract_first_word(row['Last Name'])}", axis=1)
@@ -80,7 +81,7 @@ def get_df_for_vacancy_search():
     # Replace '' -> '_' and '\n' -> ', '  in the entire DataFrame
     df = df.applymap(lambda x: '_' if isinstance(x, str) and x == '' else x)
     df = df.applymap(lambda x: x.replace('\n', ', ') if isinstance(x, str) else x)
-    print("number of candidates after filtering", len(df))
+    logger.info(f"number of candidates after filtering {len(df)}")
 
     return df
 

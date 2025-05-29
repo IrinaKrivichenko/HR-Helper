@@ -5,6 +5,7 @@ import pandas as pd
 
 from src.data_processing.jaccard_similarity import calculate_jaccard_similarity, find_most_similar_row
 from src.data_processing.json_conversion import df_to_json
+from src.logger import logger
 from src.nlp.llm_handler import LLMHandler
 
 
@@ -64,7 +65,7 @@ def process_candidates_with_llm(
                 'Stack', 'Industry', 'Expertise', 'Works hrs/mnth',
                 'English', 'Location', 'Sell rate', 'Row in Spreadsheets'
             ]
-            print(filtered_df.columns)
+            logger.info(filtered_df.columns)
             candidates_json = df_to_json(filtered_df[columns_to_json])
 
             # Prepare the prompt for the LLM
@@ -154,8 +155,8 @@ def process_candidates_with_llm(
             approximate_tokens = len(filtered_df) * 100 + 100
             response = llm_handler.get_answer(prompt, model=model, max_tokens=approximate_tokens)
 
-            print("try_time", try_time)
-            print(response)
+            logger.info("try_time", try_time)
+            logger.info(response)
             try_time += 1
 
             # Parse the response from the LLM
@@ -182,7 +183,7 @@ def process_candidates_with_llm(
                             # Update candidate reasoning in filtered_df
                             filtered_df.loc[candidate_row.index, 'Reasoning'] = reasoning_for_candidate
 
-            # print(filtered_df[['First Name', 'Last Name', 'Reasoning']])
+            # logger.info(filtered_df[['First Name', 'Last Name', 'Reasoning']])
 
             # Extract the list of selected candidates
             selected_candidates = extracted_data.get("Selected Candidates", "")
@@ -236,17 +237,17 @@ def process_candidates_with_llm(
             lesser_fit_df = pd.concat([lesser_fit_df, filtered_df.loc[lesser_fit_indices]])
 
             # Filter out the processed candidates
-            print("reasoning_candidate_indices", reasoning_candidate_indices)
+            logger.info("reasoning_candidate_indices", reasoning_candidate_indices)
             filtered_df = filtered_df[~filtered_df.index.isin(reasoning_candidate_indices)]
-            print("len(filtered_df)", len(filtered_df))
+            logger.info("len(filtered_df)", len(filtered_df))
 
         except Exception as e:
             error_message = f"An error occurred: {str(e)}\n{traceback.format_exc()}"
-            print(error_message)
+            logger.error(error_message)
             error_logs.append(error_message)
             continue
     # Add error logs to the extracted data
     vacancy_info['error_logs'] = '\n'.join(error_logs)
-    print("vacancy_info['error_logs'];", vacancy_info['error_logs'])
+    logger.info("vacancy_info['error_logs'];", vacancy_info['error_logs'])
 
     return better_fit_df, lesser_fit_df, vacancy_info

@@ -5,6 +5,7 @@ import pandas as pd
 from sklearn.metrics.pairwise import cosine_similarity
 
 from src.nlp.embedding_handler import add_embeddings_column
+from src.logger import logger
 
 import os
 from dotenv import load_dotenv
@@ -61,13 +62,13 @@ def filter_candidates_by_embedding(vacancy_info, df, embedding_handler, initial_
     # exact_candidate_exists = df[df['First Name'] == 'Taisija']
     # if not exact_candidate_exists.empty:
     #     similarity_value = exact_candidate_exists['Similarity'].values[0]
-    #     print(f"Similarity for Taisija: {similarity_value}")
+    #     logger.info(f"Similarity for Taisija: {similarity_value}")
     #     similarity_value = exact_candidate_exists['Role_Similarity'].values[0]
-    #     print(f"Role_Similarity for Taisija: {similarity_value}")
+    #     logger.info(f"Role_Similarity for Taisija: {similarity_value}")
     #     similarity_value = exact_candidate_exists['Stack_Similarity'].values[0]
-    #     print(f"Stack_Similarity for Taisija: {similarity_value}")
+    #     logger.info(f"Stack_Similarity for Taisija: {similarity_value}")
     # else:
-    #     print("No candidate found with First Name 'Taisija'")
+    #     logger.info("No candidate found with First Name 'Taisija'")
 
     pd.set_option('display.max_rows', 50)
     # Filter candidates based on the similarity threshold
@@ -75,23 +76,22 @@ def filter_candidates_by_embedding(vacancy_info, df, embedding_handler, initial_
     while consign_similarity_threshold >= min_threshold:
         filtered_df = df[df['Similarity'] >= consign_similarity_threshold]
         # Check if the number of filtered candidates meets the minimum requirement
-        print(
-            f"number of candidates {len(filtered_df)} with consign_similarity_threshold {consign_similarity_threshold}")
-        print(filtered_df[["Full Name"]])
+        logger.info(f"number of candidates {len(filtered_df)} with consign_similarity_threshold {consign_similarity_threshold}")
+        logger.info(filtered_df[["Full Name"]])
         if len(filtered_df) >= min_candidates:
             break
         # if filter_by_stack:
         #     filtered_df = df[df['Stack_Similarity'] >= consign_similarity_threshold]
         #     # Check if the number of filtered candidates meets the minimum requirement
-        #     print(f"number of candidates filter_by_stack {len(filtered_df)} with consign_similarity_threshold {consign_similarity_threshold}")
-        #     print(filtered_df[["Full Name"]])
+        #     logger.info(f"number of candidates filter_by_stack {len(filtered_df)} with consign_similarity_threshold {consign_similarity_threshold}")
+        #     logger.info(filtered_df[["Full Name"]])
         #     if len(filtered_df) >= min_candidates:
         #         break
         # if filter_by_role:
         #     filtered_df = df[df['Role_Similarity'] >= consign_similarity_threshold]
         #     # Check if the number of filtered candidates meets the minimum requirement
-        #     print(f"number of candidates filter_by_role {len(filtered_df)} with consign_similarity_threshold {consign_similarity_threshold}")
-        #     print(filtered_df[["Full Name"]])
+        #     logger.info(f"number of candidates filter_by_role {len(filtered_df)} with consign_similarity_threshold {consign_similarity_threshold}")
+        #     logger.info(filtered_df[["Full Name"]])
         #     if len(filtered_df) >= min_candidates:
         #         break
         # Reduce the threshold for the next iteration
