@@ -8,6 +8,9 @@ from googleapiclient.discovery import build
 
 import os
 from dotenv import load_dotenv
+
+from src.logger import logger
+
 load_dotenv()
 
 # Dictionary mapping column names to their letter indices
@@ -135,8 +138,7 @@ def read_specific_columns(columns_to_extract, sheet_name=CANDIDATES_SHEET_NAME, 
     Returns a DataFrame.
     """
     # Convert column names to letters
-    columns_to_extract = get_column_letters(columns_to_extract)
-
+    columns_letters = get_column_letters(columns_to_extract)
 
     # Initialize Google Sheets API if service is not provided
     if service is None:
@@ -147,17 +149,24 @@ def read_specific_columns(columns_to_extract, sheet_name=CANDIDATES_SHEET_NAME, 
     spreadsheet = sheet.get(spreadsheetId=SHEET_ID, ranges=[sheet_name], includeGridData=True).execute()
     sheet_data = spreadsheet['sheets'][0]['data'][0]
 
+    # Extract headers from the sheet
+    headers_row = sheet_data.get('rowData', [{}])[0].get('values', [])
+    headers = [cell.get('formattedValue', '').strip() for cell in headers_row]
+
+    # Check if the headers match the expected column names
+    for i, column_name in enumerate(columns_to_extract):
+        column_letter = get_column_letters(column_name)
+        i = letter_to_index(column_letter)
+        if i < len(headers) and headers[i] != column_name:
+            logger.error(f"Column name mismatch at column {column_letter}: Expected '{column_name}', found '{headers[i]}'")
 
     # Extract values and hyperlinks for specific columns
     data = []
     rows = sheet_data.get('rowData', [])
-
-    num_of_WL = 0
-
     for row in rows:
         row_values = row.get('values', [])
         row_data = []
-        for col_letter in columns_to_extract:
+        for col_letter in columns_letters:
             col_index = letter_to_index(col_letter)
             if col_index is not None and col_index < len(row_values):
                 cell = row_values[col_index]
@@ -170,7 +179,6 @@ def read_specific_columns(columns_to_extract, sheet_name=CANDIDATES_SHEET_NAME, 
                     cell_text = cell_text.strip()
                     cell_text = remove_invisible_chars(cell_text)
                     row_data.append(cell_text)
-
             else:
                 # If the column index is out of range or None, add an empty value
                 row_data.append('')
@@ -182,10 +190,64 @@ def read_specific_columns(columns_to_extract, sheet_name=CANDIDATES_SHEET_NAME, 
             break  # Exit the loop if the row is completely empty
 
     # Create DataFrame with specific columns
-    df = pd.DataFrame(data[1:], columns=data[0])
+    df = pd.DataFrame(data[1:], columns=columns_to_extract)
     df = df.reset_index(drop=True)
     df['Row in Spreadsheets'] = df.index + 2
     return df
+#
+# def read_specific_columns(columns_to_extract, sheet_name=CANDIDATES_SHEET_NAME, service=None):
+#     """
+#     Fetches specific columns from the Google Sheet, handling hyperlinks.
+#     Creates missing columns and fills them with empty strings.
+#     Returns a DataFrame.
+#     """
+#     # Convert column names to letters
+#     columns_to_extract = get_column_letters(columns_to_extract)
+#
+#     # Initialize Google Sheets API if service is not provided
+#     if service is None:
+#         service = initialize_google_sheets_api()
+#     sheet = service.spreadsheets()
+#
+#     # Get the full sheet data with includeGridData
+#     spreadsheet = sheet.get(spreadsheetId=SHEET_ID, ranges=[sheet_name], includeGridData=True).execute()
+#     sheet_data = spreadsheet['sheets'][0]['data'][0]
+#
+#     # Extract values and hyperlinks for specific columns
+#     data = []
+#     rows = sheet_data.get('rowData', [])
+#     for row in rows:
+#         row_values = row.get('values', [])
+#         row_data = []
+#         for col_letter in columns_to_extract:
+#             col_index = letter_to_index(col_letter)
+#             if col_index is not None and col_index < len(row_values):
+#                 cell = row_values[col_index]
+#                 if 'hyperlink' in cell:
+#                     # If there is a hyperlink, add the URL
+#                     row_data.append(cell['hyperlink'])
+#                 else:
+#                     # Otherwise, add the cell text
+#                     cell_text = cell.get('formattedValue', '') if 'formattedValue' in cell else ''
+#                     cell_text = cell_text.strip()
+#                     cell_text = remove_invisible_chars(cell_text)
+#                     row_data.append(cell_text)
+#
+#             else:
+#                 # If the column index is out of range or None, add an empty value
+#                 row_data.append('')
+#
+#         # Check if the row contains only empty strings
+#         if not all(value == '' for value in row_data):
+#             data.append(row_data)
+#         else:
+#             break  # Exit the loop if the row is completely empty
+#
+#     # Create DataFrame with specific columns
+#     df = pd.DataFrame(data[1:], columns=data[0])
+#     df = df.reset_index(drop=True)
+#     df['Row in Spreadsheets'] = df.index + 2
+#     return df
 
 def write_specific_columns(df, sheet_name=CANDIDATES_SHEET_NAME, service=None):
     """
@@ -206,6 +268,18 @@ def write_specific_columns(df, sheet_name=CANDIDATES_SHEET_NAME, service=None):
         column_letter = get_column_letters(column_name)
         if column_letter is None:
             raise ValueError(f"Column name '{column_name}' is invalid or not mapped in column_dict.")
+
+        # Update the header (column name) in the first row
+        header_range = f"{sheet_name}!{column_letter}1"
+        header_update_body = {
+            'values': [[column_name]]
+        }
+        sheet.values().update(
+            spreadsheetId=SHEET_ID,
+            range=header_range,
+            valueInputOption='RAW',
+            body=header_update_body
+        ).execute()
 
         # Prepare the data to write for the current column, converting all values to strings
         values = df[column_name].fillna('').astype(str).tolist()
