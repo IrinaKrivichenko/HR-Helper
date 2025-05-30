@@ -1,5 +1,5 @@
 import asyncio
-from telegram.ext import ApplicationBuilder, MessageHandler, filters
+from telegram.ext import ApplicationBuilder, MessageHandler, filters, CommandHandler
 from telegram import Update
 from telegram.ext import ContextTypes
 
@@ -14,6 +14,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Sends a message when the /start command is issued."""
+    await update.message.reply_text("Hey! Glad you're here!")
+
 async def process_user_request(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.effective_user
     user_name = user.username if user.username else user.first_name
@@ -24,9 +28,10 @@ async def process_user_request(update: Update, context: ContextTypes.DEFAULT_TYP
     llm_handler = LLMHandler()
     await match_candidats(update, text, user_name, llm_handler)
 
-
-
 application = ApplicationBuilder().token(os.getenv("TOKEN")).build()
+# Adding a handler for the /start command
+application.add_handler(CommandHandler("start", start))
+# Adding a handler for text messages
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, process_user_request))
 
 

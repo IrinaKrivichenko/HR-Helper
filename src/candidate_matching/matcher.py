@@ -35,7 +35,7 @@ async def find_candidates_for_vacancy(vacancy, df, embedding_handler, llm_handle
                                                                                embedding_handler)
     list_of_filtered_candidated = ", ".join(filtered_df['Full Name'])
     step1_num = len(filtered_df)
-    logger.info('number of candidates after consign_similarity_threshold(',consign_similarity_threshold,") = ", len(filtered_df))
+    logger.info(f"number of candidates after consign_similarity_threshold() {len(filtered_df)}" )
 
     # Step 2: Process candidates with LLM
     better_fit_df, lesser_fit_df, llm_extracted_data = process_candidates_with_llm(vacancy,
