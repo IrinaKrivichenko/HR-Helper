@@ -1,9 +1,7 @@
-import warnings
 
-import numpy as np
 import pandas as pd
-from sklearn.metrics.pairwise import cosine_similarity
 
+from src.data_processing.vector_utils import cosine_similarity
 from src.nlp.embedding_handler import add_embeddings_column
 from src.logger import logger
 
@@ -52,8 +50,8 @@ def filter_candidates_by_embedding(vacancy_info, df, embedding_handler, initial_
     #     filter_by_stack = False
 
     # Compute similarities with candidate embeddings
-    # df['Similarity'] = df['Embedding'].apply(lambda x: cosine_similarity(vacancy_embedding, np.array(x).reshape(1, -1))[0][0])
-    df['Similarity'] = df['Embedding'].apply(lambda x: cosine_similarity(vacancy_embedding, x)[0][0])
+    # df['Similarity'] = df['Embedding'].apply(lambda x: cosine_similarity(vacancy_embedding, x)[0][0])
+    df['Similarity'] = df['Embedding'].apply(lambda x: cosine_similarity(vacancy_embedding, x))
 
 
     # df['Role_Similarity'] = df['Role_Embedding'].apply(lambda x: cosine_similarity(vacancy_role_embedding, np.array(x).reshape(1, -1))[0][0])

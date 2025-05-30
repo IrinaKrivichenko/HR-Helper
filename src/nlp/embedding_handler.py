@@ -36,8 +36,8 @@ def string_to_array(s):
         # Remove brackets and split characters into elements.
         s = s.replace("[", "").replace("]", "")
         elements = np.fromstring(s, sep=' ')
-        return elements.reshape(1, -1)  # Assuming it's a 2D array with one row
-        # return elements  # Return a 1D array
+        # return elements.reshape(1, -1)  # Assuming it's a 2D array with one row
+        return elements  # Return a 1D array
     return s
 
 def add_embeddings_column(df, write_columns=False):
@@ -88,9 +88,10 @@ def add_embeddings_column(df, write_columns=False):
 
     # Write the updated DataFrame back to the Google Sheet
     if write_columns:
-        write_specific_columns(df[['Embedding', 'Role_Embedding', 'Stack_Embedding']])
+        # write_specific_columns(df[['Embedding', 'Role_Embedding', 'Stack_Embedding']])
+        write_specific_columns(df[['Embedding']])
     df['Embedding'] = df['Embedding'].apply(string_to_array)
-    logger.info('Embedding shape:', df['Embedding'][0].shape)
+    logger.info(f"Embedding shape: {df['Embedding'][0].shape}")
     return df
 
 

@@ -21,7 +21,7 @@ google-auth-httplib2==0.2.0
 google-auth-oauthlib==1.2.2
 oauth2client==3.0.0
 openai==1.76.0
-scikit-learn==1.6.1
+# scikit-learn==1.6.1
 nltk==3.9.1
 
 
