@@ -155,7 +155,7 @@ def process_candidates_with_llm(
             approximate_tokens = len(filtered_df) * 100 + 100
             response = llm_handler.get_answer(prompt, model=model, max_tokens=approximate_tokens)
 
-            logger.info("try_time", try_time)
+            logger.info(f"try_time {try_time}")
             logger.info(response)
             try_time += 1
 
@@ -237,9 +237,9 @@ def process_candidates_with_llm(
             lesser_fit_df = pd.concat([lesser_fit_df, filtered_df.loc[lesser_fit_indices]])
 
             # Filter out the processed candidates
-            logger.info("reasoning_candidate_indices", reasoning_candidate_indices)
+            logger.info(f"reasoning_candidate_indices {reasoning_candidate_indices}")
             filtered_df = filtered_df[~filtered_df.index.isin(reasoning_candidate_indices)]
-            logger.info("len(filtered_df)", len(filtered_df))
+            logger.info(f"len(filtered_df) { len(filtered_df)}")
 
         except Exception as e:
             error_message = f"An error occurred: {str(e)}\n{traceback.format_exc()}"
@@ -248,6 +248,6 @@ def process_candidates_with_llm(
             continue
     # Add error logs to the extracted data
     vacancy_info['error_logs'] = '\n'.join(error_logs)
-    logger.info("vacancy_info['error_logs'];", vacancy_info['error_logs'])
+    logger.info(f"vacancy_info['error_logs']; {vacancy_info['error_logs']}")
 
     return better_fit_df, lesser_fit_df, vacancy_info
