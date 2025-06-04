@@ -57,7 +57,7 @@ def process_candidates_with_llm(
     lesser_fit_df = pd.DataFrame(columns=filtered_df.columns)
 
     # Process candidates in batches
-    while len(filtered_df):
+    while len(filtered_df) and try_time<10:
         try:
             # Convert the filtered DataFrame to JSON format
             columns_to_json = [

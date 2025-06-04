@@ -67,14 +67,17 @@ async def match_candidats(update: Update,  text, user_name, llm_handler=None) ->
     embedding_handler = EmbeddingHandler()
     vacancies = split_vacancies(text, llm_handler)
 
-    logger.info(f"number of vacancies {len(vacancies)}")
+    logger.info(f"number of vacancies in the request: {len(vacancies)}")
 
     if len(vacancies) == 0:
       pass
     else:
       df = get_df_for_vacancy_search()
       if len(vacancies) == 1:
-          result = await find_candidates_for_vacancy(vacancies[0], df, embedding_handler, llm_handler, user_name)
+          vacancy = vacancies[0]
+          if len(vacancy) > text:
+              vacancy = text
+          result = await find_candidates_for_vacancy(vacancy, df, embedding_handler, llm_handler, user_name)
           logger.info("ready_to_send_message")
           await send_message(update, result)
       else:

@@ -15,11 +15,10 @@ load_dotenv()
 class EmbeddingHandler:
     def __init__(self):
         self.openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        self.EMBEDDING_MODEL = "text-embedding-3-large"
 
-    def get_text_embedding(self, text: str) -> np.array:
+    def get_text_embedding(self, text: str, model="text-embedding-3-large") -> np.array:
         try:
-            response = self.openai_client.embeddings.create(input=text, model=self.EMBEDDING_MODEL)
+            response = self.openai_client.embeddings.create(input=text, model=model)
             embedding = response.data[0].embedding
             embedding = np.array(embedding)
             embedding = embedding.astype("float32")
@@ -40,7 +39,7 @@ def string_to_array(s):
         return elements  # Return a 1D array
     return s
 
-def add_embeddings_column(df, write_columns=False):
+def add_embeddings_column(df, write_columns=False, separator=" ", col_name='Embedding'):
     """
     Adds 'Embedding', 'Role_Embedding', and 'Stack_Embedding' columns to the DataFrame if they don't exist,
     calculates embeddings for rows where 'Embedding', 'Role_Embedding', or 'Stack_Embedding' is empty,
@@ -50,29 +49,29 @@ def add_embeddings_column(df, write_columns=False):
     - df (pd.DataFrame): DataFrame containing the data to process.
     """
     # Check if 'Embedding', 'Role_Embedding', and 'Stack_Embedding' columns exist, if not, create them
-    if 'Embedding' not in df.columns:
-        df['Embedding'] = ""
-    if 'Role_Embedding' not in df.columns:
-        df['Role_Embedding'] = ""
-    if 'Stack_Embedding' not in df.columns:
-        df['Stack_Embedding'] = ""
+    if col_name not in df.columns:
+        df[col_name] = ""
+    # if 'Role_Embedding' not in df.columns:
+    #     df['Role_Embedding'] = ""
+    # if 'Stack_Embedding' not in df.columns:
+    #     df['Stack_Embedding'] = ""
 
     np.set_printoptions(threshold=np.inf, linewidth=np.inf)
 
     # Initialize the embedding handler
     embedding_handler = EmbeddingHandler()
 
-    df['Embedding'] = df['Embedding'].astype(object)
+    df[col_name] = df[col_name].astype(object)
     # Calculate embeddings for rows where 'Embedding', 'Role_Embedding', or 'Stack_Embedding' is empty
     for index, row in df.iterrows():
-        if str(row['Embedding']) == "":
+        if str(row[col_name]) == "":
             # Concatenate text fields to create a single string for embedding
             text_fields = [row['Role'], row['Stack'], row['Industry'], row['Expertise'], row['Location']]
-            text_for_embedding = " ".join(str(field) for field in text_fields if pd.notna(field))
+            text_for_embedding = separator.join(str(field) for field in text_fields if pd.notna(field))
             if text_for_embedding:
                 embedding = embedding_handler.get_text_embedding(text_for_embedding)
                 # Assign the embedding to the DataFrame
-                df.at[index, 'Embedding'] = str(embedding)
+                df.at[index, col_name] = str(embedding)
 
         # if str(row['Role_Embedding']) == "" and pd.notna(row['Role']):
         #     # Calculate embedding for 'Role'

@@ -3,10 +3,11 @@ from telegram.ext import ApplicationBuilder, MessageHandler, filters, CommandHan
 from telegram import Update
 from telegram.ext import ContextTypes
 
+from src.bot.utils import send_message
 from src.candidate_matching.matcher import match_candidats
 from src.logger import logger
 from src.nlp.llm_handler import LLMHandler
-from src.bot.locks import send_lock
+from src.bot.authorization import auth_manager
 
 
 import os
@@ -22,15 +23,22 @@ async def process_user_request(update: Update, context: ContextTypes.DEFAULT_TYP
     user = update.effective_user
     user_name = user.username if user.username else user.first_name
     text = update.message.text
-    logger.info(f"message from {user_name}")
-    logger.info(text)
-    # pd.set_option('display.max_colwidth', None)
-    llm_handler = LLMHandler()
-    await match_candidats(update, text, user_name, llm_handler)
+    logger.info(f"{user_name} have send: ({text})")
+    if not auth_manager.is_user_authorized(user_name):
+        if auth_manager.add_user(user_name, text):
+            await send_message(update, "Hey! Glad you're here!")
+    else:
+        if auth_manager.remove_user(user_name, text):
+            await send_message(update, "Bye bye!")
+        else:
+            await send_message(update, "Please wait.")
+            # pd.set_option('display.max_colwidth', None)
+            llm_handler = LLMHandler()
+            await match_candidats(update, text, user_name, llm_handler)
 
 application = ApplicationBuilder().token(os.getenv("TOKEN")).build()
-# Adding a handler for the /start command
-application.add_handler(CommandHandler("start", start))
+# # Adding a handler for the /start command
+# application.add_handler(CommandHandler("start", start))
 # Adding a handler for text messages
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, process_user_request))
 

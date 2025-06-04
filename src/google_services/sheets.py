@@ -128,7 +128,7 @@ def letter_to_index(col_letter):
     return index - 1
 
 def remove_invisible_chars(text):
-    visible_text = re.sub(r'[\x00-\x1F\x7F-\x9F]', '', text)
+    visible_text = re.sub(r'[\x00-\x09\x0B-\x1F\x7F-\x9F]', '', text)
     return visible_text
 
 def read_specific_columns(columns_to_extract, sheet_name=CANDIDATES_SHEET_NAME, service=None):

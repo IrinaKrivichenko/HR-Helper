@@ -11,7 +11,7 @@ load_dotenv()
 
 
 
-def filter_candidates_by_embedding(vacancy_info, df, embedding_handler, initial_threshold=0.8, min_threshold=0.3,
+def filter_candidates_by_embedding(vacancy_info, df, embedding_handler, initial_threshold=0.5, min_threshold=0.3,
                                    min_candidates=int(os.getenv("MIN_CANDIDATES_THRESHOLD"))):
     """
     Filters candidates based on embedding similarity with the vacancy description.
@@ -76,7 +76,7 @@ def filter_candidates_by_embedding(vacancy_info, df, embedding_handler, initial_
         # Check if the number of filtered candidates meets the minimum requirement
         logger.info(f"number of candidates {len(filtered_df)} with consign_similarity_threshold {consign_similarity_threshold}")
         logger.info(filtered_df[["Full Name"]])
-        if len(filtered_df) >= min_candidates:
+        if len(filtered_df) >= min_candidates*2:
             break
         # if filter_by_stack:
         #     filtered_df = df[df['Stack_Similarity'] >= consign_similarity_threshold]
