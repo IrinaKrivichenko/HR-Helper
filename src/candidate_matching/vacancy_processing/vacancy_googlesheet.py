@@ -103,7 +103,7 @@ def save_vacancy_description(vacancy_description,
             range_db = f"{VACANCIES_SHEET_NAME}!A2:R2"
 
         value_input_option = "RAW"
-        current_date = datetime.now().strftime('%Y-%m-%d')
+        current_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         results = [
             current_date,  #   'Date': 'A',
             llm_extracted_data.get("error_logs", ""),  #   'llm errors': 'B',

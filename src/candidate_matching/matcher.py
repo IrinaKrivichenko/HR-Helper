@@ -75,7 +75,7 @@ async def match_candidats(update: Update,  text, user_name, llm_handler=None) ->
       df = get_df_for_vacancy_search()
       if len(vacancies) == 1:
           vacancy = vacancies[0]
-          if len(vacancy) > text:
+          if len(vacancy) > len(text):
               vacancy = text
           result = await find_candidates_for_vacancy(vacancy, df, embedding_handler, llm_handler, user_name)
           logger.info("ready_to_send_message")
