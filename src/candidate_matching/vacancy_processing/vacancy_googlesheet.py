@@ -11,6 +11,13 @@ from src.nlp.tokenization import get_tokens
 
 load_dotenv()
 
+def parse_date(date_str):
+    if ' ' in date_str:
+        date_part = date_str.split()[0]
+    else:
+        date_part = date_str
+    return datetime.strptime(date_part, '%Y-%m-%d')
+
 def check_existing_vacancy(vacancy_description):
     """
     Checks if a similar vacancy has been saved in the last VACANCY_CACHE_TIME days.
@@ -36,7 +43,7 @@ def check_existing_vacancy(vacancy_description):
     # Check each row for a similar vacancy
     for index, row in vacancies_df.iterrows():
         saved_date_str = row['Date']
-        saved_date = datetime.strptime(saved_date_str, '%Y-%m-%d')
+        saved_date = parse_date(saved_date_str)
 
         # Check if the date is within the last VACANCY_CACHE_TIME days
         if saved_date < some_days_ago:
