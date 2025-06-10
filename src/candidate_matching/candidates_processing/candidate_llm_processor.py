@@ -142,7 +142,7 @@ def process_candidates_with_llm(
                     f"- **Extracted Role**:\n{vacancy_info.get('Extracted Role', 'No role is found')}\n\n"
                     f"- **Extracted Industry**:\n{vacancy_info.get('Extracted Industry', 'No industry is found')}\n\n"
                     f"- **Extracted Expertise**:\n{vacancy_info.get('Extracted Expertise', 'No expertise is found')}\n\n"
-                    f"- **Extracted Location**:\n{vacancy_info.get('Extracted Location', 'No location is found')}\n\n"
+                    f"- **Extracted Location**:\n{vacancy_info.get('Extracted Location', 'Any location')}\n\n"
                     f"```\n\n"
                     f"## Candidates:\n"
                     f"```json\n"

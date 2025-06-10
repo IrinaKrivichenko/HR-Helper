@@ -51,7 +51,7 @@ def extract_vacancy_info(vacancy: str, llm_handler: LLMHandler, model="gpt-4o-mi
             "role": "user",
             "content": (
                 f"Your task is to process the provided job description and extract the following information:\n\n"
-                f"1. Extract the key technologies mentioned in the job description and list them each on a new line. If a technology has a commonly recognized abbreviation (e.g., Artificial Intelligence = AI, Amazon Web Services = AWS), return the full name followed by the abbreviation in parentheses.\n"
+                f"1. Extract the key technologies mentioned in the job description and list them each on a new line. If a technology has a commonly recognized abbreviation (e.g., Artificial Intelligence = AI, Amazon Web Services = AWS), return the full name followed by the abbreviation in parentheses. Also when extracting key technologies from the job description, make sure you check not only the body text but also the role title. Some technologies may only be mentioned in the role title, such as 'PHP Dev', 'Java Developer', '.NET Engineer', etc. Make sure these technologies are also extracted and included in the list of technologies.\n"
                 f"2. Identify the role described in the job description.\n"
                 f"3. Identify the industry mentioned in the job description.\n"
                 f"4. Identify the expertise required in the job description.\n"

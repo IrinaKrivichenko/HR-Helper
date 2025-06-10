@@ -7,11 +7,24 @@ from src.logger import logger
 
 import os
 from dotenv import load_dotenv
+
+from src.nlp.tokenization import get_tokens
+
 load_dotenv()
 
 
+def covered_percentage(vacancy_set: set, candidate_set: set) -> float:
+    """
+    Рассчитывает процент покрытия требований вакансии данным кандидатом.
+    """
+    if not vacancy_set:
+        return 0.0  # Avoid division by zero
 
-def filter_candidates_by_embedding(vacancy_info, df, embedding_handler, initial_threshold=0.5, min_threshold=0.3,
+    intersection = vacancy_set & candidate_set  # Find common elements
+    return (len(intersection) / len(vacancy_set)) * 100  # Calculate percentage
+
+
+def filter_candidates_by_embedding(vacancy_info, df, embedding_handler, initial_threshold=0.5, min_threshold=0.39,
                                    min_candidates=int(os.getenv("MIN_CANDIDATES_THRESHOLD"))):
     """
     Filters candidates based on embedding similarity with the vacancy description.
@@ -36,6 +49,17 @@ def filter_candidates_by_embedding(vacancy_info, df, embedding_handler, initial_
         "Location": [vacancy_info.get("Extracted Location", "")]
     })
     vacancy_as_df = add_embeddings_column(vacancy_as_df, write_columns=False)
+
+    # Job description
+    vacancy_stack = vacancy_as_df["Stack"][0]
+    # Get a set of job tokens
+    vacancy_set = get_tokens(vacancy_stack)
+    # Apply the get_tokens() function to all rows in the Stack column and calculate coverage
+    df["Coverage"] = df["Stack"].apply(lambda stack: covered_percentage(vacancy_set, get_tokens(stack)))
+    # Filter condition with coverage greater than 49%
+    stack_coverage_condition = df["Coverage"] > 49
+    logger.info(f"number of candidates by stack_coverage_condition{stack_coverage_condition.sum()} ")
+
     vacancy_embedding = vacancy_as_df['Embedding'][0]
 
     # if "Extracted Role" in vacancy_info:
@@ -72,11 +96,13 @@ def filter_candidates_by_embedding(vacancy_info, df, embedding_handler, initial_
     # Filter candidates based on the similarity threshold
     consign_similarity_threshold = initial_threshold
     while consign_similarity_threshold >= min_threshold:
-        filtered_df = df[df['Similarity'] >= consign_similarity_threshold]
+        embedding_similarity_condition = df['Similarity'] >= consign_similarity_threshold
+        logger.info(f"number of candidates by embedding_similarity_condition{embedding_similarity_condition.sum()} with consign_similarity_threshold {consign_similarity_threshold}")
+        filtered_df = df[stack_coverage_condition | embedding_similarity_condition]
         # Check if the number of filtered candidates meets the minimum requirement
         logger.info(f"number of candidates {len(filtered_df)} with consign_similarity_threshold {consign_similarity_threshold}")
         logger.info(filtered_df[["Full Name"]])
-        if len(filtered_df) >= min_candidates*2:
+        if len(filtered_df) >= min_candidates:
             break
         # if filter_by_stack:
         #     filtered_df = df[df['Stack_Similarity'] >= consign_similarity_threshold]
