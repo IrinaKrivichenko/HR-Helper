@@ -24,14 +24,11 @@ async def process_user_request(update: Update, context: ContextTypes.DEFAULT_TYP
     user_name = user.username if user.username else user.first_name
     text = update.message.text
     if not auth_manager.is_user_authorized(user_name):
-        logger.info(f"NOT authorized {user_name} have send: ({text})")
-        if auth_manager.add_user(user_name, text):
-            await send_message(update, "Hey! Glad you're here!")
+        print(f"NOT authorized {user_name} have send: ({text})")
+        await auth_manager.add_user(user_name, text, update)
     else:
-        logger.info(f"authorized {user_name} have send: ({text})")
-        if auth_manager.remove_user(user_name, text):
-            await send_message(update, "Bye bye!")
-        else:
+        print(f"authorized {user_name} have send: ({text})")
+        if not await auth_manager.remove_user(user_name, text, update):
             await send_message(update, "Please wait.")
             # pd.set_option('display.max_colwidth', None)
             llm_handler = LLMHandler()
@@ -42,5 +39,6 @@ application = ApplicationBuilder().token(os.getenv("TOKEN")).build()
 # application.add_handler(CommandHandler("start", start))
 # Adding a handler for text messages
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, process_user_request))
+auth_manager.set_application(application)
 
 

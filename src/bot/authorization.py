@@ -1,10 +1,9 @@
-
+import asyncio
 import threading
 
 
-
 class UserAuthorizationManager:
-    all_bird_names = {
+    passwords = {
         "жаваранак", "верабей", "бусел", "варона", "цецярук", "сыч", 
         "галуб", "голуб", "качка", "дрозд", "сініца", "шпак", "салаўей",
         "зяблік", "сокал", "арол", "журавель", "чапля", "грак", "ластаўка",
@@ -44,25 +43,35 @@ class UserAuthorizationManager:
     }
     
     def __init__(self):
-        self.authorized_users = {'irina_199'}
+        self.authorized_users = {}
         self.lock = threading.Lock()
+        self.application = None
 
-    def add_user(self, user, password):
-        if password.lower() in UserAuthorizationManager.all_bird_names:
+    def set_application(self, application):
+        self.application = application
+
+    async def send_logout_message(self, user, chat_id):
+        message = f"You @{user} have been logged out🙃\nBye bye! See you soon!"
+        await self.application.send_message(chat_id=chat_id, text=message)
+
+    async def add_user(self, user, password, update):
+        if password.lower() in self.passwords:
             with self.lock:
-                self.authorized_users.add(user)
+                self.authorized_users[user] = update.effective_chat.id
+                print("chat_id = ", self.authorized_users[user])
+                await update.message.reply_text("Hey! Glad you're here!")
             return True
-        else:
-            return False
+        return False
 
-    def remove_user(self, user, word):
+    async def remove_user(self, user, word, update):
         if word.lower().strip() == "logout":
             with self.lock:
                 if user in self.authorized_users:
-                    self.authorized_users.remove(user)
+                    chat_id = self.authorized_users.pop(user)
+                    # await self.send_logout_message(user, chat_id)
+                    await update.message.reply_text("Bye bye! See you soon!")
             return True
-        else:
-            return False
+        return False
 
     def is_user_authorized(self, user):
         with self.lock:
@@ -70,9 +79,14 @@ class UserAuthorizationManager:
 
     def reset_authorized_users(self):
         with self.lock:
-            self.authorized_users.clear()
-            self.authorized_users.add('irina_199')
-            print("Authorized users have been reset.")
+            users_to_notify = self.authorized_users.copy()
+            for user in users_to_notify:
+                if user != 'irina_199':
+                    chat_id = self.authorized_users.pop(user)
+                    # asyncio.run_coroutine_threadsafe(
+                    #     self.send_logout_message(user, chat_id),
+                    #     asyncio.get_event_loop()
+                    # )
 
 
 auth_manager = UserAuthorizationManager()
