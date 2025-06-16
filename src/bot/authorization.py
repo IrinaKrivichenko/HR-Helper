@@ -43,7 +43,7 @@ class UserAuthorizationManager:
     }
     
     def __init__(self):
-        self.authorized_users = {}
+        self.authorized_users = {} #"irina_199":  694614399}
         self.lock = threading.Lock()
         self.application = None
 

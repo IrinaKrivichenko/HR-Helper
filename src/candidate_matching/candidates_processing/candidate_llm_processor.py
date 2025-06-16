@@ -48,6 +48,7 @@ def process_candidates_with_llm(
 
     # Add 'Reasoning' column to filtered_df
     filtered_df['Reasoning'] = ''
+    filtered_df['Suitability Score'] = 0.0
     vacancy_info['Reasoning'] = ''
     vacancy_info['Selected Candidates'] = ''
     try_time = 1
@@ -75,16 +76,18 @@ def process_candidates_with_llm(
                     f"Your task is to process the provided input, which contains a job description and a list of candidates. Based on the input, you must:\n\n"
                     f"1. Analyze ten candidates in order. Ensure that each candidate is evaluated against the job description and technologies required.\n"
                     f"2. Select candidates who are the best match for the role and justify why they were selected. If multiple candidates are suitable, all of them should be listed. Ensure that no candidate is overlooked.\n"
-                    f"3. Format the selected candidates in the format: 'Full Name iin spreadsheet row number X' (e.g., 'John Doe in spreadsheet row number 17'), each on a new line.\n"
+                    f"3. Provide a suitability score for each candidate, ranging from 0 to 1, where 1 is a perfect match.\n"
+                    f"4. Format the selected candidates in the format: 'Full Name iin spreadsheet row number X' (e.g., 'John Doe in spreadsheet row number 17'), each on a new line.\n"
                     f"\n"
                     f"The output should be formatted in Markdown with the following sections:\n"
                     f"- **Reasoning**: An explanation or justification for why certain candidates were selected. If no reasoning can be provided, return the reason why. Ensure that the reasoning covers all selected candidates, each candidate should be reasoned about in a separate line.\n"
+                    f"- **Suitability Scores**: A list of suitability scores for each candidate, formatted as 'Full Name: score', each on a new line.\n"
                     f"- **Selected Candidates**: A list of candidates selected by the language model as the most suitable, each on a new line and formatted as 'Full Name in spreadsheet row number X'. If no candidates are selected, return 'No candidates are selected'.\n"
                     f"\n"
-                    f"Here is an example:\n\n"
+                    f"# Here is an example:\n\n"
                     f"# Example Input:\n"
                     f"## Job Description:\n"
-                    f"We are looking for a Senior Machine Learning Engineer with expertise in Deep Learning (DL), Computer Vision (CV), and Python. The ideal candidate should have experience in the healthcare industry and be proficient in English at B2 level or above. Location: not RF and not RB.\",\n"
+                    f"We are looking for a Senior Machine Learning Engineer with expertise in Deep Learning (DL), Computer Vision (CV), and Python. The ideal candidate should have experience in the healthcare industry and be proficient in English at B2 level or above. Location: not RF and not RB.\n"
                     f"## Candidates:\n"
                     f"```json\n"
                     f"    {{\n"
@@ -96,7 +99,7 @@ def process_candidates_with_llm(
                     f"      \"Expertise\": \"Healthcare\",\n"
                     f"      \"English\": \"C1\",\n"
                     f"      \"Location\": \"Poland\",\n"
-                    f"      \"Sell rate\": \"\\$37\",\n"
+                    f"      \"Sell rate\": \"\\\$37\",\n"
                     f"      \"Row in Spreadsheets\": 16\n"
                     f"    }},\n"
                     f"    {{\n"
@@ -108,7 +111,7 @@ def process_candidates_with_llm(
                     f"      \"Expertise\": \"Healthcare\",\n"
                     f"      \"English\": \"C1\",\n"
                     f"      \"Location\": \"Belarus\",\n"
-                    f"      \"Sell rate\": \"\\$30\",\n"
+                    f"      \"Sell rate\": \"\\\$30\",\n"
                     f"      \"Row in Spreadsheets\": 34\n"
                     f"    }},\n"
                     f"    {{\n"
@@ -120,7 +123,7 @@ def process_candidates_with_llm(
                     f"      \"Expertise\": \"Data Analysis\",\n"
                     f"      \"English\": \"B2\",\n"
                     f"      \"Location\": \"Poland\",\n"
-                    f"      \"Sell rate\": \"\\$26\",\n"
+                    f"      \"Sell rate\": \"\\\$26\",\n"
                     f"      \"Row in Spreadsheets\": 28\n"
                     f"    }}\n"
                     f"  ]\n"
@@ -131,10 +134,14 @@ def process_candidates_with_llm(
                     f"1. **Alice Smith** was selected as the top candidate because she is a Senior Machine Learning Engineer with all the required skills, including Deep Learning (DL), Computer Vision (CV), and Python. Her experience in the healthcare industry and excellent English proficiency (C1) make her an ideal match for the job description. Additionally, her location in Poland fits the requirement of not being in RF or RB.\n"
                     f"2. **Charlie Brown** was rejected because, although he has expertise in Computer Vision (CV) and Python, and he has significant experience in the healthcare industry, his location in Belarus does not fit the requirement of not being in RF or RB.\n"
                     f"3. **Bob Johnson** was rejected because, although he has experience with Deep Learning (DL) and Python, his expertise lies in the finance industry, and he does not have experience in Computer Vision (CV), which is a key requirement. However, his location in Poland fits the requirement of not being in RF or RB.\n\n"
+                    f"## Suitability Scores\n"
+                    f"Alice Smith: 0.95\n"
+                    f"Charlie Brown: 0.75\n"
+                    f"Bob Johnson: 0.65\n"
                     f"## Selected Candidates\n"
-                    f"Alice Smith in spreadsheet row number 16\n\n"
+                    f"Alice Smith in spreadsheet row number 16\n"
                     f"\n"
-                    f"Here is the input:\n\n"
+                    f"# Here is the input:\n\n"
                     f"## Job Description:\n"
                     f"{vacancy}\"\n"
                     f"Here is the extracted information:\n\n"
@@ -183,7 +190,21 @@ def process_candidates_with_llm(
                             # Update candidate reasoning in filtered_df
                             filtered_df.loc[candidate_row.index, 'Reasoning'] = reasoning_for_candidate
 
-            # logger.info(filtered_df[['First Name', 'Last Name', 'Reasoning']])
+            # Extract suitability scores
+            suitability_scores = extracted_data.get("Suitability Scores", "")
+            if suitability_scores:
+                scores_list = suitability_scores.split("\n")
+                for score in scores_list:
+                    if score:
+                        parts = score.split(":")
+                        if len(parts) == 2:
+                            name = parts[0].strip()
+                            score_value = float(parts[1].strip())
+                            # Update candidate suitability score in filtered_df
+                            candidate_row = filtered_df[filtered_df['Full Name'].apply(
+                                lambda x: calculate_jaccard_similarity(set(name), set(x)) >= 0.9)]
+                            if not candidate_row.empty:
+                                filtered_df.loc[candidate_row.index, 'Suitability Score'] = score_value
 
             # Extract the list of selected candidates
             selected_candidates = extracted_data.get("Selected Candidates", "")
@@ -246,6 +267,11 @@ def process_candidates_with_llm(
             logger.error(error_message)
             error_logs.append(error_message)
             continue
+
+    # Sort DataFrames by 'Suitability Score' in descending order
+    better_fit_df = better_fit_df.sort_values(by='Suitability Score', ascending=False)
+    lesser_fit_df = lesser_fit_df.sort_values(by='Suitability Score', ascending=False)
+
     # Add error logs to the extracted data
     vacancy_info['error_logs'] = '\n'.join(error_logs)
     logger.info(f"vacancy_info['error_logs']; {vacancy_info['error_logs']}")

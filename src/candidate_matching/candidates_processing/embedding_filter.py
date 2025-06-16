@@ -12,6 +12,31 @@ from src.nlp.tokenization import get_tokens
 
 load_dotenv()
 
+def mitigate_cloud_technologies_impact(tech_string):
+    # Define the cloud platforms and their short forms
+    aws_full = "Amazon Web Services (AWS)"
+    azure_full = "Microsoft Azure (Azure)"
+    gcp_full = "Google Cloud Platform (GCP)"
+
+    aws_short = "AWS"
+    azure_short = "Azure"
+    gcp_short = "GCP"
+
+    # Process the string according to the specified rules
+    if aws_full in tech_string:
+        tech_string = tech_string.replace(aws_full, aws_short)
+        tech_string = tech_string.replace(azure_full, "").replace(gcp_full, "")
+    elif azure_full in tech_string:
+        tech_string = tech_string.replace(azure_full, azure_short)
+        tech_string = tech_string.replace(gcp_full, "")
+    elif gcp_full in tech_string:
+        tech_string = tech_string.replace(gcp_full, gcp_short)
+
+    # Remove any leading or trailing commas and extra whitespace
+    tech_string = ', '.join(filter(None, (item.strip() for item in tech_string.split(',') if item.strip())))
+
+    return tech_string
+
 
 def covered_percentage(vacancy_set: set, candidate_set: set) -> float:
     """
@@ -24,7 +49,7 @@ def covered_percentage(vacancy_set: set, candidate_set: set) -> float:
     return (len(intersection) / len(vacancy_set)) * 100  # Calculate percentage
 
 
-def filter_candidates_by_embedding(vacancy_info, df, embedding_handler, initial_threshold=0.5, min_threshold=0.39,
+def filter_candidates_by_embedding(vacancy_info, df, embedding_handler, initial_threshold=0.7, min_threshold=0.39,
                                    min_candidates=int(os.getenv("MIN_CANDIDATES_THRESHOLD"))):
     """
     Filters candidates based on embedding similarity with the vacancy description.
@@ -52,13 +77,15 @@ def filter_candidates_by_embedding(vacancy_info, df, embedding_handler, initial_
 
     # Job description
     vacancy_stack = vacancy_as_df["Stack"][0]
+    vacancy_stack = vacancy_stack.lower()
+    vacancy_stack = mitigate_cloud_technologies_impact(vacancy_stack)
     # Get a set of job tokens
     vacancy_set = get_tokens(vacancy_stack)
     # Apply the get_tokens() function to all rows in the Stack column and calculate coverage
-    df["Coverage"] = df["Stack"].apply(lambda stack: covered_percentage(vacancy_set, get_tokens(stack)))
+    df["Coverage"] = df["Stack"].apply(lambda stack: covered_percentage(vacancy_set, get_tokens(stack.lower())))
     # Filter condition with coverage greater than 49%
     stack_coverage_condition = df["Coverage"] > 49
-    logger.info(f"number of candidates by stack_coverage_condition{stack_coverage_condition.sum()} ")
+    logger.info(f"number of candidates by stack_coverage_condition {stack_coverage_condition.sum()} ")
 
     vacancy_embedding = vacancy_as_df['Embedding'][0]
 
