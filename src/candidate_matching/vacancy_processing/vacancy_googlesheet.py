@@ -3,6 +3,7 @@ import os
 from datetime import datetime, timedelta
 from googleapiclient.errors import HttpError
 from dotenv import load_dotenv
+from tzlocal import get_localzone
 
 from src.data_processing.jaccard_similarity import calculate_jaccard_similarity
 from src.google_services.sheets import read_specific_columns, initialize_google_sheets_api
@@ -110,7 +111,8 @@ def save_vacancy_description(vacancy_description,
             range_db = f"{VACANCIES_SHEET_NAME}!A2:R2"
 
         value_input_option = "RAW"
-        current_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        local_timezone = get_localzone()
+        current_date = datetime.now(local_timezone).strftime('%Y-%m-%d %H:%M:%S %Z')
         results = [
             current_date,  #   'Date': 'A',
             llm_extracted_data.get("error_logs", ""),  #   'llm errors': 'B',
