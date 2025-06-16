@@ -22,6 +22,7 @@ oauth2client==3.0.0
 openai==1.76.0
 # scikit-learn==1.6.1
 nltk==3.9.1
+tzlocal
 
 boto3>=1.37.23
 watchtower==3.4.0

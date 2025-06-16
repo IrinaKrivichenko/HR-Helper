@@ -152,3 +152,4 @@ def save_vacancy_description(vacancy_description,
 
     except HttpError as err:
         logger.error(f"An error occurred: {err}")
+
