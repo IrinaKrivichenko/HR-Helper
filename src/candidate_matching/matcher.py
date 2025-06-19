@@ -4,7 +4,8 @@ from telegram import Update
 
 from src.bot.utils import send_message
 from src.candidate_matching.candidates_processing.candidate_llm_processor import process_candidates_with_llm
-from src.candidate_matching.candidates_processing.embedding_filter import filter_candidates_by_embedding
+from src.candidate_matching.candidates_processing.embedding_filter import filter_candidates_by_embedding, \
+    primary_filtering_by_vacancy
 from src.candidate_matching.candidates_processing.format_candidates import generate_candidates_summary, \
     generate_final_response
 from src.candidate_matching.candidates_processing.input_candidates import get_df_for_vacancy_search
@@ -30,9 +31,10 @@ async def find_candidates_for_vacancy(vacancy, df, embedding_handler, llm_handle
 
     # Step 1: Filter candidates by embedding similarity
     llm_extracted_data = extract_vacancy_info(vacancy, llm_handler)
-    filtered_df, consign_similarity_threshold = filter_candidates_by_embedding(llm_extracted_data,
-                                                                               df,
-                                                                               embedding_handler)
+    # filtered_df, consign_similarity_threshold = filter_candidates_by_embedding(llm_extracted_data,
+    #                                                                            df,
+    #                                                                            embedding_handler)
+    filtered_df, technologies_coverage = primary_filtering_by_vacancy(llm_extracted_data, df)
     list_of_filtered_candidated = ", ".join(filtered_df['Full Name'])
     step1_num = len(filtered_df)
     logger.info(f"number of candidates after consign_similarity_threshold() {len(filtered_df)}" )
@@ -51,12 +53,12 @@ async def find_candidates_for_vacancy(vacancy, df, embedding_handler, llm_handle
     # Step 3: Generete answer
     better_fit_df, lesser_fit_df = generate_candidates_summary(better_fit_df, lesser_fit_df, llm_extracted_data.get('Extracted Technologies', ''))
 
-    final_answer = generate_final_response(better_fit_df, lesser_fit_df, llm_extracted_data.get('Extracted Technologies', ''))
+    final_answer = generate_final_response(better_fit_df, lesser_fit_df, llm_extracted_data)
 
     # Step 4: Save results to Google Sheets
     time_taken = time.time() - start_time
     save_vacancy_description(vacancy, prev_call, llm_extracted_data, final_answer, user ,
-                             step0_num, consign_similarity_threshold, step1_num, step3_num,
+                             step0_num, technologies_coverage, step1_num, step3_num,
                              list_of_filtered_candidated, time_taken )
 
     return final_answer

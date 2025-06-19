@@ -1,6 +1,7 @@
 
 import pandas as pd
 
+from src.candidate_matching.candidates_processing.filtering_by_location import filter_candidates_by_location
 from src.data_processing.vector_utils import cosine_similarity
 from src.nlp.embedding_handler import add_embeddings_column
 from src.logger import logger
@@ -11,6 +12,34 @@ from dotenv import load_dotenv
 from src.nlp.tokenization import get_tokens
 
 load_dotenv()
+
+
+def filter_candidates_by_seniority(df, required_seniority):
+    # Determine the order of seniority levels
+    seniority_order = ['Junior', 'Middle', 'Senior', 'Principal']
+
+    # If 'Any' is specified, return the original DataFrame
+    if required_seniority not in seniority_order:
+        return df
+
+    # Determine the range of seniority levels to filter on
+    if required_seniority == 'Junior':
+        # For Junior, select Junior and Middle
+        allowed_seniorities = seniority_order[:2]
+    elif required_seniority == 'Middle':
+        # For Middle, select Junior, Middle, and Senior
+        allowed_seniorities = seniority_order[:3]
+    elif required_seniority == 'Senior':
+        # For Senior, select Middle, Senior, and Principal
+        allowed_seniorities = seniority_order[1:]
+    elif required_seniority == 'Principal':
+        # For Principal, select Senior and Principal
+        allowed_seniorities = seniority_order[2:]
+
+    # Filter candidates by seniority levels
+    filtered_df = df[df['Seniority'].isin(allowed_seniorities)]
+
+    return filtered_df
 
 def mitigate_cloud_technologies_impact(tech_string):
     # Define the cloud platforms and their short forms
@@ -40,13 +69,93 @@ def mitigate_cloud_technologies_impact(tech_string):
 
 def covered_percentage(vacancy_set: set, candidate_set: set) -> float:
     """
-    Рассчитывает процент покрытия требований вакансии данным кандидатом.
+    Calculates the percentage of coverage of the vacancy requirements by a given candidate.
     """
     if not vacancy_set:
         return 0.0  # Avoid division by zero
 
     intersection = vacancy_set & candidate_set  # Find common elements
     return (len(intersection) / len(vacancy_set)) * 100  # Calculate percentage
+
+def primary_filtering_by_vacancy(vacancy_info, df):
+    """
+    Filters candidates based on the given vacancy information.
+
+    Args:
+    - vacancy_info (dict): The vacancy description.
+    - df (pd.DataFrame): DataFrame containing candidate data.
+
+    Returns:
+    - pd.DataFrame: Filtered DataFrame with candidates meeting the criteria.
+    """
+
+    # Step 1: Filter by location
+    location_filtered_df = filter_candidates_by_location(df, vacancy_info.get("Extracted Location", "Any location"))
+    logger.info(f"Number of candidates after location filtering: {len(location_filtered_df)}")
+
+    # Step 2: Filter by seniority
+    seniority_filtered_df = filter_candidates_by_seniority(location_filtered_df, vacancy_info.get("Extracted Seniority", "Any"))
+    logger.info(f"Number of candidates after seniority filtering: {len(seniority_filtered_df)}")
+
+    coverage_percentage = "0%"
+    # Step 3: Get candidates with fully covered programming languages
+    vacancy_programming_languages = vacancy_info.get("Extracted Programming Languages", "")
+    pl_threshold = 100
+    if vacancy_programming_languages:
+        vacancy_programming_set = set(vacancy_programming_languages.split('\n'))
+        seniority_filtered_df['Programming Languages Coverage'] = seniority_filtered_df['Stack'].apply(
+            lambda x: covered_percentage(vacancy_programming_set, get_tokens(x))
+        )
+        full_pl_coverage_df = seniority_filtered_df[seniority_filtered_df['Programming Languages Coverage'] == pl_threshold]
+        logger.info(f"Number of candidates with full programming languages coverage: {len(full_pl_coverage_df)}")
+
+        # Step 4: If the list from step 3 is empty, get candidates with 60% or more coverage
+        if full_pl_coverage_df.empty:
+            pl_threshold = 60
+            partial_pl_coverage_df = seniority_filtered_df[seniority_filtered_df['Programming Languages Coverage'] >= pl_threshold]
+            logger.info(f"Number of candidates with partial programming languages coverage (>= {pl_threshold}%): {len(partial_pl_coverage_df)}")
+            coverage_percentage = f"programming languages coverage >= {pl_threshold}%"
+        else:
+            partial_pl_coverage_df = full_pl_coverage_df
+            coverage_percentage = f"full programming languages coverage"
+    else:
+        partial_pl_coverage_df = seniority_filtered_df
+        logger.info("No programming languages specified in vacancy.")
+
+    # Step 5: Get candidates with 60% or more coverage of other technologies
+    tech_threshold = 60
+    vacancy_technologies = vacancy_info.get("Extracted Technologies", "")
+    if vacancy_technologies:
+        vacancy_technologies = mitigate_cloud_technologies_impact(vacancy_technologies)
+        vacancy_technologies_set = set(vacancy_technologies.split('\n'))
+        partial_pl_coverage_df['Technologies Coverage'] = partial_pl_coverage_df['Stack'].apply(
+            lambda x: covered_percentage(vacancy_technologies_set, get_tokens(x))
+        )
+        full_tech_coverage_df = partial_pl_coverage_df[partial_pl_coverage_df['Technologies Coverage'] >= tech_threshold]
+        logger.info(f"Number of candidates with full technologies coverage (>= {tech_threshold}%): {len(full_tech_coverage_df)}")
+
+        # Step 6: If the list from step 5 is empty, get candidates with 30% and more coverage, then 10% and more coverage
+        if full_tech_coverage_df.empty:
+            tech_threshold = 30
+            partial_tech_coverage_df = partial_pl_coverage_df[partial_pl_coverage_df['Technologies Coverage'] >= tech_threshold]
+            logger.info(f"Number of candidates with partial technologies coverage (>= {tech_threshold}%): {len(partial_tech_coverage_df)}")
+            if partial_tech_coverage_df.empty:
+                tech_threshold = 10
+                partial_tech_coverage_df = partial_pl_coverage_df[partial_pl_coverage_df['Technologies Coverage'] >= tech_threshold]
+                logger.info(f"Number of candidates with partial technologies coverage (>= {tech_threshold}%): {len(partial_tech_coverage_df)}")
+
+        else:
+            partial_tech_coverage_df = full_tech_coverage_df
+        coverage_percentage = f"{coverage_percentage}\nother technologies coverage (>= {tech_threshold}%"
+    else:
+        partial_tech_coverage_df = partial_pl_coverage_df
+        logger.info("No technologies specified in vacancy.")
+
+    # Step 7: Final filtered DataFrame
+    final_filtered_df = partial_tech_coverage_df
+    logger.info(f"Number of technologies after final filtering: {len(final_filtered_df)}")
+
+    return final_filtered_df, coverage_percentage
 
 
 def filter_candidates_by_embedding(vacancy_info, df, embedding_handler, initial_threshold=0.7, min_threshold=0.39,
@@ -77,8 +186,8 @@ def filter_candidates_by_embedding(vacancy_info, df, embedding_handler, initial_
 
     # Job description
     vacancy_stack = vacancy_as_df["Stack"][0]
-    vacancy_stack = vacancy_stack.lower()
     vacancy_stack = mitigate_cloud_technologies_impact(vacancy_stack)
+    vacancy_stack = vacancy_stack.lower()
     # Get a set of job tokens
     vacancy_set = get_tokens(vacancy_stack)
     # Apply the get_tokens() function to all rows in the Stack column and calculate coverage

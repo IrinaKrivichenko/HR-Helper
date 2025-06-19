@@ -58,7 +58,7 @@ def process_candidates_with_llm(
     lesser_fit_df = pd.DataFrame(columns=filtered_df.columns)
 
     # Process candidates in batches
-    while len(filtered_df) and try_time<10:
+    while len(filtered_df) and try_time<5:
         try:
             # Convert the filtered DataFrame to JSON format
             columns_to_json = [
@@ -144,13 +144,13 @@ def process_candidates_with_llm(
                     f"# Here is the input:\n\n"
                     f"## Job Description:\n"
                     f"{vacancy}\"\n"
-                    f"Here is the extracted information:\n\n"
-                    f"- **Extracted Technologies**:\n{vacancy_info.get('Extracted Technologies', 'No technologies are found')}\n\n"
-                    f"- **Extracted Role**:\n{vacancy_info.get('Extracted Role', 'No role is found')}\n\n"
-                    f"- **Extracted Industry**:\n{vacancy_info.get('Extracted Industry', 'No industry is found')}\n\n"
-                    f"- **Extracted Expertise**:\n{vacancy_info.get('Extracted Expertise', 'No expertise is found')}\n\n"
-                    f"- **Extracted Location**:\n{vacancy_info.get('Extracted Location', 'Any location')}\n\n"
-                    f"```\n\n"
+                    # f"Here is the extracted information:\n\n"
+                    # f"- **Extracted Technologies**:\n{vacancy_info.get('Extracted Technologies', 'No technologies are found')}\n\n"
+                    # f"- **Extracted Role**:\n{vacancy_info.get('Extracted Role', 'No role is found')}\n\n"
+                    # f"- **Extracted Industry**:\n{vacancy_info.get('Extracted Industry', 'No industry is found')}\n\n"
+                    # f"- **Extracted Expertise**:\n{vacancy_info.get('Extracted Expertise', 'No expertise is found')}\n\n"
+                    # f"- **Extracted Location**:\n{vacancy_info.get('Extracted Location', 'Any location')}\n\n"
+                    # f"```\n\n"
                     f"## Candidates:\n"
                     f"```json\n"
                     f"{candidates_json}\n"

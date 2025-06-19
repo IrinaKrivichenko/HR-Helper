@@ -56,7 +56,7 @@ def check_existing_vacancy(vacancy_description):
         saved_word_set = get_tokens(saved_description)
         jaccard_similarity = calculate_jaccard_similarity(input_word_set, saved_word_set)
         # Check if the descriptions are similar
-        if jaccard_similarity >= 0.95:
+        if jaccard_similarity >= 0.99:
             return row
         if jaccard_similarity >= 0.8:
             del row['first_answer']
@@ -70,7 +70,7 @@ def save_vacancy_description(vacancy_description,
                              final_answer,
                              user,
                              num_initial_candidates,
-                             consign_similarity_threshold,
+                             technologies_coverage,
                              num_filtered_candidates,
                              num_llm_selected_candidates,
                              list_of_filtered_candidated,
@@ -126,7 +126,7 @@ def save_vacancy_description(vacancy_description,
             llm_extracted_data.get("Selected Candidates", ""),  #   'llm selected candidates': 'J',
             llm_extracted_data.get("Reasoning", ""),   #   'reasoning': 'K',
             num_initial_candidates,  #   'number of initial candidates': 'L',
-            consign_similarity_threshold,  #   'consign similarity threshold': 'M',
+            technologies_coverage,  #   'consign similarity threshold': 'M',
             num_filtered_candidates,  #   'number of filtered candidates': 'N',
             num_llm_selected_candidates,  #   'number of llm selected candidates': 'O',
             user,  #   'user': 'P',

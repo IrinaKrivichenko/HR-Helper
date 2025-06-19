@@ -134,7 +134,9 @@ def generate_candidates_summary(better_fit_df, lesser_fit_df, extracted_technolo
 
     return better_fit_df, lesser_fit_df
 
-def generate_final_response(better_fit_df, lesser_fit_df, extracted_technologies):
+import os
+
+def generate_final_response(better_fit_df, lesser_fit_df, llm_extracted_data):
     """
     Generates the final response by splitting the DataFrame into two parts:
     those who are a better fit for the vacancy and those who are a slightly lesser fit.
@@ -149,6 +151,38 @@ def generate_final_response(better_fit_df, lesser_fit_df, extracted_technologies
     better_fit_summaries = join_all_df_summaries(better_fit_df)
     lesser_fit_summaries = join_all_df_summaries(lesser_fit_df)
 
+    # Extract and format vacancy technologies
+    extracted_programming_languages = llm_extracted_data.get('Extracted Programming Languages', '')
+    extracted_technologies = llm_extracted_data.get('Extracted Technologies', '')
+
+    # Combine programming languages and technologies
+    extracted_technologies_text = f"{extracted_programming_languages}\n{extracted_technologies}"
+
+    # Extract location
+    extracted_location = llm_extracted_data.get('Extracted Location', 'Any location')
+
+    # Get the minimum candidates threshold from environment variables
+    min_candidates_threshold = int(os.getenv("MIN_CANDIDATES_THRESHOLD", 5))  # Default value is 5 if not set
+
     # Form the final response
-    final_response = f"<u><b>Extracted technologies from the vacancy:</b></u>\n\n{extracted_technologies}\n\n<u><b>Better Fit Candidates:</b></u>\n\n{better_fit_summaries}\n\n<u><b>Lesser Fit Candidates: </b></u>\n\n{lesser_fit_summaries}\n"
+    if better_fit_summaries == "_" and lesser_fit_summaries == "_" and extracted_technologies_text.strip() == "":
+        final_response = f"{llm_extracted_data.get('Vacancy Reasoning', '_')}\n\n"
+        return final_response
+    else:
+        final_response = (
+            f"<u><b>Location:</b></u>\n{extracted_location}\n\n"
+            f"<u><b>Technologies required for the vacancy:</b></u>\n{extracted_technologies_text}\n\n"
+        )
+
+    if better_fit_summaries == "_" and lesser_fit_summaries == "_":
+        final_response += "There are no candidates matching for the vacancy in the specified location\n"
+    else:
+        final_response += f"<u><b>Better Fit Candidates:</b></u>\n\n{better_fit_summaries}\n\n"
+
+        # Check if the number of lesser fit candidates exceeds the threshold
+        if len(better_fit_df) >= min_candidates_threshold or len(lesser_fit_df) >= 2*min_candidates_threshold:
+            lesser_fit_summaries = "_"
+        final_response += f"<u><b>Lesser Fit Candidates:</b></u>\n\n{lesser_fit_summaries}\n"
+
     return final_response
+
