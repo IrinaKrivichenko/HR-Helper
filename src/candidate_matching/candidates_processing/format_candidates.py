@@ -180,7 +180,7 @@ def generate_final_response(better_fit_df, lesser_fit_df, llm_extracted_data):
         final_response += f"<u><b>Better Fit Candidates:</b></u>\n\n{better_fit_summaries}\n\n"
 
         # Check if the number of lesser fit candidates exceeds the threshold
-        if len(better_fit_df) >= min_candidates_threshold or len(lesser_fit_df) >= 2*min_candidates_threshold:
+        if (len(better_fit_df) >= min_candidates_threshold or (len(better_fit_df)+len(lesser_fit_df)) >= 2*min_candidates_threshold):
             lesser_fit_summaries = "_"
         final_response += f"<u><b>Lesser Fit Candidates:</b></u>\n\n{lesser_fit_summaries}\n"
 
