@@ -102,7 +102,7 @@ def primary_filtering_by_vacancy(vacancy_info, df):
     vacancy_programming_languages = vacancy_info.get("Extracted Programming Languages", "")
     pl_threshold = 100
     if vacancy_programming_languages:
-        vacancy_programming_set = set(vacancy_programming_languages.split('\n'))
+        vacancy_programming_set = get_tokens(vacancy_programming_languages)
         seniority_filtered_df['Programming Languages Coverage'] = seniority_filtered_df['Stack'].apply(
             lambda x: covered_percentage(vacancy_programming_set, get_tokens(x))
         )
@@ -127,7 +127,7 @@ def primary_filtering_by_vacancy(vacancy_info, df):
     vacancy_technologies = vacancy_info.get("Extracted Technologies", "")
     if vacancy_technologies:
         vacancy_technologies = mitigate_cloud_technologies_impact(vacancy_technologies)
-        vacancy_technologies_set = set(vacancy_technologies.split('\n'))
+        vacancy_technologies_set = get_tokens(vacancy_technologies)
         partial_pl_coverage_df['Technologies Coverage'] = partial_pl_coverage_df['Stack'].apply(
             lambda x: covered_percentage(vacancy_technologies_set, get_tokens(x))
         )
