@@ -78,7 +78,7 @@ def primary_filtering_by_vacancy(vacancy_info, df):
 
     # Step 7: Filter by roles if roles are specified and the number of candidates exceeds the threshold
     required_roles = vacancy_info.get("Matched Roles", "")
-    if required_roles and len(tech_filtered_df) > int(os.getenv("MIN_CANDIDATES_THRESHOLD", 0)):
+    if required_roles and len(tech_filtered_df) > 10:
         roles_filtered_df = filter_candidates_by_roles(tech_filtered_df, required_roles)
         logger.info(f"Number of candidates after role filtering: {len(roles_filtered_df)}\n{get_names(roles_filtered_df)}")
         if roles_filtered_df.empty:
