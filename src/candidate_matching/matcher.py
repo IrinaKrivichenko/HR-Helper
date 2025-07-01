@@ -4,8 +4,7 @@ from telegram import Update
 
 from src.bot.utils import send_message
 from src.candidate_matching.candidates_processing.candidate_llm_processor import process_candidates_with_llm
-from src.candidate_matching.candidates_processing.embedding_filter import filter_candidates_by_embedding, \
-    primary_filtering_by_vacancy
+from src.candidate_matching.candidates_processing.filtering import primary_filtering_by_vacancy
 from src.candidate_matching.candidates_processing.format_candidates import generate_candidates_summary, \
     generate_final_response
 from src.candidate_matching.candidates_processing.input_candidates import get_df_for_vacancy_search

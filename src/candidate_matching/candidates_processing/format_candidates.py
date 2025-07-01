@@ -120,10 +120,11 @@ def generate_candidates_summary(better_fit_df, lesser_fit_df, extracted_technolo
     """
     Generates a summary for each candidate indicating which required technologies they possess.
     """
-    if len(better_fit_df) > int(os.getenv("MIN_CANDIDATES_THRESHOLD")):
-        show_reasoning = False
-    else:
-        show_reasoning = True
+    # if len(better_fit_df) > int(os.getenv("MIN_CANDIDATES_THRESHOLD")):
+    #     show_reasoning = False
+    # else:
+    #     show_reasoning = True
+    show_reasoning = True
 
     # Process better_fit_df
     better_fit_df = generate_candidates_summary_for_df(better_fit_df, 1, extracted_technologies, show_reasoning)

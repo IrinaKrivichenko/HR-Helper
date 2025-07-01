@@ -32,7 +32,7 @@ def process_candidates_with_llm(
         filtered_df,   # - filtered_df (pd.DataFrame): DataFrame containing filtered candidate data.
         vacancy_info: dict,   # - vacancy_info (dict): Dictionary containing extracted information from the vacancy.
         llm_handler: LLMHandler,
-        model="gpt-4o-mini"
+        model="gpt-4.1-mini-2025-04-14" #"gpt-4o-mini"
 ):
     """
     Processes the candidates using the language model (LLM) to select the best matches.
@@ -87,7 +87,7 @@ def process_candidates_with_llm(
                     f"# Here is an example:\n\n"
                     f"# Example Input:\n"
                     f"## Job Description:\n"
-                    f"We are looking for a Senior Machine Learning Engineer with expertise in Deep Learning (DL), Computer Vision (CV), and Python. The ideal candidate should have experience in the healthcare industry and be proficient in English at B2 level or above. Location: not RF and not RB.\n"
+                    f"We are looking for a Senior Machine Learning Engineer with expertise in Deep Learning (DL), Computer Vision (CV), and Python. The ideal candidate should have experience in the healthcare industry and be proficient in English at B2 level or above. Location: EU (preferably Poland, Warsaw). Rate: $30.\n"
                     f"## Candidates:\n"
                     f"```json\n"
                     f"    {{\n"
@@ -122,7 +122,7 @@ def process_candidates_with_llm(
                     f"      \"Industry\": \"Finance\",\n"
                     f"      \"Expertise\": \"Data Analysis\",\n"
                     f"      \"English\": \"B2\",\n"
-                    f"      \"Location\": \"Poland\",\n"
+                    f"      \"Location\": \"Serbia\",\n"
                     f"      \"Sell rate\": \"\\\$26\",\n"
                     f"      \"Row in Spreadsheets\": 28\n"
                     f"    }}\n"
@@ -131,12 +131,12 @@ def process_candidates_with_llm(
                     f"```\n\n"
                     f"# Example Output:\n"
                     f"## Reasoning\n"
-                    f"1. **Alice Smith** was selected as the top candidate because she is a Senior Machine Learning Engineer with all the required skills, including Deep Learning (DL), Computer Vision (CV), and Python. Her experience in the healthcare industry and excellent English proficiency (C1) make her an ideal match for the job description. Additionally, her location in Poland fits the requirement of not being in RF or RB.\n"
-                    f"2. **Charlie Brown** was rejected because, although he has expertise in Computer Vision (CV) and Python, and he has significant experience in the healthcare industry, his location in Belarus does not fit the requirement of not being in RF or RB.\n"
-                    f"3. **Bob Johnson** was rejected because, although he has experience with Deep Learning (DL) and Python, his expertise lies in the finance industry, and he does not have experience in Computer Vision (CV), which is a key requirement. However, his location in Poland fits the requirement of not being in RF or RB.\n\n"
+                    f"1. **Alice Smith** was selected as the top candidate because she is a Senior Machine Learning Engineer with all the required skills, including Deep Learning (DL), Computer Vision (CV), and Python. Her experience in the healthcare industry and excellent English proficiency (C1) make her an ideal match for the job description. Additionally, Additionally, her location in Poland fits the requirement of being in the EU and is preferred. However, her rate of $37 is above the specified rate of $30.\n"
+                    "2. **Charlie Brown** was rejected because, although he has expertise in Computer Vision (CV) and Python, and he has significant experience in the healthcare industry, his location in Belarus does not fit the requirement of being in the EU. His rate of $30 is competitive but the location is a decisive factor.\n"
+                    f"3. **Bob Johnson** was rejected because, although he has experience with Deep Learning (DL) and Python, his expertise lies in the finance industry, and he does not have experience in Computer Vision (CV), which is a key requirement. His location in Serbia fits the requirement of being in the EU. His rate of $26 is competitive but his expertise does not fully match the job requirements.\n\n"
                     f"## Suitability Scores\n"
-                    f"Alice Smith: 0.95\n"
-                    f"Charlie Brown: 0.75\n"
+                    f"Alice Smith: 0.85\n"
+                    f"Charlie Brown: 0.25\n"
                     f"Bob Johnson: 0.65\n"
                     f"## Selected Candidates\n"
                     f"Alice Smith in spreadsheet row number 16\n"

@@ -20,13 +20,12 @@ def filter_candidates_by_location(df, location_requirements):
             "]+", flags=re.UNICODE)
         return emoji_pattern.sub('', location).strip()
 
+    # If location requirements are "Any location", return original DataFrame
+    if "Any location" == location_requirements:
+        return df
+
     # Create a temporary column with locations without emoji flags
     df['Clean Location'] = df['Location'].apply(remove_emoji_flags)
-
-    # If location requirements are "Any location", return original DataFrame
-    if "any location" in location_requirements.strip().lower():
-        df.drop(columns=['Clean Location'], inplace=True)
-        return df
 
     # Splitting location requirements by commas
     location_list = [loc.strip() for loc in location_requirements.split(',')]
