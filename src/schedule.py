@@ -4,7 +4,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 from src.google_services.sheets import read_specific_columns, remove_extra_spaces_from_headers, \
     initialize_google_sheets_api
-from src.nlp.embedding_handler import add_embeddings_column
+# from src.nlp.embedding_handler import add_embeddings_column
 from src.bot.authorization import  auth_manager
 
 
@@ -18,7 +18,7 @@ def prepare_google_sheets():
     ]
     # Get specific columns with hyperlinks
     df = read_specific_columns(columns_to_extract, service=service)
-    add_embeddings_column(df, write_columns=True)
+    # add_embeddings_column(df, write_columns=True)
 
 def setup_scheduler():
     """Setup and start the task scheduler."""

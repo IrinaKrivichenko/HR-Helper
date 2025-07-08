@@ -5,7 +5,7 @@ import pandas as pd
 from src.data_processing.jaccard_similarity import calculate_jaccard_similarity
 from src.google_services.sheets import read_specific_columns
 from src.logger import logger
-from src.nlp.embedding_handler import add_embeddings_column
+# from src.nlp.embedding_handler import add_embeddings_column
 
 
 
@@ -53,7 +53,7 @@ def get_df_for_vacancy_search():
         'From', 'LinkedIn', 'Telegram', 'Phone', 'Email',
         'Stack', 'Industry', 'Expertise', 'Belarusian', 'English',
         'Works hrs/mnth', 'Location', 'CV (original)', 'CV White Label',
-        'Entry wage rate (EWR)', 'Sell rate', 'Embedding','Role_Embedding','Stack_Embedding'
+        'Entry wage rate (EWR)', 'Sell rate'
     ]
 
     # Get specific columns with hyperlinks
@@ -76,7 +76,7 @@ def get_df_for_vacancy_search():
     df = df[~((df['Role'] == '') & (df['Stack'] == ''))]
     df = df[~((df['First Name'] == '') | (df['Last Name'] == ''))]
 
-    df = add_embeddings_column(df, write_columns=False)
+    # df = add_embeddings_column(df, write_columns=False)
 
     # Replace '' -> '_' and '\n' -> ', '  in the entire DataFrame
     df = df.applymap(lambda x: '_' if isinstance(x, str) and x == '' else x)
