@@ -50,6 +50,23 @@ def filter_candidates_by_roles(df, required_roles):
     filtered_df = df[mask]
     return filtered_df
 
+def filter_candidates_by_industry(df, required_industries):
+    """
+    Filters a DataFrame to retain only rows where the "Industry" column contains at least one of the required roles as a substring.
+    Args:
+    - df (pd.DataFrame): The DataFrame to filter.
+    - required_industries (str): A string of Industry substrings separated by newline characters.
+    Returns:
+    - pd.DataFrame: A filtered DataFrame containing only rows that match the criteria.
+    """
+    # Split the required_industries string into a list
+    required_industries_list = required_industries.split('\n')
+    # Create a boolean mask where any of the required_industries is a substring in the "Industry" column
+    mask = df['Industry'].str.contains('|'.join(required_industries_list), case=False, na=False)
+    # Apply the mask to filter the DataFrame
+    filtered_df = df[mask]
+    return filtered_df
+
 def get_names(df):
     names_string = ', '.join(df['Full Name'].astype(str))
     return names_string
@@ -76,7 +93,7 @@ def primary_filtering_by_vacancy(vacancy_info, df):
     # Step 3-6: Filter by technologies
     tech_filtered_df, coverage_percentage = filter_by_technologies(vacancy_info, seniority_filtered_df)
 
-    # Step 7: Filter by roles if roles are specified and the number of candidates exceeds the threshold
+    # Step 7: Filter by roles if roles are specified and the number of candidates exceeds the number of candidates LLM is capable to process in one time
     required_roles = vacancy_info.get("Matched Roles", "")
     if required_roles and len(tech_filtered_df) > 10:
         roles_filtered_df = filter_candidates_by_roles(tech_filtered_df, required_roles)
@@ -86,7 +103,17 @@ def primary_filtering_by_vacancy(vacancy_info, df):
     else:
         roles_filtered_df = tech_filtered_df
 
-    final_filtered_df = roles_filtered_df
+    # Step 8: Filter by industry if industries are specified and the number of candidates exceeds the number of candidates LLM is capable to process in one time
+    required_industry = vacancy_info.get("Extracted Industry", "")
+    if required_industry and len(roles_filtered_df) > 10:
+        industry_filtered_df = filter_candidates_by_industry(roles_filtered_df, required_industry)
+        logger.info(f"Number of candidates after role filtering: {len(industry_filtered_df)}\n{get_names(industry_filtered_df)}")
+        if industry_filtered_df.empty:
+            industry_filtered_df = roles_filtered_df
+    else:
+        industry_filtered_df = roles_filtered_df
+
+    final_filtered_df = industry_filtered_df
     logger.info(f"Number of candidates after final filtering: {len(final_filtered_df)}")
 
     return final_filtered_df, coverage_percentage

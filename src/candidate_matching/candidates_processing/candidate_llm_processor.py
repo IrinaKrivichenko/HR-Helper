@@ -6,25 +6,50 @@ import pandas as pd
 from src.data_processing.jaccard_similarity import calculate_jaccard_similarity, find_most_similar_row
 from src.data_processing.json_conversion import df_to_json
 from src.logger import logger
-from src.nlp.llm_handler import LLMHandler
+from src.nlp.llm_handler import LLMHandler, parse_token_usage_and_cost
 
+def check_value(dictionary , key):
+    if key in dictionary and not dictionary[key].startswith('No'):
+        return dictionary[key]
+    else:
+        return ""
 
-def parse_llm_response(response: str) -> Dict[str, str]:
-    # Split the response into sections
+def format_vacancy_parameter_string(vacancy_info, parameter):
+    key = f"Extracted {parameter}"
+    value = check_value(vacancy_info , key)
+    if parameter!="Role":
+        return f"- **Vacancy {parameter}**:\n{value}\n" if value else ""
+    else:
+        seniority = check_value(vacancy_info , "Seniority")
+        return f"- **Vacancy Role**:\n{seniority} {value}\n" if value else ""
+
+def parse_llm_response(response: str, separate_cost_fields:bool=False) -> Dict[str, str]:
+    # Find the token usage and cost section
+    token_section_start = response.find("##Token Usage and Cost:")
+    # Extract the token section
+    token_section = response[token_section_start:]
+    # Parse token usage and cost information
+    token_data = parse_token_usage_and_cost(token_section," candidates_selection", separate_cost_fields)
+    # Remove the token section from the response
+    response = response[:token_section_start]
+
+    extracted_data = {}
+    # Split the remaining response into sections
     sections = response.split("## ")[1:]
-    data = {}
     for section in sections:
-        # Split each section into title and content
+        # Split each section into section_name and section_content
         lines = section.split("\n")
-        title = lines[0].strip()
-        content = "\n".join(lines[1:]).strip()
+        section_name = lines[0].strip()
+        print(section_name)
+        section_content = "\n".join(lines[1:]).strip()
         # Replace commas with new lines for specific sections
-        if title in ["Extracted Technologies", "Selected Candidates"]:
+        if section_name in ["Extracted Technologies", "Selected Candidates"]:
             # Replace commas with new lines
-            data[title] = content.replace(", ", "\n")
+            extracted_data[section_name] = section_content.replace(", ", "\n")
         else:
-            data[title] = content
-    return data
+            extracted_data[section_name] = section_content
+    extracted_data.update(token_data)
+    return extracted_data
 
 
 def process_candidates_with_llm(
@@ -32,7 +57,7 @@ def process_candidates_with_llm(
         filtered_df,   # - filtered_df (pd.DataFrame): DataFrame containing filtered candidate data.
         vacancy_info: dict,   # - vacancy_info (dict): Dictionary containing extracted information from the vacancy.
         llm_handler: LLMHandler,
-        model="gpt-4.1-mini-2025-04-14" #"gpt-4o-mini"
+        model="gpt-4o-mini" #"gpt-4.1-mini-2025-04-14"
 ):
     """
     Processes the candidates using the language model (LLM) to select the best matches.
@@ -51,6 +76,18 @@ def process_candidates_with_llm(
     filtered_df['Suitability Score'] = 0.0
     vacancy_info['Reasoning'] = ''
     vacancy_info['Selected Candidates'] = ''
+    vacancy_info['Model Used candidates_selection'] = model
+    vacancy_info['Cost candidates_selection'] = 0
+
+    prog_lang = format_vacancy_parameter_string(vacancy_info, 'Programming Languages')
+    technologies = format_vacancy_parameter_string(vacancy_info, 'Technologies')
+    role = format_vacancy_parameter_string(vacancy_info, 'Role')
+    industry = format_vacancy_parameter_string(vacancy_info, 'Industry')
+    expertise = format_vacancy_parameter_string(vacancy_info, 'Expertise')
+    location = format_vacancy_parameter_string(vacancy_info, 'Location')
+    rate = format_vacancy_parameter_string(vacancy_info, 'Rate')
+    english = format_vacancy_parameter_string(vacancy_info, 'English Level')
+
     try_time = 1
 
     # Initialize DataFrames to store better and lesser fit candidates
@@ -132,7 +169,7 @@ def process_candidates_with_llm(
                     f"# Example Output:\n"
                     f"## Reasoning\n"
                     f"1. **Alice Smith** was selected as the top candidate because she is a Senior Machine Learning Engineer with all the required skills, including Deep Learning (DL), Computer Vision (CV), and Python. Her experience in the healthcare industry and excellent English proficiency (C1) make her an ideal match for the job description. Additionally, Additionally, her location in Poland fits the requirement of being in the EU and is preferred. However, her rate of $37 is above the specified rate of $30.\n"
-                    "2. **Charlie Brown** was rejected because, although he has expertise in Computer Vision (CV) and Python, and he has significant experience in the healthcare industry, his location in Belarus does not fit the requirement of being in the EU. His rate of $30 is competitive but the location is a decisive factor.\n"
+                    f"2. **Charlie Brown** was rejected because, although he has expertise in Computer Vision (CV) and Python, and he has significant experience in the healthcare industry, his location in Belarus does not fit the requirement of being in the EU. His rate of $30 is competitive but the location is a decisive factor.\n"
                     f"3. **Bob Johnson** was rejected because, although he has experience with Deep Learning (DL) and Python, his expertise lies in the finance industry, and he does not have experience in Computer Vision (CV), which is a key requirement. His location in Serbia fits the requirement of being in the EU. His rate of $26 is competitive but his expertise does not fully match the job requirements.\n\n"
                     f"## Suitability Scores\n"
                     f"Alice Smith: 0.85\n"
@@ -144,13 +181,16 @@ def process_candidates_with_llm(
                     f"# Here is the input:\n\n"
                     f"## Job Description:\n"
                     f"{vacancy}\"\n"
-                    # f"Here is the extracted information:\n\n"
-                    # f"- **Extracted Technologies**:\n{vacancy_info.get('Extracted Technologies', 'No technologies are found')}\n\n"
-                    # f"- **Extracted Role**:\n{vacancy_info.get('Extracted Role', 'No role is found')}\n\n"
-                    # f"- **Extracted Industry**:\n{vacancy_info.get('Extracted Industry', 'No industry is found')}\n\n"
-                    # f"- **Extracted Expertise**:\n{vacancy_info.get('Extracted Expertise', 'No expertise is found')}\n\n"
-                    f"- **Vacancy Location**:\n{vacancy_info.get('Extracted Location', 'Any location')}\n\n"
-                    # f"```\n\n"
+                    f"Here is the extracted information from the job description:\n"
+                    f"{prog_lang}"
+                    f"{technologies}"
+                    f"{role}"
+                    f"{industry}"
+                    f"{expertise}"
+                    f"{location}"
+                    f"{rate}"
+                    f"{english}"
+                    f"```\n\n"
                     f"## Candidates:\n"
                     f"```json\n"
                     f"{candidates_json}\n"
@@ -159,7 +199,7 @@ def process_candidates_with_llm(
             ]
 
             # Send the prompt to the LLM handler and get the response
-            approximate_tokens = len(filtered_df) * 100 + 100
+            approximate_tokens = len(filtered_df) * 200 + 200
             response = llm_handler.get_answer(prompt, model=model, max_tokens=approximate_tokens)
 
             logger.info(f"try_time {try_time}")
@@ -168,6 +208,8 @@ def process_candidates_with_llm(
 
             # Parse the response from the LLM
             extracted_data = parse_llm_response(response)
+            cost = float(extracted_data['Cost candidates_selection'])
+            vacancy_info['Cost candidates_selection'] = cost + vacancy_info['Cost candidates_selection']
 
             # Extract reasoning and find candidates mentioned in reasoning
             reasoning = extracted_data.get("Reasoning", "")
@@ -183,7 +225,7 @@ def process_candidates_with_llm(
                     if candidate_name:
                         candidate_row = filtered_df[filtered_df['Full Name'].apply(lambda x: calculate_jaccard_similarity(set(candidate_name), set(x)) >= 0.9)]
                         if not candidate_row.empty:
-                            # Save the index to be able to delete the candidat row from filtered_df in the end of while loop
+                            # Save the index to be able to delete the candidate row from filtered_df in the end of while loop
                             reasoning_candidate_indices.extend(candidate_row.index.tolist())
                             # Remove the number and dot at the beginning of the line
                             reasoning_for_candidate = re.sub(r'^\d+\.\s*', '', reasoning_for_candidate)

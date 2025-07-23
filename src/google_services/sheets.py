@@ -15,7 +15,7 @@ load_dotenv()
 
 # Dictionary mapping column names to their letter indices
 column_dict = {
-    # c2b
+    # staff
     'First Name': 'A', 'Last Name': 'B',
     'From': 'C',
     'LVL of engagement': 'D',
@@ -38,25 +38,49 @@ column_dict = {
     'Stack_Embedding': 'BC',
     '': 'BD',
 
+    # values
+    'Role Values': 'A', 'Industry Values': 'B',
+
     # vacancies
     'Date': 'A',
     'llm errors': 'B',
     'vacancy description': 'C',
     'first_answer': 'D',
-    'llm extracted role': 'E',
-    'llm extracted technologies': 'F',
-    'llm extracted industry': 'G',
-    'llm extracted expertise': 'H',
-    'llm extracted location': 'I',
-    'llm selected candidates': 'J',
-    'reasoning': 'K',
-    'number of initial candidates': 'L',
-    'consign similarity threshold': 'M',
-    'number of filtered candidates': 'N',
-    'number of llm selected candidates': 'O',
-    'user': 'P',
-    'list of filtered candidated': 'Q',
-    'time taken to process the vacancy': 'R'
+    'llm Vacancy Reasoning': 'E',
+    'llm extracted Seniority': 'F',
+    'llm extracted role': 'G',
+    'llm Matched Roles': 'H',
+    'llm extracted Programming Languages': 'I',
+    'llm extracted technologies': 'J',
+    'llm extracted English Level': 'K',
+    'llm extracted Rate': 'L',
+    'llm extracted expertise': 'M',
+    'llm extracted industry': 'N',
+    'llm extracted location': 'O',
+    'llm selected candidates': 'P',
+    'reasoning': 'Q',
+    'step1 num number of initial candidates': 'R',
+    'consign similarity threshold': 'S',
+    'step3 num number of filtered candidates': 'T',
+    'step4 num number of llm selected candidates': 'U',
+    'user': 'V',
+    'list of filtered candidates': 'W',
+    'step0_time': 'X',
+    'step1_time': 'Y',
+    'step2_time': 'Z',
+    'step3_time': 'AA',
+    'step4_time': 'AB',
+    'step5_time': 'AC',
+    'total_time': 'AD',
+    'Model Used vacancy_details': 'AE',
+    'Cost vacancy_details': 'AF',
+    'Model Used vacancy_industry': 'AG',
+    'Cost vacancy_industry': 'AH',
+    'Model Used vacancy_location': 'AI',
+    'Cost vacancy_location': 'AJ',
+    'Model Used candidates_selection': 'AK',
+    'Cost candidates_selection': 'AL',
+    'Total Cost': 'AM'
 }
 
 

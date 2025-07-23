@@ -17,7 +17,6 @@ class LLMHandler:
             self.openai_client = OpenAI(api_key=api_key, base_url=url)
         # self.GENERATIVE_MODEL = model
 
-
     def calculate_cost(self, token_usage, model="gpt-4.1-mini"):
         # Define pricing for the models
         pricing = {
@@ -30,12 +29,16 @@ class LLMHandler:
                 "input_price": 0.15,
                 "cached_input_price": 0.075,
                 "output_price": 0.60
+            },
+            "gpt-4.1-nano": {
+                "input_price": 0.10,
+                "cached_input_price": 0.025,
+                "output_price": 0.40
             }
         }
 
         # Determine the base model name
         base_model = next((key for key in pricing.keys() if model.startswith(key)), None)
-
         if base_model is None:
             return {
                 "input_cost": 0,
@@ -45,10 +48,11 @@ class LLMHandler:
             }
 
         # Calculate cost based on token usage
-        input_cost = (token_usage.prompt_tokens - token_usage.prompt_tokens_details.cached_tokens) * pricing[base_model]["input_price"] / 1_000_000
-        cached_input_cost = token_usage.prompt_tokens_details.cached_tokens * pricing[base_model]["cached_input_price"] / 1_000_000
+        input_cost = (token_usage.prompt_tokens - token_usage.prompt_tokens_details.cached_tokens) * \
+                     pricing[base_model]["input_price"] / 1_000_000
+        cached_input_cost = token_usage.prompt_tokens_details.cached_tokens * pricing[base_model][
+            "cached_input_price"] / 1_000_000
         output_cost = token_usage.completion_tokens * pricing[base_model]["output_price"] / 1_000_000
-
         total_cost = input_cost + cached_input_cost + output_cost
 
         return {
@@ -58,13 +62,10 @@ class LLMHandler:
             "total_cost": total_cost
         }
 
-    def get_answer(self, prompt: List[Dict[str, str]], model="gpt-4.1-mini", max_tokens=200, temperature=0, seed=42):
+    def get_answer(self, prompt: List[Dict[str, str]], model="gpt-4.1-mini",
+                   max_tokens=200, temperature=0, seed=42):
         try:
-            # Extract the first and last 50 characters of the prompt
             prompt_text = str(prompt)
-            first_50_chars = prompt_text[:50]
-            last_50_chars = prompt_text[-50:]
-
             response = self.openai_client.chat.completions.create(
                 model=model,
                 messages=prompt,
@@ -79,25 +80,61 @@ class LLMHandler:
             # Calculate cost
             cost = self.calculate_cost(token_usage, model)
 
-            # Log token usage information and prompt snippets in a single log entry
+            # Append token usage and cost information to the answer
             cached_tokens = token_usage.prompt_tokens_details.cached_tokens if hasattr(token_usage,
                                                                                        'prompt_tokens_details') and hasattr(
                 token_usage.prompt_tokens_details, 'cached_tokens') else 0
-            logger.info(
-                f"Token Usage - Completion Tokens: {token_usage.completion_tokens}, "
-                f"Prompt Tokens: {token_usage.prompt_tokens}, "
-                f"Total Tokens: {token_usage.total_tokens}, "
-                f"Cached Tokens: {cached_tokens}. "
-                f"Prompt Preview - First 50: {first_50_chars}, "
-                f"Last 50: {last_50_chars}. "
-                f"Cost - Input: ${cost['input_cost']:.6f}, "
-                f"Cached Input: ${cost['cached_input_cost']:.6f}, "
-                f"Output: ${cost['output_cost']:.6f}, "
-                f"Total: ${cost['total_cost']:.6f}"
+            token_info = (
+                f"\n\n##Token Usage and Cost:\n"                
+                f" - Model Used: {model}\n"
+                f" - Completion Tokens: {token_usage.completion_tokens}\n"
+                f" - Prompt Tokens: {token_usage.prompt_tokens}\n"
+                f" - Cached Tokens: {cached_tokens}\n"
+                f" - Cost: ${cost['total_cost']:.6f}"
             )
+            answer += token_info
             return answer
+
         except Exception as e:
             logger.error(f"An error occurred while getting the answer: {e}")
             return None
 
+def parse_token_usage_and_cost(section_content: str,
+                               additional_key_text: str='',
+                               add_tokens_info: bool=False) -> dict:
+    """
+    Parses token usage and cost information from a given text section.
+    Args:
+    - section_content (str): The text section containing token usage and cost information.
+    - additional_key_text (str): Additional text to customize the dictionary keys.
+    - add_tokens_info (bool): Whether to include detailed token information or just the total cost.
+    Returns:
+    - dict: A dictionary containing the parsed token usage and cost information.
+    """
+    extracted_data = {}
 
+    # Parse each line and store specific fields
+    lines = section_content.split('\n')
+    if add_tokens_info:
+        for line in lines:
+            if ':' in line:
+                key, value = line.split(':', 1)
+                key = key.strip().strip('- ')
+                value = value.replace('$', '').strip()
+
+                # Only include specific fields if add_tokens_info is True
+                if key in ["Model Used", "Completion Tokens", "Prompt Tokens", "Cached Tokens", "Cost"]:
+                    full_key = f"{key}{additional_key_text}"
+                    extracted_data[full_key] = value
+    else:
+        # Only store the Total Cost information
+        for line in lines:
+            if "Model Used" in line:
+                value = line.split(':', 1)[1].strip()
+                full_key = f"Model Used{additional_key_text}"
+                extracted_data[full_key] = value
+            elif "Cost" in line:
+                value = line.split(':', 1)[1].replace('$', '').strip()
+                full_key = f"Cost{additional_key_text}"
+                extracted_data[full_key] = value
+    return extracted_data

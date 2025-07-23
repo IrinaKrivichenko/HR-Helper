@@ -28,11 +28,15 @@ async def process_user_request(update: Update, context: ContextTypes.DEFAULT_TYP
         await auth_manager.add_user(user_name, text, update)
     else:
         print(f"authorized {user_name} have send: ({text})")
-        if not await auth_manager.remove_user(user_name, text, update):
-            await send_message(update, "Please wait.")
-            # pd.set_option('display.max_colwidth', None)
-            llm_handler = LLMHandler()
-            await match_candidats(update, text, user_name, llm_handler)
+        if text.lower() in auth_manager.passwords:
+            await update.message.reply_text("You are already authorized.")
+        elif not await auth_manager.remove_user(user_name, text, update):
+            if "#available" in text:
+                await update.message.reply_text("The message contains '#available'.")
+            else:
+                await send_message(update, "Please wait.")
+                llm_handler = LLMHandler()
+                await match_candidats(update, text, user_name, llm_handler)
 
 application = ApplicationBuilder().token(os.getenv("TOKEN")).build()
 # # Adding a handler for the /start command

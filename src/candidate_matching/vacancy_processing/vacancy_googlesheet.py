@@ -33,7 +33,7 @@ def check_existing_vacancy(vacancy_description):
 
     # Define columns to extract
     columns_to_extract = ["Date", "vacancy description", "first_answer",
-                          "number of initial candidates", "user"]
+                          "step1 num number of initial candidates", "user"]
 
     # Read specific columns from the vacancies sheet
     vacancies_df = read_specific_columns(columns_to_extract, os.getenv("VACANCIES_SHEET_NAME"))
@@ -64,32 +64,26 @@ def check_existing_vacancy(vacancy_description):
 
     return None
 
-def save_vacancy_description(vacancy_description,
-                             existing_vacancy,
-                             llm_extracted_data,
-                             final_answer,
-                             user,
-                             num_initial_candidates,
-                             technologies_coverage,
-                             num_filtered_candidates,
-                             num_llm_selected_candidates,
-                             list_of_filtered_candidated,
-                             time_taken,
-                             service=None):
+def save_vacancy_description(vacancy_description, existing_vacancy, vacancy_dict, user, service=None):
     """
     Saves the vacancy description and related data to Google Sheets.
     """
+    for k in vacancy_dict:
+        print(f'{k}')
+
     # Initialize the Google Sheets API
     if service is None:
         service = initialize_google_sheets_api()
+
     try:
         SHEET_ID = os.getenv("SHEET_ID")
         VACANCIES_SHEET_NAME = os.getenv("VACANCIES_SHEET_NAME")
         VACANCIES_SHEET_ID = os.getenv("VACANCIES_SHEET_ID")
+
         if existing_vacancy is not None:
             # If a similar vacancy exists, unpack the result and update the existing row
-            row_index = existing_vacancy['Row in Spreadsheets']  #['row']
-            range_db = f"{VACANCIES_SHEET_NAME}!A{row_index}:R{row_index}"
+            row_index = existing_vacancy['Row in Spreadsheets']
+            range_db = f"{VACANCIES_SHEET_NAME}!A{row_index}:AM{row_index}"
             user = f"{existing_vacancy['user']}\n{user}"
         else:
             # Otherwise, insert a new row at the second position
@@ -108,39 +102,67 @@ def save_vacancy_description(vacancy_description,
                 ]
             }
             service.spreadsheets().batchUpdate(spreadsheetId=SHEET_ID, body=insert_request).execute()
-            range_db = f"{VACANCIES_SHEET_NAME}!A2:R2"
+            range_db = f"{VACANCIES_SHEET_NAME}!A2:AM2"
 
         value_input_option = "RAW"
         local_timezone = get_localzone()
         current_date = datetime.now(local_timezone).strftime('%Y-%m-%d %H:%M:%S %Z')
+
+        # Calculate total cost
+        total_cost = (
+            float(vacancy_dict.get('Cost vacancy_details', 0)) +
+            float(vacancy_dict.get('Cost vacancy_industry', 0)) +
+            float(vacancy_dict.get('Cost vacancy_location', 0)) +
+            float(vacancy_dict.get('Cost candidates_selection', 0))
+        )
+
         results = [
-            current_date,  #   'Date': 'A',
-            llm_extracted_data.get("error_logs", ""),  #   'llm errors': 'B',
-            vacancy_description,  #   'vacancy description': 'C',
-            final_answer,  #   'first_answer': 'D',
-            llm_extracted_data.get("Extracted Role", ""),  #   'llm extracted role': 'E',
-            llm_extracted_data.get("Extracted Technologies", ""),  #   'llm extracted technologies': 'F',
-            llm_extracted_data.get("Extracted Industry", ""),  #   'llm extracted industry': 'G',
-            llm_extracted_data.get("Extracted Expertise", ""),  #   'llm extracted expertise': 'H',
-            llm_extracted_data.get("Extracted Location", ""),  #   'llm extracted location': 'I',
-            llm_extracted_data.get("Selected Candidates", ""),  #   'llm selected candidates': 'J',
-            llm_extracted_data.get("Reasoning", ""),   #   'reasoning': 'K',
-            num_initial_candidates,  #   'number of initial candidates': 'L',
-            technologies_coverage,  #   'consign similarity threshold': 'M',
-            num_filtered_candidates,  #   'number of filtered candidates': 'N',
-            num_llm_selected_candidates,  #   'number of llm selected candidates': 'O',
-            user,  #   'user': 'P',
-            list_of_filtered_candidated,  #   'list of filtered candidated': 'Q'
-            f"{time_taken:.1f} seconds"
+            current_date,  # 'Date': 'A',
+            vacancy_dict.get("error_logs", ""),  # 'llm errors': 'B',
+            vacancy_description,  # 'vacancy description': 'C',
+            vacancy_dict.get("final_answer", ""),  # 'first_answer': 'D',
+            vacancy_dict.get("Vacancy Reasoning", ""),  # 'llm Vacancy Reasoning': 'E',
+            vacancy_dict.get("Extracted Seniority", ""),  # 'llm extracted Seniority': 'F',
+            vacancy_dict.get("Extracted Role", ""),  # 'llm extracted role': 'G',
+            vacancy_dict.get("Matched Roles", ""),  # 'llm Matched Roles': 'H',
+            vacancy_dict.get("Extracted Programming Languages", ""),  # 'llm extracted Programming Languages': 'I',
+            vacancy_dict.get("Extracted Technologies", ""),  # 'llm extracted technologies': 'J',
+            vacancy_dict.get("Extracted English Level", ""),  # 'llm extracted English Level': 'K',
+            vacancy_dict.get("Extracted Rate", ""),  # 'llm extracted Rate': 'L',
+            vacancy_dict.get("Extracted Expertise", ""),  # 'llm extracted expertise': 'M',
+            vacancy_dict.get("Extracted Industry", ""),  # 'llm extracted industry': 'N',
+            vacancy_dict.get("Extracted Location", ""),  # 'llm extracted location': 'O',
+            vacancy_dict.get("Selected Candidates", ""),  # 'llm selected candidates': 'P',
+            vacancy_dict.get("Reasoning", ""),  # 'reasoning': 'Q',
+            vacancy_dict.get("step1_candidates_number", ""),  # 'step1 num number of initial candidates': 'R',
+            vacancy_dict.get("technologies_coverage", ""),  # 'technologies_coverage': 'S',
+            vacancy_dict.get("step3_candidates_number", ""),  # 'step3 num number of filtered candidates': 'T',
+            vacancy_dict.get("step4_candidates_number", ""),  # 'step4 num number of llm selected candidates': 'U',
+            user,  # 'user': 'V',
+            vacancy_dict.get("list_of_filtered_candidates", ""),  # 'list of filtered candidates': 'W'
+            f"{vacancy_dict.get('step0_time', 0):.1f} sec",  # 'step0_time': 'X',
+            f"{vacancy_dict.get('step1_time', 0):.1f} sec",  # 'step1_time': 'Y',
+            f"{vacancy_dict.get('step2_time', 0):.1f} sec",  # 'step2_time': 'Z',
+            f"{vacancy_dict.get('step3_time', 0):.1f} sec",  # 'step3_time': 'AA',
+            f"{vacancy_dict.get('step4_time', 0):.1f} sec",  # 'step4_time': 'AB',
+            f"{vacancy_dict.get('step5_time', 0):.1f} sec",  # 'step5_time': 'AC',
+            f"{vacancy_dict.get('total_time', 0):.1f} sec",  # 'total_time': 'AD'
+            vacancy_dict.get("Model Used vacancy_details", ""),  # 'Model Used vacancy_details': 'AE'
+            vacancy_dict.get("Cost vacancy_details", 0),  # 'Cost vacancy_details': 'AF'
+            vacancy_dict.get("Model Used vacancy_industry", ""),  # 'Model Used vacancy_industry': 'AG'
+            vacancy_dict.get("Cost vacancy_industry", 0),  # 'Cost vacancy_industry': 'AH'
+            vacancy_dict.get("Model Used vacancy_location", ""),  # 'Model Used vacancy_location': 'AI'
+            vacancy_dict.get("Cost vacancy_location", 0),  # 'Cost vacancy_location': 'AJ'
+            vacancy_dict.get("Model Used candidates_selection", ""),  # 'Model Used candidates_selection': 'AK'
+            vacancy_dict.get("Cost candidates_selection", 0),  # 'Cost candidates_selection': 'AL'
+            total_cost  # 'Total Cost': 'AM'
         ]
 
-        # This is the 'value_range_body' or JSON
         value_range_body = {
             "majorDimension": "ROWS",
             "values": [results],
         }
 
-        # Insert or update the data into the specified range
         service.spreadsheets().values().update(
             spreadsheetId=SHEET_ID,
             range=range_db,
@@ -152,4 +174,3 @@ def save_vacancy_description(vacancy_description,
 
     except HttpError as err:
         logger.error(f"An error occurred: {err}")
-
