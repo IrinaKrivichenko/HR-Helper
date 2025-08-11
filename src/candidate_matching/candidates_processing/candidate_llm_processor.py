@@ -52,12 +52,13 @@ def parse_llm_response(response: str, separate_cost_fields:bool=False) -> Dict[s
     return extracted_data
 
 
+
 def process_candidates_with_llm(
         vacancy: str,  # - vacancy (str): The vacancy description.
         filtered_df,   # - filtered_df (pd.DataFrame): DataFrame containing filtered candidate data.
         vacancy_info: dict,   # - vacancy_info (dict): Dictionary containing extracted information from the vacancy.
         llm_handler: LLMHandler,
-        model="gpt-4o-mini" #"gpt-4.1-mini-2025-04-14"
+        model="gpt-5-mini" #
 ):
     """
     Processes the candidates using the language model (LLM) to select the best matches.
@@ -305,7 +306,7 @@ def process_candidates_with_llm(
             logger.info(f"len(filtered_df) { len(filtered_df)}")
 
         except Exception as e:
-            error_message = f"An error occurred: {str(e)}\n{traceback.format_exc()}"
+            error_message = f"{str(e)}\n{traceback.format_exc()}"
             logger.error(error_message)
             error_logs.append(error_message)
             continue

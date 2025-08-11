@@ -1,7 +1,7 @@
 import re
 
 
-def split_vacancies(text, llm_handler, model="gpt-4o-mini"):
+def split_vacancies(text, llm_handler, model="gpt-5-mini"):
     """
     Splits the given text into separate vacancy descriptions using LLMHandler.
 

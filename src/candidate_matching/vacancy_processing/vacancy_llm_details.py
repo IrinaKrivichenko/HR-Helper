@@ -37,7 +37,7 @@ def parse_extracted_rate(rate_str):
         return rate_str
 
 
-def parse_llm_response(response: str, add_tokens_info:bool) -> dict:
+def parse_llm_response(response: str, add_tokens_info: bool) -> dict:
     # Initialize a dictionary to store extracted data
     extracted_data = {}
 
@@ -54,79 +54,61 @@ def parse_llm_response(response: str, add_tokens_info:bool) -> dict:
 
             # Extract programming languages if present
             if section_name == 'Extracted Programming Languages':
-                # if not section_content.startswith('No'):
-                    # Clean and store programming languages
-                    languages = [lang.strip('- ').strip() for lang in section_content.split('\n') if lang.strip()]
-                    extracted_data['Extracted Programming Languages'] = '\n'.join(languages)
+                lines = [lang.strip('- ').strip() for lang in section_content.split('\n') if lang.strip()]
+                languages = [lang for lang in lines if not lang.startswith('No ')]
+                if not languages:
+                    languages = [line for line in lines if line.startswith('No ')]
+                extracted_data['Extracted Programming Languages'] = '\n'.join(languages)
 
             # Extract technologies if present
             elif section_name == 'Extracted Technologies':
-                # if not section_content.startswith('No'):
-                    # Clean and store technologies
-                    technologies = [tech.strip('- ').strip() for tech in section_content.split('\n') if tech.strip()]
-                    extracted_data['Extracted Technologies'] = '\n'.join(technologies)
+                lines = [tech.strip('- ').strip() for tech in section_content.split('\n') if tech.strip()]
+                technologies = [tech for tech in lines if not tech.startswith('No ')]
+                if not technologies:
+                    technologies = [line for line in lines if line.startswith('No ')]
+                extracted_data['Extracted Technologies'] = '\n'.join(technologies)
 
             # Extract role if present
             elif section_name == 'Extracted Role':
-                # if not section_content.startswith('No'):
-                    # Store role
-                    extracted_data['Extracted Role'] = section_content
+                extracted_data['Extracted Role'] = section_content
 
             # Extract seniority if present
             elif section_name == 'Extracted Seniority':
-                # if not section_content.startswith('No'):
-                    # Store seniority
-                    extracted_data['Extracted Seniority'] = section_content
+                extracted_data['Extracted Seniority'] = section_content
 
             # Extract industry if present
             elif section_name == 'Extracted Industry':
-                # if not section_content.startswith('No'):
-                    # Store industry
-                    extracted_data['Extracted Industry'] = section_content
+                extracted_data['Extracted Industry'] = section_content
 
             # Extract expertise if present
             elif section_name == 'Extracted Expertise':
-                # if not section_content.startswith('No'):
-                    # Store expertise
-                    extracted_data['Extracted Expertise'] = section_content
+                extracted_data['Extracted Expertise'] = section_content
 
             # Extract English level if present
             elif section_name == 'Extracted English Level':
-                # if not section_content.startswith('No'):
-                    # Store English level
-                    extracted_data['Extracted English Level'] = section_content
+                extracted_data['Extracted English Level'] = section_content
 
             # Extract reasoning if present
             elif section_name == 'Reasoning':
-                # if not section_content.startswith('No'):
-                    # Store reasoning
-                    extracted_data['Vacancy Reasoning'] = section_content
+                extracted_data['Vacancy Reasoning'] = section_content
 
             # Extract rate if present
             elif section_name == 'Extracted Rate':
-                # if not section_content.startswith('No'):
-                    # Store rate
-                    extracted_data['Extracted Rate'] = parse_extracted_rate(section_content)
+                extracted_data['Extracted Rate'] = parse_extracted_rate(section_content)
 
             # Extract reasoning about roles if present
             elif section_name == 'Reasoning about Roles':
-                # if not section_content.startswith('No'):
-                    # Store reasoning about roles
-                    extracted_data['Reasoning about Roles'] = section_content
+                extracted_data['Reasoning about Roles'] = section_content
 
             # Extract matched roles if present
             elif section_name == 'Matched Roles':
-                # Filter out roles that start with "NEW" and clean the role names
-                matched_roles = [
-                    role.strip('- ').replace('-', '').strip()
-                    for role in section_content.split('\n')
-                    if role.strip() and not role.strip('- ').strip().startswith('NEW')
-                ]
-                # Join the matched roles with newlines and store them, or use an empty string if none are specified
-                extracted_data['Matched Roles'] = '\n'.join(matched_roles) if matched_roles else ''
+                lines = [role.strip('- ').strip() for role in section_content.split('\n') if role.strip()]
+                matched_roles = [role for role in lines if not role.startswith('No ')]
+                if not matched_roles:
+                    matched_roles = [line for line in lines if line.startswith('No ')]
+                extracted_data['Matched Roles'] = '\n'.join(matched_roles)
 
             elif section_name == 'Token Usage and Cost':
-                # Parse token usage and cost information
                 token_data = parse_token_usage_and_cost(section_content, additional_key_text=" vacancy_details", add_tokens_info=add_tokens_info)
                 extracted_data.update(token_data)
 
@@ -134,7 +116,7 @@ def parse_llm_response(response: str, add_tokens_info:bool) -> dict:
 
 
 
-def extract_vacancy_details(vacancy: str, llm_handler: LLMHandler, model="gpt-4o-mini", add_tokens_info: bool = False):
+def extract_vacancy_details(vacancy: str, llm_handler: LLMHandler, model, add_tokens_info: bool = False):
     """
     Extracts key information from the vacancy description using the language model (LLM).
     Args:
@@ -143,7 +125,7 @@ def extract_vacancy_details(vacancy: str, llm_handler: LLMHandler, model="gpt-4o
     Returns:
     - dict: A dictionary containing the extracted information.
     """
-    list_of_existing_roles = list(read_specific_columns(['Role Values'], 'values'))
+    list_of_existing_roles = list(read_specific_columns(['Role Values'], 'values')['Role Values'])
     existing_roles = ", ".join(list_of_existing_roles)
 
     # Define the prompt for the language model
@@ -157,7 +139,7 @@ def extract_vacancy_details(vacancy: str, llm_handler: LLMHandler, model="gpt-4o
             "content": (
                 "Your task is to process the provided job description and extract the following information:\n\n"
                 "1. Reasoning: Provide a brief reasoning on how you extracted the information from the job description. "
-                f"Explain how you inferred the programming languages, technologies, seniority level, role, English level, industry, expertise, location, and rate. "
+                f"Explain how you inferred the programming languages, technologies, seniority level, role, English level, industry, expertise and rate. "
                 f"If specific libraries or frameworks are mentioned, deduce the programming languages from them.\n"
                 "2. Extract the key programming languages mentioned in the job description and list them each on a new line. "
                 f"If no programming languages are explicitly mentioned, infer them from the technologies or libraries listed. "
@@ -217,7 +199,6 @@ def extract_vacancy_details(vacancy: str, llm_handler: LLMHandler, model="gpt-4o
                 "## Extracted English Level: C1\n"
                 "## Extracted Industry: No industry is specified\n"
                 "## Extracted Expertise: No expertise is specified\n"
-                "## Extracted Location: Any location\n"
                 "## Extracted Rate: 8000-10000$ per month\n"
                 "## Reasoning about Roles: The role of \"ML Engineer\" requires a strong background in machine learning, as evidenced by the need for experience with libraries such as PyTorch, TensorFlow, and Pandas, which are commonly used in machine learning and data analysis tasks, supports this match. Additionally, the role involves working on projects related to Computer Vision (CV) and Natural Language Processing (NLP). AI Engineer: This role is a good match because AI Engineers often work on similar technologies and projects involving machine learning and artificial intelligence. They typically have experience with the same libraries and frameworks mentioned in the job description. Data Scientist: Data Scientists also work extensively with machine learning models and data analysis, making this role a suitable match. They often use similar tools and techniques to extract insights and build predictive models. DL Engineer: Deep Learning Engineers specialize in developing and implementing deep learning models, which aligns well with the requirements of this job description. Their expertise in deep learning frameworks like PyTorch and TensorFlow is particularly relevant. ML Researcher: ML Researchers focus on advancing the field of machine learning through research and development. Their deep understanding of machine learning algorithms and techniques makes them a good fit for this role. CV Engineer: Given the mention of Computer Vision in the job description, a CV Engineer, who specializes in this area, is a relevant match. NLP Engineer: Similarly, the mention of Natural Language Processing tasks makes an NLP Engineer a suitable match for this role.\n"
                 "## Matched Roles:\n"

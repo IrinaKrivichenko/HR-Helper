@@ -10,9 +10,9 @@ def extract_vacancy_info(vacancy: str, llm_handler: LLMHandler):
     # Use ThreadPoolExecutor to run the functions concurrently
     with concurrent.futures.ThreadPoolExecutor() as executor:
         # Submit both tasks to the executor
-        future1 = executor.submit(extract_vacancy_details, vacancy,  llm_handler, model="gpt-4o-mini")
-        future2 = executor.submit(extract_vacancy_industry, vacancy, llm_handler, model="gpt-4.1-nano")
-        future3 = executor.submit(extract_vacancy_location, vacancy, llm_handler, model="gpt-4.1-nano")
+        future1 = executor.submit(extract_vacancy_details, vacancy,  llm_handler, model="gpt-5-mini")
+        future2 = executor.submit(extract_vacancy_industry, vacancy, llm_handler, model="gpt-5-nano")
+        future3 = executor.submit(extract_vacancy_location, vacancy, llm_handler, model="gpt-5-nano")
 
         # Retrieve the results
         extracted_data1 = future1.result()
