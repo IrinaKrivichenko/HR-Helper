@@ -17,7 +17,7 @@ class LLMHandler:
             self.openai_client = OpenAI(api_key=api_key, base_url=url)
         # self.GENERATIVE_MODEL = model
 
-    def calculate_cost(self, token_usage, model="gpt-4.1-mini"):
+    def calculate_cost(self, token_usage, model):
         # Define pricing for the models
         pricing = {
             "gpt-4.1-mini": {
@@ -34,7 +34,18 @@ class LLMHandler:
                 "input_price": 0.10,
                 "cached_input_price": 0.025,
                 "output_price": 0.40
+            },
+            "gpt-5-mini": {
+                "input_price": 0.25,
+                "cached_input_price": 0.025,
+                "output_price": 2.00
+            },
+            "gpt-5-nano": {
+                "input_price": 0.05,
+                "cached_input_price": 0.005,
+                "output_price": 0.40
             }
+
         }
 
         # Determine the base model name
@@ -62,7 +73,7 @@ class LLMHandler:
             "total_cost": total_cost
         }
 
-    def get_answer(self, prompt: List[Dict[str, str]], model="gpt-4.1-mini",
+    def get_answer(self, prompt: List[Dict[str, str]], model="gpt-5-nano",
                    max_tokens=200, temperature=0, seed=42):
         try:
             prompt_text = str(prompt)
