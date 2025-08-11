@@ -33,13 +33,18 @@ column_dict = {
     "Legal entity we'll pay to": 'Z',
     'NDA': 'AA',
     'Comment': 'AB',
+    'Date of CV parsing': 'AC',
     'Embedding': 'BA',
     'Role_Embedding': 'BB',
     'Stack_Embedding': 'BC',
     '': 'BD',
 
     # values
-    'Role Values': 'A', 'Industry Values': 'B',
+    'From Values': 'A',
+    'LVL of engagement Values': 'B',
+    'Seniority Values': 'C',
+    'Role Values': 'D',
+    'Industry Values': 'E',
 
     # vacancies
     'Date': 'A',
