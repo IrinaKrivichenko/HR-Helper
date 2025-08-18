@@ -73,17 +73,25 @@ class LLMHandler:
             "total_cost": total_cost
         }
 
-    def get_answer(self, prompt: List[Dict[str, str]], model="gpt-5-nano",
+    def get_answer(self, prompt: List[Dict[str, str]], model="gpt-4.1-nano",
                    max_tokens=200, temperature=0, seed=42):
         try:
             prompt_text = str(prompt)
-            response = self.openai_client.chat.completions.create(
-                model=model,
-                messages=prompt,
-                max_tokens=max_tokens,
-                temperature=temperature,
-                seed=seed,
-            )
+            # Define parameters based on the model
+            completion_params = {
+                "model": model,
+                "messages": prompt,
+                "temperature": temperature,
+                "seed": seed,
+            }
+
+            # Add the appropriate max tokens parameter based on the model
+            if model in ["gpt-4.1-mini", "gpt-4.1-nano", "gpt-4o-mini"]:
+                completion_params["max_tokens"] = max_tokens
+            else:
+                completion_params["max_completion_tokens"] = max_tokens
+
+            response = self.openai_client.chat.completions.create(**completion_params)
 
             answer = response.choices[0].message.content
             token_usage = response.usage

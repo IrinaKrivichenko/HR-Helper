@@ -45,7 +45,7 @@ def parse_llm_response(response: str, add_tokens_info: bool) -> dict:
 
 
 
-def extract_vacancy_industry(vacancy: str, llm_handler: LLMHandler, model="gpt-5-nano", add_tokens_info: bool = False):
+def extract_vacancy_industry(vacancy: str, llm_handler: LLMHandler, model="gpt-4.1-nano", add_tokens_info: bool = False):
     industries_list = list(read_specific_columns(['Industry Values'], 'values')['Industry Values'])
     industries = ", ".join(industries_list)
 

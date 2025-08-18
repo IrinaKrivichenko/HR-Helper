@@ -7,7 +7,26 @@ from src.google_services.sheets import read_specific_columns
 from src.logger import logger
 # from src.nlp.embedding_handler import add_embeddings_column
 
+# Function to extract currency symbol from string
+def extract_currency(value):
+    if pd.isna(value) or value == '':
+        return None
+    # Search for currency symbols at the beginning of string
+    currency_match = re.match(r'^([^\d\s]+)', str(value))
+    return currency_match.group(1) if currency_match else '$'
 
+# Function to extract numeric value from string
+def extract_numeric_value(value):
+    if pd.isna(value) or value == '':
+        return np.nan
+    # Remove all characters except digits, dots and commas
+    numeric_str = re.sub(r'[^\d.,]', '', str(value))
+    # Replace commas with dots for standardization
+    numeric_str = numeric_str.replace(',', '.')
+    try:
+        return float(numeric_str)
+    except ValueError:
+        return np.nan
 
 def filter_candidates_by_engagement(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -64,19 +83,26 @@ def get_df_for_vacancy_search():
     df['Full Name'] = df.apply(lambda row: f"{clean_and_extract_first_word(row['First Name'])} {clean_and_extract_first_word(row['Last Name'])}", axis=1)
 
     # Calculate 'margin' as the difference between 'Sell rate' and 'Entry wage rate (EWR)'
-    df['Sell rate'] = df['Sell rate'].str.replace('$', '').str.replace(',', '.').str.replace('/hr', '').replace('', np.nan).astype(float)
-    df['Entry wage rate (EWR)'] = df['Entry wage rate (EWR)'].str.replace('$', '').str.replace(',', '.').str.replace('/hr', '').replace('', np.nan).astype(float)
-    df['margin'] = (df['Sell rate'] - df['Entry wage rate (EWR)']).round(2)
-    # Format back to desired format
-    df.loc[:, 'Sell rate'] = df['Sell rate'].apply(lambda x: f"${x:.2f}/&#8203;hr" if pd.notnull(x) else "_")
-    df.loc[:, 'margin'] = df['margin'].apply(lambda x: f"≈${x:.2f}/&#8203;hr" if pd.notnull(x) else "_")
-    df = df.drop('Entry wage rate (EWR)', axis=1)
+    df['sell_rate_numeric'] = df['Sell rate'].apply(extract_numeric_value)
+    df['ewr_numeric'] = df['Entry wage rate (EWR)'].apply(extract_numeric_value)
+    df['ewr_currency'] = df['Entry wage rate (EWR)'].apply(extract_currency)
+    df['margin_numeric'] = (df['sell_rate_numeric'] - df['ewr_numeric']).round(2)
+    # Format margin column with currency from EWR
+    df['margin'] = df.apply(
+        lambda row: f"≈{row['ewr_currency']}{row['margin_numeric']:.2f}/hr"
+        if pd.notnull(row['margin_numeric']) and pd.notnull(row['ewr_currency']) else "_",
+        axis=1
+    )
+    df = df.drop(['Entry wage rate (EWR)', 'sell_rate_numeric', 'ewr_numeric', 'ewr_currency', 'margin_numeric'], axis=1)
 
     initial_count = len(df)
     df = df[~((df['Role'] == '') & (df['Stack'] == ''))]
     df = df[~((df['First Name'] == '') | (df['Last Name'] == ''))]
 
-    # df = add_embeddings_column(df, write_columns=False)
+    # Remove ratings (numbers after dash) from Stack column
+    df['Stack'] = df['Stack'].apply(
+        lambda x: re.sub(r'\s*-\s*\d+', '', str(x)) if pd.notnull(x) else x
+    )
 
     # Replace '' -> '_' and '\n' -> ', '  in the entire DataFrame
     df = df.applymap(lambda x: '_' if isinstance(x, str) and x == '' else x)

@@ -58,7 +58,7 @@ def process_candidates_with_llm(
         filtered_df,   # - filtered_df (pd.DataFrame): DataFrame containing filtered candidate data.
         vacancy_info: dict,   # - vacancy_info (dict): Dictionary containing extracted information from the vacancy.
         llm_handler: LLMHandler,
-        model="gpt-5-mini" #
+        model="gpt-4o-mini" #
 ):
     """
     Processes the candidates using the language model (LLM) to select the best matches.
