@@ -6,7 +6,8 @@ import pandas as pd
 from src.data_processing.jaccard_similarity import calculate_jaccard_similarity, find_most_similar_row
 from src.data_processing.json_conversion import df_to_json
 from src.logger import logger
-from src.nlp.llm_handler import LLMHandler, parse_token_usage_and_cost
+from src.nlp.llm_handler import LLMHandler, extract_and_parse_token_section
+
 
 def check_value(dictionary , key):
     if key in dictionary and not dictionary[key].startswith('No'):
@@ -23,16 +24,10 @@ def format_vacancy_parameter_string(vacancy_info, parameter):
         seniority = check_value(vacancy_info , "Seniority")
         return f"- **Vacancy Role**:\n{seniority} {value}\n" if value else ""
 
-def parse_llm_response(response: str, separate_cost_fields:bool=False) -> Dict[str, str]:
-    # Find the token usage and cost section
-    token_section_start = response.find("##Token Usage and Cost:")
-    # Extract the token section
-    token_section = response[token_section_start:]
-    # Parse token usage and cost information
-    token_data = parse_token_usage_and_cost(token_section," candidates_selection", separate_cost_fields)
-    # Remove the token section from the response
-    response = response[:token_section_start]
-
+def parse_llm_process_candidates_response(response: str, add_tokens_info:bool=False) -> Dict[str, str]:
+    response, token_data = extract_and_parse_token_section(response=response,
+                                                           additional_key_text=" candidates_selection",
+                                                           add_tokens_info=add_tokens_info)
     extracted_data = {}
     # Split the remaining response into sections
     sections = response.split("## ")[1:]
@@ -208,7 +203,7 @@ def process_candidates_with_llm(
             try_time += 1
 
             # Parse the response from the LLM
-            extracted_data = parse_llm_response(response)
+            extracted_data = parse_llm_process_candidates_response(response)
             cost = float(extracted_data['Cost candidates_selection'])
             vacancy_info['Cost candidates_selection'] = cost + vacancy_info['Cost candidates_selection']
 

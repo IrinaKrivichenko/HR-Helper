@@ -30,3 +30,6 @@ watchtower==3.4.0
 python-docx
 pdfminer.six
 
+
+langdetect
+langcodes

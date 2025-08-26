@@ -16,6 +16,15 @@ class LLMHandler:
         else:
             self.openai_client = OpenAI(api_key=api_key, base_url=url)
         # self.GENERATIVE_MODEL = model
+        self.MAX_TOKENS_BY_MODEL = {
+            "gpt-4o-mini": 16384,
+            # Для остальных моделей можно добавить ограничения здесь
+            # Например:
+            # "gpt-4.1-mini": 8192,
+            # "gpt-4.1-nano": 4096,
+            # "gpt-5-mini": 32768,
+            # "gpt-5-nano": 16384,
+        }
 
     def calculate_cost(self, token_usage, model):
         # Define pricing for the models
@@ -74,7 +83,7 @@ class LLMHandler:
         }
 
     def get_answer(self, prompt: List[Dict[str, str]], model="gpt-4.1-nano",
-                   max_tokens=200, temperature=0, seed=42):
+                   max_tokens=1000, temperature=0, seed=42):
         try:
             prompt_text = str(prompt)
             # Define parameters based on the model
@@ -86,6 +95,8 @@ class LLMHandler:
             }
 
             # Add the appropriate max tokens parameter based on the model
+            if model in self.MAX_TOKENS_BY_MODEL:
+                max_tokens = min(max_tokens, self.MAX_TOKENS_BY_MODEL[model])
             if model in ["gpt-4.1-mini", "gpt-4.1-nano", "gpt-4o-mini"]:
                 completion_params["max_tokens"] = max_tokens
             else:
@@ -104,7 +115,7 @@ class LLMHandler:
                                                                                        'prompt_tokens_details') and hasattr(
                 token_usage.prompt_tokens_details, 'cached_tokens') else 0
             token_info = (
-                f"\n\n##Token Usage and Cost:\n"                
+                f"\n\n## Token Usage and Cost:\n"                
                 f" - Model Used: {model}\n"
                 f" - Completion Tokens: {token_usage.completion_tokens}\n"
                 f" - Prompt Tokens: {token_usage.prompt_tokens}\n"
@@ -115,7 +126,7 @@ class LLMHandler:
             return answer
 
         except Exception as e:
-            logger.error(f"An error occurred while getting the answer: {e}")
+            logger.error(f"An error occurred while getting the answer from model {model}: {e}")
             return None
 
 def parse_token_usage_and_cost(section_content: str,
@@ -157,3 +168,43 @@ def parse_token_usage_and_cost(section_content: str,
                 full_key = f"Cost{additional_key_text}"
                 extracted_data[full_key] = value
     return extracted_data
+
+def extract_and_parse_token_section(
+    response: str,
+    additional_key_text: str = '',
+    add_tokens_info: bool = False
+) -> tuple[str, dict]:
+    """
+    Extracts and parses the "## Token Usage and Cost:" section from the model's response.
+    Returns the cleaned response (without the token section) and a dictionary with token/cost data.
+
+    Args:
+        response (str): Full model response, including the token usage section.
+        additional_key_text (str): Additional text to customize dictionary keys (e.g., " candidates_selection").
+        add_tokens_info (bool): Whether to include detailed token info or just the total cost.
+
+    Returns:
+        tuple[str, dict]:
+            - Cleaned response (without the token section).
+            - Dictionary with parsed token usage and cost data.
+    """
+    # Find the start of the token usage section
+    token_section_start = response.find("## Token Usage and Cost:")
+
+    if token_section_start == -1:
+        # If no token section is found, return the original response and an empty dict
+        return response, {}
+
+    # Extract the token section
+    token_section = response[token_section_start:]
+    # Parse token usage and cost information
+    token_data = parse_token_usage_and_cost(
+        section_content=token_section,
+        additional_key_text=additional_key_text,
+        add_tokens_info=add_tokens_info
+    )
+    # Remove the token section from the response
+    cleaned_response = response[:token_section_start].strip()
+
+    return cleaned_response, token_data
+

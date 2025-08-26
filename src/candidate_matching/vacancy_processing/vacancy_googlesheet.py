@@ -289,7 +289,6 @@ def save_vacancy_description(vacancy_description, existing_vacancy, vacancy_dict
             row_index = existing_vacancy['Row in Spreadsheets']
             range_logs = f"{LOGS_SHEET_NAME}!A{row_index}:AM{row_index}"
             range_cache = f"{CACHE_SHEET_NAME}!A{row_index}:D{row_index}"
-            user = f"{existing_vacancy['user']}\n{user}"
         else:
             range_logs = insert_new_row(service, SHEET_ID, LOGS_SHEET_NAME, LOGS_SHEET_ID)
             range_cache = insert_new_row(service, SHEET_ID, CACHE_SHEET_NAME, CACHE_SHEET_ID)

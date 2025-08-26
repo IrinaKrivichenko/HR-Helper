@@ -37,7 +37,7 @@ def parse_extracted_rate(rate_str):
         return rate_str
 
 
-def parse_llm_response(response: str, add_tokens_info: bool) -> dict:
+def parse_llm_vacancy_details_response(response: str, add_tokens_info: bool) -> dict:
     # Initialize a dictionary to store extracted data
     extracted_data = {}
 
@@ -227,7 +227,7 @@ def extract_vacancy_details(vacancy: str, llm_handler: LLMHandler, model, add_to
     response = response.replace("- GitLab\n", "").replace("- Gitlab\n", "")
 
     # Parse the response from the LLM
-    extracted_data = parse_llm_response(response, add_tokens_info=add_tokens_info)
+    extracted_data = parse_llm_vacancy_details_response(response, add_tokens_info=add_tokens_info)
 
     return extracted_data
 

@@ -1,6 +1,7 @@
-from src.candidate_matching.vacancy_processing.vacancy_llm_details import extract_vacancy_details
-from src.candidate_matching.vacancy_processing.vacancy_llm_industry import extract_vacancy_industry
-from src.candidate_matching.vacancy_processing.vacancy_llm_location import extract_vacancy_location
+from src.candidate_matching.vacancy_processing.info_extraction.vacancy_llm_details import extract_vacancy_details
+from src.candidate_matching.vacancy_processing.info_extraction.vacancy_llm_industry import extract_vacancy_industry
+from src.candidate_matching.vacancy_processing.info_extraction.vacancy_llm_location import extract_vacancy_location
+
 from src.logger import logger
 from src.nlp.llm_handler import LLMHandler
 

@@ -116,5 +116,8 @@ def primary_filtering_by_vacancy(vacancy_info, df):
     final_filtered_df = industry_filtered_df
     logger.info(f"Number of candidates after final filtering: {len(final_filtered_df)}")
 
+    if len(final_filtered_df) == len(df):
+        final_filtered_df = pd.DataFrame(columns=final_filtered_df.columns)
+
     return final_filtered_df, coverage_percentage
 

@@ -18,6 +18,7 @@ async def send_message(update: Update, message: str):
     max_length = 4096
     start = 0
     # Using blocking to prevent simultaneous sending of messages
+    message = str(message)
     async with send_lock:
         while start < len(message):
             # Find the last newline before the max_length limit

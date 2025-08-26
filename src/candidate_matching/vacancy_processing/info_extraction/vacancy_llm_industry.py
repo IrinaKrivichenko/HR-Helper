@@ -2,7 +2,7 @@ from src.google_services.sheets import read_specific_columns
 from src.nlp.llm_handler import parse_token_usage_and_cost, LLMHandler
 
 
-def parse_llm_response(response: str, add_tokens_info: bool) -> dict:
+def parse_llm_vacancy_industry_response(response: str, add_tokens_info: bool) -> dict:
     # Initialize a dictionary to store extracted data
     extracted_data = {}
 
@@ -47,7 +47,8 @@ def parse_llm_response(response: str, add_tokens_info: bool) -> dict:
 
 def extract_vacancy_industry(vacancy: str, llm_handler: LLMHandler, model="gpt-4.1-nano", add_tokens_info: bool = False):
     industries_list = list(read_specific_columns(['Industry Values'], 'values')['Industry Values'])
-    industries = ", ".join(industries_list)
+    industries = {'", "'.join(industries_list)}
+    industries = f'"{industries}"'
 
     # Define the prompt for the language model
     prompt = [
@@ -166,7 +167,7 @@ def extract_vacancy_industry(vacancy: str, llm_handler: LLMHandler, model="gpt-4
     response = llm_handler.get_answer(prompt, model=model, max_tokens=max_tokens)
 
     # Parse the response from the LLM
-    extracted_data = parse_llm_response(response, add_tokens_info=add_tokens_info)
+    extracted_data = parse_llm_vacancy_industry_response(response, add_tokens_info=add_tokens_info)
 
     return extracted_data
 
