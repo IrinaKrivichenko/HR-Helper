@@ -13,62 +13,95 @@ from src.logger import logger
 
 load_dotenv()
 
-# Dictionary mapping column names to their letter indices
-column_dict = {
-    # staff
-    'First Name': 'A', 'Last Name': 'B',
-    'From': 'C',
-    'LVL of engagement': 'D',
-    'Seniority': 'E', 'Role': 'F',
-    'LinkedIn': 'G', 'Telegram': 'H', 'Phone': 'I', 'Email': 'J',
-    'Stack': 'K', 'Industry': 'L', 'Expertise': 'M',
-    'Belarusian': 'N', 'English': 'O',
-    'Works hrs/mnth': 'P',
-    'Location': 'Q',
-    'CV (original)': 'R', 'CV White Label': 'S',
-    'Folder': 'T',
-    'Entry wage rate (EWR)': 'U', 'EWR 168hr/mnth': 'V',
-    'Preferred wage rate (PWR)': 'W', 'PWR 168hr/mnth': 'X',
-    'Sell rate': 'Y',
-    "Legal entity we'll pay to": 'Z',
-    'NDA': 'AA',
-    'Comment': 'AB',
-    'Date of CV parsing': 'AC',
-    'Embedding': 'BA',
-    'Role_Embedding': 'BB',
-    'Stack_Embedding': 'BC',
-    '': 'BD',
+# Dictionary mapping sheet names to column names and their letter indices
+sheets_columns_dict = {
+    'staff': {
+        'First Name': 'A', 'Last Name': 'B',
+        'From': 'C',
+        'LVL of engagement': 'D',
+        'Seniority': 'E', 'Role': 'F',
+        'LinkedIn': 'G', 'Telegram': 'H', 'Phone': 'I', 'Email': 'J',
+        'Stack': 'K', 'Industry': 'L', 'Expertise': 'M',
+        'Belarusian': 'N', 'English': 'O',
+        'Works hrs/mnth': 'P',
+        'Location': 'Q',
+        'CV (original)': 'R', 'CV White Label': 'S',
+        'Folder': 'T',
+        'Entry wage rate (EWR)': 'U', 'EWR 168hr/mnth': 'V',
+        'Preferred wage rate (PWR)': 'W', 'PWR 168hr/mnth': 'X',
+        'Sell rate': 'Y',
+        "Legal entity we'll pay to": 'Z',
+        'NDA': 'AA',
+        'Comment': 'AB',
+        'Date of CV parsing': 'AC',
+        'Embedding': 'BA',
+        'Role_Embedding': 'BB',
+        'Industry_Embedding': 'BC',
+    },
 
-    # values
-    'From Values': 'A',
-    'LVL of engagement Values': 'B',
-    'Seniority Values': 'C',
-    'Role Values': 'D',
-    'Industry Values': 'E',
+    'values': {
+        'From Values': 'A',
+        'LVL of engagement Values': 'B',
+        'Seniority Values': 'C',
+        'Role Values': 'D',
+        'Industry Values': 'E',
+    },
 
-    # cash
-    'Date': 'A',
-    'vacancy description': 'B',
-    'first_answer': 'C',
-    'step1 num number of initial candidates': 'D'
+    'Cash': {
+        'Date': 'A',
+        'vacancy description': 'B',
+        'first_answer': 'C',
+        'step1 num number of initial candidates': 'D'
+    }
 }
 
-
-def get_column_letters(columns):
+def get_column_letters(columns, sheet_name, ignore_missing=False):
     """
-    Returns the column letters for the given column names.
-    Handles both single column names and lists of column names.
+    Returns the column letters for the given column names from a specific sheet.
+
+    Args:
+        sheet_name (str): Name of the sheet ('staff', 'values', 'cash')
+        columns (str or list): Column name(s) to get letters for
+        ignore_missing (bool): If True, skip missing columns instead of raising error
+
+    Returns:
+        str or list: Column letter(s) corresponding to the column name(s)
+
+    Raises:
+        ValueError: If sheet_name doesn't exist or column name not found (when ignore_missing=False)
     """
     try:
-      if isinstance(columns, str):
-          col = columns
-          return column_dict[col]
-      elif isinstance(columns, list):
-          return [column_dict[col] for col in columns]
-      else:
-          raise ValueError("get_column_letters() input should be a string or a list of strings.")
-    except KeyError:
-        raise ValueError(f"There is no column named {col}")
+        # Check if sheet exists
+        if sheet_name not in sheets_columns_dict:
+            raise ValueError(f"Sheet '{sheet_name}' not found. Available sheets: {list(sheets_columns_dict.keys())}")
+
+        sheet_dict = sheets_columns_dict[sheet_name]
+
+        if isinstance(columns, str):
+            col = columns
+            if col not in sheet_dict:
+                if ignore_missing:
+                    return None
+                raise ValueError(
+                    f"Column '{col}' not found in sheet '{sheet_name}'. Available columns: {list(sheet_dict.keys())}")
+            return sheet_dict[col]
+
+        elif isinstance(columns, list):
+            result = []
+            for col in columns:
+                if col not in sheet_dict:
+                    if ignore_missing:
+                        continue
+                    raise ValueError(
+                        f"Column '{col}' not found in sheet '{sheet_name}'. Available columns: {list(sheet_dict.keys())}")
+                result.append(sheet_dict[col])
+            return result
+
+        else:
+            raise ValueError("get_column_letters() columns parameter should be a string or a list of strings.")
+
+    except Exception as e:
+        raise e
 
 
 # Authenticate with credentials.json
@@ -132,7 +165,7 @@ def read_specific_columns(columns_to_extract, sheet_name=CANDIDATES_SHEET_NAME, 
     Returns a DataFrame.
     """
     # Convert column names to letters
-    columns_letters = get_column_letters(columns_to_extract)
+    columns_letters = get_column_letters(columns_to_extract, sheet_name)
 
     # Initialize Google Sheets API if service is not provided
     if service is None:
@@ -149,7 +182,7 @@ def read_specific_columns(columns_to_extract, sheet_name=CANDIDATES_SHEET_NAME, 
 
     # Check if the headers match the expected column names
     for i, column_name in enumerate(columns_to_extract):
-        column_letter = get_column_letters(column_name)
+        column_letter = get_column_letters(column_name, sheet_name)
         i = letter_to_index(column_letter)
         if i < len(headers) and headers[i] != column_name:
             logger.error(f"Column name mismatch at column {column_letter}: Expected '{column_name}', found '{headers[i]}'")
@@ -196,7 +229,7 @@ def read_specific_columns(columns_to_extract, sheet_name=CANDIDATES_SHEET_NAME, 
 #     Returns a DataFrame.
 #     """
 #     # Convert column names to letters
-#     columns_to_extract = get_column_letters(columns_to_extract)
+#     columns_to_extract = get_column_letters(columns_to_extract, sheet_name)
 #
 #     # Initialize Google Sheets API if service is not provided
 #     if service is None:
@@ -243,31 +276,39 @@ def read_specific_columns(columns_to_extract, sheet_name=CANDIDATES_SHEET_NAME, 
 #     df['Row in Spreadsheets'] = df.index + 2
 #     return df
 
-def write_specific_columns(df, sheet_name=CANDIDATES_SHEET_NAME, service=None):
+def write_specific_columns(
+    df,
+    sheet_name=CANDIDATES_SHEET_NAME,
+    service=None,
+    rows_to_highlight=None,
+    highlight_color=None
+):
     """
     Writes each column from a DataFrame back to the Google Sheet according to the specified column letters.
-    Converts all values to strings before writing.
+    Optionally highlights specified rows with a background color.
 
     Args:
     - df (pd.DataFrame): DataFrame containing the data to write.
+    - rows_to_highlight (list): List of row indices (0-based) to highlight.
+    - highlight_color (dict): Color in RGB format, e.g., {'red': 1.0, 'green': 0.9, 'blue': 0.9}.
     """
-    # Initialize Google Sheets API
     if service is None:
         service = initialize_google_sheets_api()
     sheet = service.spreadsheets()
 
-    # Iterate over each column in the DataFrame
+    # Set default highlight color if not provided
+    if highlight_color is None:
+        highlight_color = {'red': 1.0, 'green': 1.0, 'blue': 0.0}
+
+    # Update each column
     for column_name in df.columns:
-        # Get the column letter from column_dict
         column_letter = get_column_letters(column_name)
         if column_letter is None:
             raise ValueError(f"Column name '{column_name}' is invalid or not mapped in column_dict.")
 
-        # Update the header (column name) in the first row
+        # Update header
         header_range = f"{sheet_name}!{column_letter}1"
-        header_update_body = {
-            'values': [[column_name]]
-        }
+        header_update_body = {'values': [[column_name]]}
         sheet.values().update(
             spreadsheetId=SHEET_ID,
             range=header_range,
@@ -275,18 +316,10 @@ def write_specific_columns(df, sheet_name=CANDIDATES_SHEET_NAME, service=None):
             body=header_update_body
         ).execute()
 
-        # Prepare the data to write for the current column, converting all values to strings
+        # Update data
         values = df[column_name].fillna('').astype(str).tolist()
-
-        # Define the range to update (assuming the data starts from the second row)
         range_to_update = f"{sheet_name}!{column_letter}2:{column_letter}{len(df) + 1}"
-
-        # Create the update request body
-        update_body = {
-            'values': [[value] for value in values]  # Ensure values are in the correct format
-        }
-
-        # Update the sheet with the DataFrame data for the current column
+        update_body = {'values': [[value] for value in values]}
         sheet.values().update(
             spreadsheetId=SHEET_ID,
             range=range_to_update,
@@ -294,3 +327,134 @@ def write_specific_columns(df, sheet_name=CANDIDATES_SHEET_NAME, service=None):
             body=update_body
         ).execute()
 
+    # Highlight rows if requested
+    if rows_to_highlight:
+        requests = []
+        for row in rows_to_highlight:
+            for column_name in df.columns:
+                column_letter = get_column_letters(column_name)
+                cell_range = f"{sheet_name}!{column_letter}{row + 2}"  # +2 because data starts at row 2
+                requests.append({
+                    "repeatCell": {
+                        "range": {
+                            "sheetId": 0,  # Assuming the first sheet
+                            "startRowIndex": row + 1,  # +1 because headers are in row 0
+                            "endRowIndex": row + 2,
+                            "startColumnIndex": ord(column_letter) - ord('A'),
+                            "endColumnIndex": ord(column_letter) - ord('A') + 1,
+                        },
+                        "cell": {
+                            "userEnteredFormat": {
+                                "backgroundColor": highlight_color
+                            }
+                        },
+                        "fields": "userEnteredFormat.backgroundColor"
+                    }
+                })
+
+        # Apply formatting
+        body = {'requests': requests}
+        sheet.batchUpdate(
+            spreadsheetId=SHEET_ID,
+            body=body
+        ).execute()
+
+def write_dict_to_sheet(data_dict, sheet_name, service=None, row_number=None):
+    """
+    Writes dictionary data to a Google Sheet row, matching keys to column names.
+
+    Args:
+        data_dict (dict): Dictionary with data to write (keys should match column names)
+        sheet_name (str): Name of the sheet ('staff', 'values', 'cash')
+        service: Google Sheets API service object (will be initialized if None)
+        row_number (int, optional): Specific row number to write to. If None, inserts new row at position 2
+
+    Returns:
+        dict: Response from Google Sheets API
+
+    Raises:
+        ValueError: If sheet_name doesn't exist
+    """
+    try:
+        # Initialize Google Sheets API if service is not provided
+        if service is None:
+            service = initialize_google_sheets_api()
+
+        # Check if sheet exists
+        if sheet_name not in sheets_columns_dict:
+            raise ValueError(f"Sheet '{sheet_name}' not found. Available sheets: {list(sheets_columns_dict.keys())}")
+
+        sheet = service.spreadsheets()
+
+        # Get sheet columns dictionary
+        sheet_dict = sheets_columns_dict[sheet_name]
+
+        # Filter data_dict to only include keys that exist as columns
+        filtered_data = {key: value for key, value in data_dict.items() if key in sheet_dict}
+
+        if not filtered_data:
+            logger.warning(f"No matching columns found for provided data keys: {list(data_dict.keys())}")
+            return None
+
+        # If no row_number specified, insert new row at position 2
+        if row_number is None:
+            # Insert a new row at position 2 (after headers)
+            insert_request = {
+                'insertDimension': {
+                    'range': {
+                        'sheetId': globals().get(f'{sheet_name.upper()}_SHEET_ID') or 0,  # fallback to 0 if not found
+                        'dimension': 'ROWS',
+                        'startIndex': 1,  # Insert after row 1 (headers)
+                        'endIndex': 2
+                    },
+                    'inheritFromBefore': False
+                }
+            }
+
+            batch_update_request = {
+                'requests': [insert_request]
+            }
+
+            service.spreadsheets().batchUpdate(
+                spreadsheetId=SHEET_ID,
+                body=batch_update_request
+            ).execute()
+
+            row_number = 2  # Use the newly inserted row
+
+        # Prepare updates for each column
+        updates = []
+        for column_name, value in filtered_data.items():
+            column_letter = sheet_dict[column_name]
+            cell_range = f"{sheet_name}!{column_letter}{row_number}"
+
+            updates.append({
+                'range': cell_range,
+                'values': [[str(value) if value is not None else '']]
+            })
+
+        # Batch update all cells
+        if updates:
+            batch_update_data = {
+                'valueInputOption': 'USER_ENTERED',  # Allows formulas and formatting
+                'data': updates
+            }
+
+            response = sheet.values().batchUpdate(
+                spreadsheetId=SHEET_ID,
+                body=batch_update_data
+            ).execute()
+
+            logger.info(f"Successfully wrote {len(filtered_data)} fields to {sheet_name} row {row_number}")
+            logger.info(f"Written fields: {list(filtered_data.keys())}")
+
+            # Log ignored fields if any
+            ignored_fields = set(data_dict.keys()) - set(filtered_data.keys())
+            if ignored_fields:
+                logger.info(f"Ignored fields (no matching columns): {list(ignored_fields)}")
+
+            return response
+
+    except Exception as e:
+        logger.error(f"Error writing to sheet {sheet_name}: {str(e)}")
+        raise e

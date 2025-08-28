@@ -68,7 +68,7 @@ async def process_user_request(update: Update, context: ContextTypes.DEFAULT_TYP
                     await send_message(update, "Please wait.")
                     await match_candidats(update, text, user_name, llm_handler)
                 elif input_type == "CV":
-                    await send_message(update, f"I think it is a {input_type}")
+                    await send_message(update, f"parsing {input_type}")
                     await parse_cv(update, text, user_name, llm_handler)
         except Exception as e:
             logger.error(f"{str(e)}\n{traceback.format_exc()}")

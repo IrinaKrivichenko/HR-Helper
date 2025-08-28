@@ -135,9 +135,9 @@ class CVExpertiseAnalysis(BaseModel):
     expertise_areas: List[ExpertiseArea] = Field(description="List of expertise areas with descriptions")
 
 
-def extract_cv_expertise(cv: str, llm_handler: LLMHandler, model="gpt-4.1-nano", add_tokens_info: bool = False):
+def extract_cv_expertise(cv: str, llm_handler: LLMHandler, model="gpt-5-nano", add_tokens_info: bool = False):
     """
-    Extract CV expertise using Schema-Guided Reasoning approach.
+    Extract CV expertise using structured outputs.
     """
 
     prompt = [
@@ -145,7 +145,7 @@ def extract_cv_expertise(cv: str, llm_handler: LLMHandler, model="gpt-4.1-nano",
             "role": "system",
             "content": (
                 "You are a hybrid AI assistant embodying three expert personas: "
-                "Senior Sales Executive, Principal AI Engineer, and Veteran Technical Recruiter. "
+                "Senior Sales Executive, Principal AI Engineer, and Veteran Technical Recruiter."
             )
         },
         {
@@ -166,20 +166,6 @@ def extract_cv_expertise(cv: str, llm_handler: LLMHandler, model="gpt-4.1-nano",
                 f"- Development & Engineering\n"
                 f"- Business & Strategy\n"
                 f"- Other relevant areas\n\n"
-                f"Respond ONLY with this JSON structure:\n"
-                f"{{\n"
-                f'  "reasoning_steps": ["Found Databricks certification", "Project describes scalable systems"],\n'
-                f'  "expertise_areas": [\n'
-                f'    {{\n'
-                f'      "category": "Data & Analytics",\n'
-                f'      "description": "Developed predictive models (validated by Databricks Certified Data Engineer Professional: https://example.com/cert/123); data visualization; forecast sales."\n'
-                f'    }},\n'
-                f'    {{\n'
-                f'      "category": "Architecture & Performance",\n'
-                f'      "description": "Built scalable, high-performance systems; optimized database performance."\n'
-                f'    }}\n'
-                f'  ]\n'
-                f"}}\n\n"
                 f"**Resume:**\n{cv}"
             )
         }
@@ -188,55 +174,28 @@ def extract_cv_expertise(cv: str, llm_handler: LLMHandler, model="gpt-4.1-nano",
     # Calculate max tokens based on CV length
     max_tokens = max(len(cv), 200)
 
-    # Get response from LLM
-    response = llm_handler.get_answer(prompt, model=model, max_tokens=max_tokens)
-
-    if not response:
-        return {"Expertise": "", "Cost_of_Expertise_CV_extraction": 0}
-
-    print(response)  # Debug print
-
-    # Extract and parse token section
-    cleaned_response, token_data = extract_and_parse_token_section(
-        response=response,
-        additional_key_text="",
-        add_tokens_info=add_tokens_info
+    # Use structured output
+    response = llm_handler.get_answer(
+        prompt, model=model, max_tokens=max_tokens,
+        response_format=CVExpertiseAnalysis
     )
 
-    # Parse JSON response
-    try:
-        import json
-
-        # Clean the response
-        cleaned_response = cleaned_response.strip()
-
-        # Remove markdown code blocks if present
-        if cleaned_response.startswith('```json'):
-            cleaned_response = cleaned_response[7:]
-        if cleaned_response.startswith('```'):
-            cleaned_response = cleaned_response[3:]
-        if cleaned_response.endswith('```'):
-            cleaned_response = cleaned_response[:-3]
-
-        cleaned_response = cleaned_response.strip()
-
-        if not cleaned_response:
-            return _fallback_cv_expertise_parse(response, token_data, add_tokens_info)
-
-        parsed_data = json.loads(cleaned_response)
-
-        # Validate with Pydantic
-        expertise_analysis = CVExpertiseAnalysis(**parsed_data)
-
-    except (json.JSONDecodeError, ValueError) as e:
-        print(f"JSON parsing failed: {e}")
-        return _fallback_cv_expertise_parse(response, token_data, add_tokens_info)
+    # Process structured response (assuming it always exists)
+    expertise_analysis = response['parsed']
+    usage = response['usage']
+    cost_info = response['cost']
 
     # Build result dictionary in the original format
     result = {"Expertise": ""}
 
     if add_tokens_info:
         result["Reasoning about Expertise"] = "\n".join([f"• {step}" for step in expertise_analysis.reasoning_steps])
+        result["Model Used"] = model
+        result["Completion Tokens"] = str(usage.completion_tokens)
+        result["Prompt Tokens"] = str(usage.prompt_tokens)
+        cached_tokens = usage.prompt_tokens_details.cached_tokens if hasattr(usage, 'prompt_tokens_details') else 0
+        result["Cached Tokens"] = str(cached_tokens)
+        result["Cost"] = f"${cost_info['total_cost']:.6f}"
 
     # Format expertise areas into the original string format
     if expertise_analysis.expertise_areas:
@@ -246,50 +205,44 @@ def extract_cv_expertise(cv: str, llm_handler: LLMHandler, model="gpt-4.1-nano",
         result["Expertise"] = "\n".join(expertise_lines)
 
     # Add cost info
-    if "Cost" in token_data:
-        cost = float(token_data["Cost"].replace("$", ""))
-        if add_tokens_info:
-            result["Cost"] = cost  # Benchmark mode: simple "Cost" key
-            result.update(token_data)  # Append full tokens_data
-        else:
-            result["Cost_of_Expertise_CV_extraction"] = cost  # Working mode: detailed key
+    if not add_tokens_info:
+        result["Cost_of_Expertise_CV_extraction"] = cost_info['total_cost']
 
     return result
-
-
-def _fallback_cv_expertise_parse(response: str, token_data: dict, add_tokens_info: bool) -> dict:
-    """
-    Fallback parser for CV expertise extraction when JSON parsing fails.
-    """
-    result = {"Expertise": ""}
-
-    if add_tokens_info:
-        result["Reasoning about Expertise"] = "Unable to extract reasoning from response"
-
-    # Try to extract expertise from response text (basic fallback)
-    # Look for "Final Answer:" section
-    lines = response.strip().split('\n')
-    final_answer_section = False
-    expertise_lines = []
-
-    for line in lines:
-        if line.startswith("Final Answer:"):
-            final_answer_section = True
-            continue
-        if final_answer_section and line.strip() and not line.startswith("##"):
-            expertise_lines.append(line.strip())
-
-    if expertise_lines:
-        result["Expertise"] = "\n".join(expertise_lines)
-
-    # Add cost info
-    if "Cost" in token_data:
-        cost = float(token_data["Cost"].replace("$", ""))
-        if add_tokens_info:
-            result["Cost"] = cost
-            result.update(token_data)
-        else:
-            result["Cost_of_Expertise_CV_extraction"] = cost
-
-    return result
+#
+# def _fallback_cv_expertise_parse(response: str, token_data: dict, add_tokens_info: bool) -> dict:
+#     """
+#     Fallback parser for CV expertise extraction when structured output fails.
+#     """
+#     result = {"Expertise": ""}
+#
+#     if add_tokens_info:
+#         result["Reasoning about Expertise"] = "Unable to extract reasoning from response"
+#         result["Model Used"] = "unknown"
+#         result["Completion Tokens"] = "0"
+#         result["Prompt Tokens"] = "0"
+#         result["Cached Tokens"] = "0"
+#         result["Cost"] = "$0.000000"
+#
+#     # Try to extract expertise from response text (basic fallback)
+#     # Look for "Final Answer:" section or any structured content
+#     lines = response.strip().split('\n') if response else []
+#     final_answer_section = False
+#     expertise_lines = []
+#
+#     for line in lines:
+#         if line.startswith("Final Answer:"):
+#             final_answer_section = True
+#             continue
+#         if final_answer_section and line.strip() and not line.startswith("##"):
+#             expertise_lines.append(line.strip())
+#
+#     if expertise_lines:
+#         result["Expertise"] = "\n".join(expertise_lines)
+#
+#     # Add cost info
+#     if not add_tokens_info:
+#         result["Cost_of_Expertise_CV_extraction"] = 0.0
+#
+#     return result
 

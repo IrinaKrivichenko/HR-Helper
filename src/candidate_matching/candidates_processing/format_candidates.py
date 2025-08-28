@@ -1,10 +1,8 @@
 import re
 
+from src.nlp.tokenization import get_tokens
 import os
 from dotenv import load_dotenv
-
-from src.nlp.tokenization import get_tokens
-
 load_dotenv()
 
 def format_candidate_string(row, stack, index,  show_reasoning=False):

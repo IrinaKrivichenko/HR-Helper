@@ -5,7 +5,6 @@ import pandas as pd
 from src.data_processing.jaccard_similarity import calculate_jaccard_similarity
 from src.google_services.sheets import read_specific_columns
 from src.logger import logger
-# from src.nlp.embedding_handler import add_embeddings_column
 
 # Function to extract currency symbol from string
 def extract_currency(value):
