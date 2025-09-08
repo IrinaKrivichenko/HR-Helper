@@ -10,6 +10,24 @@ class TelegramExtraction(BaseModel):
     telegram_contacts: List[str] = Field(default=[], description="Extracted Telegram contacts in normalized format (@username or https://t.me/username)")
     confidence: str = Field(description="Confidence in extraction (high/medium/low)")
 
+    @validator("telegram_contacts", each_item=True)
+    def normalize_telegram_contact(cls, contact: str) -> str:
+        """Normalizes Telegram contact to the format: @username or https://t.me/username"""
+        contact = contact.strip().strip('/')
+        # If it's a mention like @username
+        if contact.startswith('@'):
+            return contact
+        # If it's a short link like t.me/username
+        if contact.startswith('t.me/'):
+            return f"https://t.me/{contact.split('/')[-1]}"
+        # If it's a full link like https://t.me/username
+        if contact.startswith('https://t.me/'):
+            return contact
+        # If it's just a username
+        if re.match(r'^[a-zA-Z0-9_]+$', contact):
+            return f"@{contact}"
+        return contact
+
 def extract_cv_telegram(
     cv_text: str,
     llm_handler: Any,

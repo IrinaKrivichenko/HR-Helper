@@ -10,6 +10,21 @@ class PhoneExtraction(BaseModel):
     phone_numbers: List[str] = Field(default=[], description="Extracted phone numbers in international format (+<country_code><number>)")
     confidence: str = Field(description="Confidence in extraction (high/medium/low)")
 
+    @validator("phone_numbers", each_item=True)
+    def normalize_phone_number(cls, phone: str) -> str:
+        """Normalizes phone number to international format: +<country_code><number>"""
+        # Remove all non-digit characters except '+'
+        digits = re.sub(r'[^\d+]', '', phone)
+        # If the number is already in international format, return it
+        if digits.startswith('+'):
+            return digits
+        # If the number starts with '00', replace it with '+'
+        if digits.startswith('00'):
+            return f"+{digits[2:]}"
+        # If the number starts with a digit, assume it's a local number
+        # (You can add logic to determine the country code from context here)
+        return f"+{digits}"
+
 def extract_cv_phone(
     cv_text: str,
     llm_handler: Any,
