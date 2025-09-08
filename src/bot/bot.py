@@ -1,7 +1,9 @@
 from src.bot.utils import send_message
 from src.candidate_matching.matcher import match_candidats
 from src.cv_parsing.cv_parser import parse_cv
+from src.cv_parsing.save_cv import save_cv_info
 from src.google_services.drive import extract_text_from_google_file, extract_text_from_docx, extract_text_from_pdf
+from src.google_services.drive_authorization import start_google_drive_auth, handle_oauth_callback
 from src.logger import logger
 from src.nlp.llm_handler import LLMHandler
 from src.bot.authorization import auth_manager
@@ -11,33 +13,38 @@ load_dotenv()
 
 # bot.py
 from telegram import Update
-from telegram.ext import filters, MessageHandler, ApplicationBuilder, ContextTypes
+from telegram.ext import filters, MessageHandler, ApplicationBuilder, ContextTypes, CommandHandler
 
 import os
 import traceback
 import logging
 
-# --- Основные функции бота ---
-async def extract_text_from_document(document) -> str:
-    """Extracts text from a locally uploaded document (DOCX/PDF)."""
+
+async def process_cv():
+    ...
+
+async def process_vacancy():
+    ...
+
+async def extract_text_from_document(document) -> tuple[str, str]:
+    """
+    Extracts text from a locally uploaded document (DOCX/PDF).
+    Returns: (extracted_text, file_path)
+    """
     file = await document.get_file()
     if not os.path.exists("downloads"):
         os.makedirs("downloads")
     file_path = f"downloads/{document.file_name}"
     await file.download_to_drive(file_path)
     extension = os.path.splitext(file_path)[1].lower()
-    try:
-        if extension == '.docx':
-            return extract_text_from_docx(file_path)
-        elif extension == '.pdf':
-            return extract_text_from_pdf(file_path)
-        else:
-            raise ValueError(f"Unsupported file extension: {extension}")
-    except Exception as e:
-        raise e
-    finally:
-        if os.path.exists(file_path):
-            os.remove(file_path)
+    if extension == '.docx':
+        extracted_text = extract_text_from_docx(file_path)
+    elif extension == '.pdf':
+        extracted_text = extract_text_from_pdf(file_path)
+    else:
+        raise ValueError(f"Unsupported file extension: {extension}")
+    return extracted_text, file_path
+
 
 
 async def process_user_request(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -45,6 +52,17 @@ async def process_user_request(update: Update, context: ContextTypes.DEFAULT_TYP
     user = update.effective_user
     user_name = user.username if user.username else user.first_name
     text = update.message.text
+    file_path = None
+
+    if text is not None:
+        # Check if the user is @AndrusKr or @irina_199
+        if user_name in ["AndrusKr", "irina_199"]:
+            if text == "disk":
+                await start_google_drive_auth(update, context)
+                return
+            elif text.startswith(os.getenv("GOOGLE_OAUTH_REDIRECT_URI")):
+                await handle_oauth_callback(update, context)
+                return
 
     if not auth_manager.is_user_authorized(user_name):
         print(f"NOT authorized {user_name} have send: ({text})")
@@ -53,7 +71,7 @@ async def process_user_request(update: Update, context: ContextTypes.DEFAULT_TYP
         print(f"authorized {user_name} have send: ({text})")
         try:
             if text is None:
-                text = await extract_text_from_document(update.message.document)
+                text, file_path = await extract_text_from_document(update.message.document)
                 input_type = "CV"
             elif ("docs.google.com" in text) or ("drive.google.com" in text):
                 text = extract_text_from_google_file(text)
@@ -68,79 +86,31 @@ async def process_user_request(update: Update, context: ContextTypes.DEFAULT_TYP
                     await send_message(update, "Please wait.")
                     await match_candidats(update, text, user_name, llm_handler)
                 elif input_type == "CV":
-                    await send_message(update, f"parsing {input_type}")
-                    await parse_cv(update, text, user_name, llm_handler)
+                    await send_message(update, f"Parsing {input_type}")
+                    extracted_data = await parse_cv(text, user_name, llm_handler)
+                    message_to_user = save_cv_info(extracted_data, file_path)
+                    await send_message(update, message_to_user)
         except Exception as e:
             logger.error(f"{str(e)}\n{traceback.format_exc()}")
-            await update.message.reply_text(f"Please forward this message to @irina_199: An error occurred: {str(e)}")
+            await update.message.reply_text(f"Please forward this message to @irina_199: {str(e)}")
+        finally:
+            if file_path is not None and os.path.exists(file_path):
+                os.remove(file_path)
 
-
-# import os
-# import traceback
-# from telegram import Update
-# from telegram.ext import filters, MessageHandler, ApplicationBuilder, ContextTypes
-# from docx import Document
-#
-# async def extract_text_from_document(document) -> str:
-#     file = await document.get_file()
-#     if not os.path.exists("downloads"):
-#         os.makedirs("downloads")
-#     file_path = f"downloads/{document.file_name}"
-#     await file.download_to_drive(file_path)
-#
-#     extension = os.path.splitext(file_path)[1].lower()
-#     try:
-#         if extension == '.docx':
-#             doc = Document(file_path)
-#             return "\n".join([para.text for para in doc.paragraphs])
-#         elif extension == '.pdf':
-#             pdf_reader = extract_text_from_pdf(file_path)
-#             return "\n".join([page.extract_text() for page in pdf_reader.pages])
-#         else:
-#             raise ValueError(f"Unsupported file extension: {extension}")
-#     finally:
-#         # Удаляем файл после обработки
-#         if os.path.exists(file_path):
-#             os.remove(file_path)
-#
-# async def process_user_request(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-#     user = update.effective_user
-#     user_name = user.username if user.username else user.first_name
-#     text = update.message.text
-#
-#     if not auth_manager.is_user_authorized(user_name):
-#         print(f"NOT authorized {user_name} have send: ({text})")
-#         await auth_manager.add_user(user_name, text, update)
-#     else:
-#         print(f"authorized {user_name} have send: ({text})")
-#         try:
-#             if update.message.document:
-#                 document = update.message.document
-#                 text = await extract_text_from_document(document)
-#                 await send_message(update, text)
-#
-#             elif update.message.text:
-#                 text = update.message.text
-#
-#                 if text.lower() in auth_manager.passwords:
-#                     await update.message.reply_text("You are already authorized.")
-#                 elif not await auth_manager.remove_user(user_name, text, update):
-#                     if "#available" in text:
-#                         await update.message.reply_text("The message contains '#available'.")
-#                     else:
-#                         # await send_message(update, text)
-#                         await send_message(update, "Please wait.")
-#                         llm_handler = LLMHandler()
-#                         await match_candidats(update, text, user_name, llm_handler)
-#         except Exception as e:
-#             logger.error(f"{str(e)}\n{traceback.format_exc()}")
-#             await update.message.reply_text(f"Please forward this message to @irina_199: An error occurred: {str(e)}")
-
-application = ApplicationBuilder().token(os.getenv("TOKEN")).build()
+application = ApplicationBuilder().token(os.getenv("TELEGRAM_BOT_TOKEN")).build()
 
 # Adding handlers for text messages and files
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, process_user_request))
 application.add_handler(MessageHandler(filters.Document.ALL, process_user_request))
 
+# Adding handlers for google
+application.add_handler(CommandHandler("disk", start_google_drive_auth))
+application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_oauth_callback))
+
 auth_manager.set_application(application)
+
+
+
+
+
 

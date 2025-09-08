@@ -33,7 +33,9 @@ sheets_columns_dict = {
         "Legal entity we'll pay to": 'Z',
         'NDA': 'AA',
         'Comment': 'AB',
-        'Date of CV parsing': 'AC',
+        '№': 'AC',
+        'Date of CV': 'AD',
+        'GitHub': 'AE',
         'Embedding': 'BA',
         'Role_Embedding': 'BB',
         'Industry_Embedding': 'BC',
@@ -106,7 +108,7 @@ def get_column_letters(columns, sheet_name, ignore_missing=False):
 
 # Authenticate with credentials.json
 
-CREDS_JSON_PATH = "configs/ostlab-hr-b79582d6308b.json"
+SERVICE_ACCOUNT_JSON_PATH = os.getenv('SERVICE_ACCOUNT_JSON_PATH')
 SHEET_ID = os.getenv('SHEET_ID')
 CANDIDATES_SHEET_NAME = os.getenv('CANDIDATES_SHEET_NAME')
 CANDIDATES_SHEET_ID = os.getenv('CANDIDATES_SHEET_ID')
@@ -118,7 +120,7 @@ def initialize_google_sheets_api():
     Initializes and returns the Google Sheets API service.
     """
     credentials = service_account.Credentials.from_service_account_file(
-                CREDS_JSON_PATH,
+                SERVICE_ACCOUNT_JSON_PATH,
                 scopes=['https://www.googleapis.com/auth/spreadsheets']
                 )
     return build('sheets', 'v4', credentials=credentials)

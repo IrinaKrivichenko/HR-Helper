@@ -1,13 +1,17 @@
 import traceback
 
+from src.cv_parsing.info_extraction.cv_llm_email import extract_cv_email
 from src.cv_parsing.info_extraction.cv_llm_expertise import extract_cv_expertise
+from src.cv_parsing.info_extraction.cv_llm_github import extract_cv_github
 from src.cv_parsing.info_extraction.cv_llm_industry import extract_cv_industry
-from src.cv_parsing.info_extraction.cv_llm_languages import extract_cv_languages
+from src.cv_parsing.info_extraction.cv_llm_linkedin import extract_cv_linkedin
+from src.cv_parsing.info_extraction.cv_llm_location import extract_cv_location
 from src.cv_parsing.info_extraction.cv_llm_name import extract_cv_name
-from src.cv_parsing.info_extraction.cv_llm_re_contacts import extract_contacts
+from src.cv_parsing.info_extraction.cv_llm_phone import extract_cv_phone
 from src.cv_parsing.info_extraction.cv_llm_roles import extract_cv_roles
 from src.cv_parsing.info_extraction.cv_llm_seniority import extract_cv_seniority
 from src.cv_parsing.info_extraction.cv_llm_stack import extract_cv_stack
+from src.cv_parsing.info_extraction.cv_llm_telegram import extract_cv_telegram
 from src.nlp.llm_handler import LLMHandler
 
 from concurrent.futures import ThreadPoolExecutor
@@ -32,12 +36,12 @@ def extract_cv_info(cv: str, llm_handler: LLMHandler):#, extract_cv_roles=None):
         (extract_cv_expertise, "gpt-4.1-nano", "Expertise"),
         (extract_cv_stack, "gpt-4.1", "Stack"),
         (extract_cv_industry, "gpt-4o-mini", "Industry"),
-        (extract_contacts, "gpt-4o-nano", "Contacts")
-        # (extract_cv_linkedin, "gpt-4.1-nano", "LinkedIn"),
-        # (extract_cv_telegram, "gpt-4.1-nano", "Telegram"),
-        # (extract_cv_phone, "gpt-4.1-nano", "Phone"),
-        # (extract_cv_email, "gpt-4.1-nano", "Email"),
-        # # (extract_cv_location, "gpt-4.1-nano", "Location"),
+        (extract_cv_linkedin, "gpt-4.1-nano", "LinkedIn"),
+        (extract_cv_telegram, "gpt-4.1-nano", "Telegram"),
+        (extract_cv_phone, "gpt-4.1-nano", "Phone"),
+        (extract_cv_email, "gpt-4.1-nano", "Email"),
+        (extract_cv_github, "gpt-4.1-nano", "GitHub"),
+        (extract_cv_location, "gpt-4.1-nano", "Location"),
     ]
     # Create a ThreadPoolExecutor
     with ThreadPoolExecutor() as executor:
