@@ -10,7 +10,7 @@ load_dotenv()
 
 from src.logger import logger
 
-TOKEN_FILE = f"configs/{os.getenv('GOOGLE_OAUTH_CURRENT_TOKEN_FILE')}"
+TOKEN_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'configs', os.getenv('GOOGLE_OAUTH_CURRENT_TOKEN_FILE'))
 SCOPES = ['https://www.googleapis.com/auth/drive']
 
 def load_credentials() -> Credentials | None:
@@ -29,8 +29,6 @@ def load_credentials() -> Credentials | None:
     if creds and creds.valid:  # Check after token update
         return creds
     return None
-
-
 
 def save_credentials(creds: Credentials):
     """Saves a user's credentials to their token file."""
@@ -51,7 +49,6 @@ async def start_google_drive_auth(update: Update, context: ContextTypes.DEFAULT_
         auth_url, _ = flow.authorization_url(prompt='consent', access_type='offline')
         # Initialize the OAuth 2.0 process
         context.user_data['oauth_flow'] = flow
-
         # Send instructions to the user
         instructions = (
             "Welcome! To upload files to your Google Drive, please authorize this bot.\n\n"
@@ -63,7 +60,6 @@ async def start_google_drive_auth(update: Update, context: ContextTypes.DEFAULT_
             "4. Paste the full URL back into this chat and send it to me."
         )
         await update.message.reply_text(instructions, parse_mode='Markdown', disable_web_page_preview=True)
-
     except Exception as e:
         logger.error(f"Error starting Google Drive auth: {e}")
         await update.message.reply_text(f"Error starting Google Drive authorization: {e}.")
@@ -76,7 +72,6 @@ async def handle_oauth_callback(update: Update, context: ContextTypes.DEFAULT_TY
             "⚠️ Please start the authorization process with the 'disk' command first."
         )
         return
-
     try:
         flow = context.user_data['oauth_flow']
         authorization_response = update.message.text

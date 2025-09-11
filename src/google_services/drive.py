@@ -44,37 +44,85 @@ def extract_text_from_pdf(pdf_source):
         print(f"Error extracting text from PDF: {e}")
         return None
 
+
 def extract_text_from_google_file(url: str, service=None):
     """
-    Extracts text from Google Drive file (Doc or PDF).
-    Raises ValueError if URL is invalid or doc_id cannot be extracted.
-    Raises HttpError if access is denied or file is not found.
+    Extracts text from Google Drive file (Doc or PDF) with hyperlinks and filename.
+    Returns tuple: (text_content, filename)
+
+    For Google Docs, hyperlinks are formatted as separate paragraphs: "text_link: url"
     """
     if service is None:
         service = initialize_google_drive_api()
 
+    doc_id = _extract_doc_id(url)
+    file_metadata = service.files().get(fileId=doc_id, fields="mimeType,name").execute()
+
+    mime_type = file_metadata.get('mimeType', '')
+    filename = file_metadata.get('name', 'Unknown')
+
+    if mime_type == 'application/vnd.google-apps.document':
+        text_content = _extract_google_doc_with_links(doc_id, service)
+    elif mime_type == 'application/pdf':
+        text_content = _extract_pdf_content(doc_id, service)
+    else:
+        raise ValueError(f"Unsupported file type: {mime_type}")
+
+    return text_content, filename
+
+def _extract_doc_id(url: str) -> str:
+    """Extract document ID from Google Drive URL."""
     doc_id_match = re.search(r'/d/([a-zA-Z0-9_-]+)', url)
     if not doc_id_match:
         raise ValueError("Could not extract document ID from URL. Invalid URL format.")
-    doc_id = doc_id_match.group(1)
+    return doc_id_match.group(1)
 
-    # Checking file type by MIME-type (more reliable than by URL)
-    file_metadata = service.files().get(fileId=doc_id, fields="mimeType").execute()
-    mime_type = file_metadata.get('mimeType', '')
+def _extract_pdf_content(doc_id: str, service) -> str:
+    """Extract text from PDF file."""
+    request = service.files().get_media(fileId=doc_id)
+    pdf_file = io.BytesIO(request.execute())
+    return extract_text_from_pdf(pdf_file)
 
-    if mime_type == 'application/vnd.google-apps.document':
-        # Google Doc
-        doc = service.files().export(fileId=doc_id, mimeType='text/plain').execute()
-        return doc.decode('utf-8')
+def _extract_google_doc_with_links(doc_id: str, drive_service) -> str:
+    """Extract text from Google Doc with hyperlinks as separate paragraphs."""
+    from googleapiclient.discovery import build
+    docs_service = build('docs', 'v1', credentials=drive_service._http.credentials)
+    document = docs_service.documents().get(documentId=doc_id).execute()
+    paragraphs = []
+    doc_content = document.get('body', {}).get('content', [])
+    for element in doc_content:
+        if 'paragraph' in element:
+            paragraph_parts = _process_paragraph(element['paragraph'])
+            paragraphs.extend(paragraph_parts)
+    return '\n\n'.join(filter(None, paragraphs))
 
-    elif mime_type == 'application/pdf':
-        # PDF
-        request = service.files().get_media(fileId=doc_id)
-        pdf_file = io.BytesIO(request.execute())
-        return extract_text_from_pdf(pdf_file)
 
-    else:
-        raise ValueError(f"Unsupported file type: {mime_type}")
+def _process_paragraph(paragraph) -> list:
+    """Process paragraph and return list of text parts (regular text + separate links)."""
+    parts = []
+    current_text = []
+    for element in paragraph.get('elements', []):
+        if 'textRun' not in element:
+            continue
+        text_run = element['textRun']
+        text = text_run.get('content', '')
+        text_style = text_run.get('textStyle', {})
+        if 'link' in text_style:
+            # Add accumulated regular text first
+            if current_text:
+                parts.append(''.join(current_text).strip())
+                current_text = []
+            # Add link as separate paragraph
+            link_url = text_style['link'].get('url', '')
+            if link_url and text.strip():
+                parts.append(f"{text.strip()}: {link_url}")
+        else:
+            current_text.append(text)
+    # Add remaining regular text
+    if current_text:
+        parts.append(''.join(current_text).strip())
+
+    return parts
 
 
 def check_or_create_subfolder(parent_folder_id, folder_name, service=None):

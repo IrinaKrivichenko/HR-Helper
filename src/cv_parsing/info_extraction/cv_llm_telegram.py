@@ -25,7 +25,7 @@ class TelegramExtraction(BaseModel):
             return contact
         # If it's just a username
         if re.match(r'^[a-zA-Z0-9_]+$', contact):
-            return f"@{contact}"
+            return f"https://t.me/{contact}"
         return contact
 
 def extract_cv_telegram(

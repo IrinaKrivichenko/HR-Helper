@@ -39,15 +39,23 @@ def filter_candidates_by_engagement(df: pd.DataFrame) -> pd.DataFrame:
     """
     # Define the valid engagement levels
     not_valid_engagement_levels = {
-        # "➕Added",
-        # "🔓Ready to work with"
-        # "🤝Interviewed",
-        # "✅English checked",
-        # "📄Proposed",
-        # "🔄WorkING",
-        # "🏁WorkED",
+        # "➕ Added",
+        # "📡 Pending Connection",
+        # "🔗 Added to Connections",
+        # "🚀 Actively Applying",
+        # "⏳ Pending Responsе",
+        # "💬 In Talks",
+        # "🔓 Ready to work with",
+        # "🙋 Eager Applicant",
+        # "🤝 Interviewed",
+        # "✅ English checked",
+        # "📄 Proposed",
+        # "🔄 WorkING",
+        # "🏁 WorkED",
+        "💔 Refused Further Work",
         "🚧Currently on hold",
-        "💔Refused Further Work"
+        "📵 Candidate unreachable",
+        "❌ Checked: fake detected"
     }
     # Filter the DataFrame
     df['LVL of engagement'] = df['LVL of engagement'].astype(str).str.strip()

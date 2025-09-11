@@ -26,24 +26,28 @@ async def process_cv():
 async def process_vacancy():
     ...
 
-async def extract_text_from_document(document) -> tuple[str, str]:
-    """
-    Extracts text from a locally uploaded document (DOCX/PDF).
-    Returns: (extracted_text, file_path)
-    """
-    file = await document.get_file()
-    if not os.path.exists("downloads"):
-        os.makedirs("downloads")
-    file_path = f"downloads/{document.file_name}"
-    await file.download_to_drive(file_path)
-    extension = os.path.splitext(file_path)[1].lower()
-    if extension == '.docx':
-        extracted_text = extract_text_from_docx(file_path)
-    elif extension == '.pdf':
-        extracted_text = extract_text_from_pdf(file_path)
-    else:
-        raise ValueError(f"Unsupported file extension: {extension}")
-    return extracted_text, file_path
+async def extract_text_from_document(document):
+    try:
+        file = await document.get_file()
+        if not os.path.exists("downloads"):
+            os.makedirs("downloads")
+        file_path = f"downloads/{document.file_name}"
+        await file.download_to_drive(file_path)
+        if not os.path.exists(file_path):
+            raise FileNotFoundError("File not found after download.")
+        if os.path.getsize(file_path) == 0:
+            raise ValueError("Downloaded file is empty.")
+        extension = os.path.splitext(file_path)[1].lower()
+        if extension == '.docx':
+            extracted_text = extract_text_from_docx(file_path)
+        elif extension == '.pdf':
+            extracted_text = extract_text_from_pdf(file_path)
+        else:
+            raise ValueError(f"Unsupported file format: {extension}")
+        return extracted_text, file_path
+    except Exception as e:
+        logger.error(f"Error processing file {document.file_name}: {str(e)}\n{traceback.format_exc()}")
+        raise  # Pass the exception to `process_user_request`
 
 
 
@@ -53,28 +57,34 @@ async def process_user_request(update: Update, context: ContextTypes.DEFAULT_TYP
     user_name = user.username if user.username else user.first_name
     text = update.message.text
     file_path = None
+    try:
+        if text is not None:
+            # Check if the user is @AndrusKr or @irina_199
+            if user_name in ["AndrusKr", "irina_199"]:
+                if text == "disk":
+                    await start_google_drive_auth(update, context)
+                    return
+                elif text.startswith(os.getenv("GOOGLE_OAUTH_REDIRECT_URI")):
+                    await handle_oauth_callback(update, context)
+                    return
+                elif text == "logs":
+                    # await check_google_token(update, context)
+                    return
 
-    if text is not None:
-        # Check if the user is @AndrusKr or @irina_199
-        if user_name in ["AndrusKr", "irina_199"]:
-            if text == "disk":
-                await start_google_drive_auth(update, context)
-                return
-            elif text.startswith(os.getenv("GOOGLE_OAUTH_REDIRECT_URI")):
-                await handle_oauth_callback(update, context)
-                return
+        if not auth_manager.is_user_authorized(user_name):
+            print(f"NOT authorized {user_name} have send: ({text})")
+            await auth_manager.add_user(user_name, text, update)
+        else:
+            print(f"authorized {user_name} have send: ({text})")
 
-    if not auth_manager.is_user_authorized(user_name):
-        print(f"NOT authorized {user_name} have send: ({text})")
-        await auth_manager.add_user(user_name, text, update)
-    else:
-        print(f"authorized {user_name} have send: ({text})")
-        try:
-            if text is None:
+            if (text is None) and (update.message.document is not None):
                 text, file_path = await extract_text_from_document(update.message.document)
                 input_type = "CV"
+            elif "/folders/" in text :
+                await send_message(update, "You have sent a link to a folder.")
+                return
             elif ("docs.google.com" in text) or ("drive.google.com" in text):
-                text = extract_text_from_google_file(text)
+                text, file_path = extract_text_from_google_file(text)
                 input_type = "CV"
             else:
                 input_type = "vacancy"
@@ -90,12 +100,12 @@ async def process_user_request(update: Update, context: ContextTypes.DEFAULT_TYP
                     extracted_data = await parse_cv(text, user_name, llm_handler)
                     message_to_user = save_cv_info(extracted_data, file_path)
                     await send_message(update, message_to_user)
-        except Exception as e:
-            logger.error(f"{str(e)}\n{traceback.format_exc()}")
-            await update.message.reply_text(f"Please forward this message to @irina_199: {str(e)}")
-        finally:
-            if file_path is not None and os.path.exists(file_path):
-                os.remove(file_path)
+    except Exception as e:
+        logger.error(f"{str(e)}\n{traceback.format_exc()}")
+        await update.message.reply_text(f"Please forward this message to @irina_199: {str(e)}")
+    finally:
+        if file_path is not None and os.path.exists(file_path):
+            os.remove(file_path)
 
 application = ApplicationBuilder().token(os.getenv("TELEGRAM_BOT_TOKEN")).build()
 
@@ -108,6 +118,11 @@ application.add_handler(CommandHandler("disk", start_google_drive_auth))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_oauth_callback))
 
 auth_manager.set_application(application)
+
+
+
+
+
 
 
 

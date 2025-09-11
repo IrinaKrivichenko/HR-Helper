@@ -65,6 +65,7 @@ def process_proposed_industries(
         rows_to_highlight = [i for i, industry in enumerate(updated_industries) if industry in to_add]
         write_specific_columns(df=updated_df, sheet_name="values", service=service, rows_to_highlight=rows_to_highlight)
 
+    to_add = [f"NEW {industry}" for industry in to_add]
     # Return combined list and total cost
     combined_list = to_add + overlaps
     return combined_list, total_cost

@@ -55,7 +55,7 @@ class UserAuthorizationManager:
         await self.application.send_message(chat_id=chat_id, text=message)
 
     async def add_user(self, user, password, update):
-        if password.lower() in self.passwords:
+        if password and password.lower() in self.passwords:
             with self.lock:
                 self.authorized_users[user] = update.effective_chat.id
                 print("chat_id = ", self.authorized_users[user])
