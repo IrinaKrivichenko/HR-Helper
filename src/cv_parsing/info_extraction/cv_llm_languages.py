@@ -1,163 +1,20 @@
-from src.nlp.llm_handler import parse_token_usage_and_cost, LLMHandler, extract_and_parse_token_section
-from src.nlp.translator import translate_text_with_llm
+import time
 
-from src.logger import logger
-from src.nlp.llm_handler import LLMHandler
+from src.data_processing.nlp.translator import translate_text_with_llm
 
 import concurrent.futures
 
-# def parse_llm_cv_languages_response(response: str, add_tokens_info: bool = False) -> dict:
-#     """
-#     Parses the LLM response for a CV languages analysis.
-#     Extracts reasoning (if add_tokens_info=True), languages with CEFR levels, and cost information.
-#     Args:
-#         response (str): Model's response with "Reasoning:" and "Final Answer:" sections.
-#         add_tokens_info (bool): If True, includes reasoning and uses "Cost" as the cost key.
-#     Returns:
-#         dict: Dictionary with keys:
-#             - "Reasoning about Languages": Detailed reasoning (only if add_tokens_info=True).
-#             - "Belarusian": CEFR level for Belarusian (or empty string if not specified).
-#             - "English": CEFR level for English (or empty string if not specified).
-#             - "Other languages": String of other languages with levels (e.g., "German B2, Spanish A1").
-#             - "Cost" or "Cost_of_Languages_CV_extraction": Cost of the API call (always included).
-#             - All keys from tokens_data (only if add_tokens_info=True).
-#     """
-#     # Extract and clean the response (remove token section)
-#     cleaned_response, token_data = extract_and_parse_token_section(
-#         response=response,
-#         additional_key_text=" cv_languages",
-#         add_tokens_info=add_tokens_info
-#     )
-#     result = {
-#         "Belarusian": "",
-#         "English": "",
-#         "Other languages": "",
-#     }
-#     # Extract reasoning if add_tokens_info=True
-#     if add_tokens_info:
-#         lines = cleaned_response.strip().split('\n')
-#         reasoning_lines = []
-#         for line in lines:
-#             if line.startswith("Final Answer:"):
-#                 break
-#             reasoning_lines.append(line)
-#         result["Reasoning about Languages"] = "\n".join(reasoning_lines).strip()
-#
-#     # Extract languages from "Final Answer:" line
-#     final_answer = None
-#     for line in cleaned_response.strip().split('\n'):
-#         if line.startswith("Final Answer:"):
-#             final_answer = line.replace("Final Answer:", "").strip()
-#             break
-#
-#     # Extract cost from token_data (always included)
-#     if "Cost" in token_data:
-#         if add_tokens_info:
-#             # Append full tokens_data only if add_tokens_info=True
-#             result.update(token_data)
-#         else:
-#             cost = float(token_data["Cost"].replace("$", ""))
-#             result["Cost_of_Languages_CV_extraction"] = cost  # Working mode: detailed key
-#         return result
-#
-#     # Split the response into individual language-level pairs
-#     language_pairs = [pair.strip() for pair in final_answer.split(',') if pair.strip()]
-#     other_languages = []
-#
-#     for pair in language_pairs:
-#         if ' ' in pair:
-#             language, level = pair.rsplit(' ', 1)
-#             language = language.strip()
-#             level = level.strip()
-#             # Assign to the appropriate category
-#             if language.lower() == "belarusian":
-#                 result["Belarusian"] = level
-#             elif language.lower() == "english":
-#                 result["English"] = level
-#             else:
-#                 other_languages.append(f"{language} {level}")
-#
-#     # Join other languages into a string
-#     if other_languages:
-#         result["Other languages"] = ", ".join(other_languages)
-#
-#     # Extract cost from token_data (always included)
-#     if "Cost" in token_data:
-#         if add_tokens_info:
-#             # Append full tokens_data only if add_tokens_info=True
-#             result.update(token_data)
-#         else:
-#             cost = float(token_data["Cost"].replace("$", ""))
-#             result["Cost_of_Languages_CV_extraction"] = cost  # Working mode: detailed key
-#
-#
-#     return result
-#
-# def extract_cv_languages(cv: str, llm_handler: LLMHandler, model="gpt-4.1-nano", add_tokens_info: bool = False):
-#
-#     # Define the prompt for the language model
-#     prompt = [
-#         {
-#             "role": "system",
-#             "content": (
-#                 "You are a multilingual HR analyst specializing in language proficiency assessment. "
-#                 "Your function is to accurately extract all languages and their proficiency levels from a resume, mapping them to the CEFR standard. "
-#                 "**First, explain your reasoning step-by-step in bullet points.** "
-#                 "Then, return the final output in the required format."
-#             )
-#         },
-#         {
-#             "role": "user",
-#             "content": (
-#                 "Analyze the following resume to identify the languages the candidate knows and their proficiency levels. "
-#                 "**Explain your reasoning step-by-step**, then return the final output in the required format.\n\n"
-#                 "**Your internal thought process for this task must be:**\n"
-#                 "1. Scan the resume for a 'Languages' section or any mention of specific languages.\n"
-#                 "2. For each language, identify its proficiency level (directly or by description).\n"
-#                 "3. **Crucial Rule:** Map all descriptions to the CEFR scale (A1, A2, B1, B2, C1, C2) using the following logic:\n"
-#                 "   - **Native / Родной:** → **C2**\n"
-#                 "   - **Advanced / Proficient / Свободное владение:** → **C1**\n"
-#                 "   - **Upper-Intermediate / Conversational / Fluent / Уверенный разговорный:** → **B2**\n"
-#                 "   - **Intermediate / Средний:** → **B1**\n"
-#                 "   - **Pre-Intermediate / Ниже среднего:** → **A2**\n"
-#                 "   - **Elementary / Basic / Базовый:** → **A1**\n"
-#                 "4. If a language is mentioned but no level can be inferred, exclude it from the final output.\n\n"
-#                 "**Output Instructions:**\n"
-#                 "1. **Reasoning:** [Your step-by-step analysis in bullet points].\n"
-#                 "2. **Final Answer:** [Single line: `Language Level, Language Level` or `No languages specified`].\n\n"
-#                 "**Example Output:**\n"
-#                 "Reasoning:\n"
-#                 "- Found 'English (fluent)' → Mapped to 'English C1'.\n"
-#                 "- Found 'German B2' → Kept as is.\n"
-#                 "Final Answer: English C1, German B2\n\n"
-#                 "**Here is the CV:**\n"
-#                 f"{cv}"
-#             )
-#         }
-#     ]
-#
-#     # Calculate max tokens based on the length of the vacancy description
-#     max_tokens = 200
-#     # Send the prompt to the LLM handler and get the response
-#     response = llm_handler.get_answer(prompt, model=model, max_tokens=max_tokens)
-#     print(response)
-#     # Parse the response from the LLM
-#     extracted_data = parse_llm_cv_languages_response(response, add_tokens_info=add_tokens_info)
-#     return extracted_data
-#
-#
-#
-#
-#
-#
-#     result ["English"] = ", ".join([result["English"],result["Other languages"]])
-#     del result["Other languages"]
+import json
 from pydantic import BaseModel, Field
 from typing import List
+from src.data_processing.nlp.llm_handler import LLMHandler
+from src.logger import logger  # Added logger import
+
 
 class LanguageItem(BaseModel):
     language: str = Field(description="Language name")
     level: str = Field(description="CEFR level (A1, A2, B1, B2, C1, C2)")
+
 
 class CVLanguagesAnalysis(BaseModel):
     reasoning_steps: List[str] = Field(description="Step-by-step analysis in bullet points")
@@ -165,11 +22,14 @@ class CVLanguagesAnalysis(BaseModel):
     languages: List[LanguageItem] = Field(description="List of languages with CEFR levels")
 
 
-def extract_cv_languages(cv: str, llm_handler: LLMHandler, model="gpt-4.1-nano", add_tokens_info: bool = False):
+def extract_cv_languages(
+        cv: str,
+        llm_handler: LLMHandler,
+        model: str = "gpt-4.1-nano"
+):
     """
     Extract CV languages using Schema-Guided Reasoning approach with resume language detection.
     """
-
     prompt = [
         {
             "role": "system",
@@ -187,7 +47,7 @@ def extract_cv_languages(cv: str, llm_handler: LLMHandler, model="gpt-4.1-nano",
                 f"- Intermediate/Средний → B1\n"
                 f"- Pre-Intermediate/Ниже среднего → A2\n"
                 f"- Elementary/Basic/Базовый → A1\n\n"
-                f"**Special Rules for English Level:**\n"                  
+                f"**Special Rules for English Level:**\n"
                 f"- If the resume is NOT in English: the English level is most likely A1 and definitely not higher than A2.\n"
                 f"- If the resume is in English but other languages are clearly indicated: use this information.\n"
                 f"- If the CV is in English but other languages are not clearly indicated: Infer from the quality of the CV and the candidate's location whether it is B1 or B2.\n\n"
@@ -201,9 +61,12 @@ def extract_cv_languages(cv: str, llm_handler: LLMHandler, model="gpt-4.1-nano",
     ]
 
     max_tokens = len(cv)
+
     # Use structured output
     response = llm_handler.get_answer(
-        prompt, model=model, max_tokens=max_tokens,
+        prompt,
+        model=model,
+        max_tokens=max_tokens,
         response_format=CVLanguagesAnalysis
     )
 
@@ -215,27 +78,32 @@ def extract_cv_languages(cv: str, llm_handler: LLMHandler, model="gpt-4.1-nano",
     # Apply validation
     languages_analysis = _validate_english_level(languages_analysis)
 
-    # Build result dictionary in the original format
+    # Get cached tokens if available
+    cached_tokens = 0
+    if hasattr(usage, 'prompt_tokens_details') and hasattr(usage.prompt_tokens_details, 'cached_tokens'):
+        cached_tokens = usage.prompt_tokens_details.cached_tokens
+
+    # Build result dictionary with all fields
     result = {
         "Belarusian": "",
         "English": "",
         "Other languages": "",
+        "Reasoning about Languages": "\n".join(f"• {step}" for step in languages_analysis.reasoning_steps),
+        "Model of_Languages_CV_extraction": model,
+        "Completion Tokens of_Languages_CV_extraction": str(usage.completion_tokens),
+        "Prompt Tokens _of_Languages_CV_extraction": str(usage.prompt_tokens),
+        "Cached Tokens of_Languages_CV_extraction": str(cached_tokens),
+        "Cost_of_Languages_CV_extraction": cost_info['total_cost'],
+        "Resume Language": languages_analysis.resume_language,
     }
-
-    if add_tokens_info:
-        result["Reasoning about Languages"] = "\n".join([f"• {step}" for step in languages_analysis.reasoning_steps])
-        result["Model Used cv_languages"] = model
-        result["Completion Tokens cv_languages"] = str(usage.completion_tokens)
-        result["Prompt Tokens cv_languages"] = str(usage.prompt_tokens)
-        cached_tokens = usage.prompt_tokens_details.cached_tokens if hasattr(usage, 'prompt_tokens_details') else 0
-        result["Cached Tokens cv_languages"] = str(cached_tokens)
-        result["Cost cv_languages"] = f"${cost_info['total_cost']:.6f}"
 
     # Check for English resume with no explicit languages
     resume_lang = languages_analysis.resume_language.lower()
     if resume_lang == "english" and not languages_analysis.languages:
-        if not add_tokens_info:
-            result["Cost_of_Languages_CV_extraction"] = cost_info['total_cost']
+        # Clean up "Other languages" field before logging
+        del result["Other languages"]
+        logger.info(
+            f"Field extraction completed - Fields: 'Belarusian', 'English', 'Languages' | Response: {json.dumps(result, ensure_ascii=False)}")
         return result
 
     # Process languages and categorize them
@@ -255,15 +123,19 @@ def extract_cv_languages(cv: str, llm_handler: LLMHandler, model="gpt-4.1-nano",
     if other_languages:
         result["Other languages"] = ", ".join(other_languages)
 
-    # Add cost info
-    if not add_tokens_info:
-        result["Cost_of_Languages_CV_extraction"] = cost_info['total_cost']
-
+    # Combine English and Other languages as per original logic
     if result["English"] and result["Other languages"]:
         result["English"] = ", ".join([result["English"], result["Other languages"]])
     elif result["Other languages"]:
         result["English"] = ", ".join(["A1", result["Other languages"]])
+
+    # Clean up "Other languages" field as it's merged into English
     del result["Other languages"]
+
+    # Log the complete response in a single entry
+    logger.info(
+        f"Field extraction completed - Fields: 'Belarusian', 'English', 'Languages' | Response: {json.dumps(result, ensure_ascii=False)}")
+
     return result
 
 
@@ -292,36 +164,9 @@ def _validate_english_level(analysis: CVLanguagesAnalysis) -> CVLanguagesAnalysi
 
     return analysis
 
-#
-# def _fallback_cv_languages_parse(response: str, token_data: dict, add_tokens_info: bool) -> dict:
-#     """
-#     Fallback parser for CV languages extraction when structured output fails.
-#     """
-#     result = {
-#         "Belarusian": "",
-#         "English": "",
-#         "Other languages": "",
-#     }
-#
-#     if add_tokens_info:
-#         result["Reasoning about Languages"] = "Unable to extract reasoning from response"
-#         result["Model Used cv_languages"] = "unknown"
-#         result["Completion Tokens cv_languages"] = "0"
-#         result["Prompt Tokens cv_languages"] = "0"
-#         result["Cached Tokens cv_languages"] = "0"
-#         result["Cost cv_languages"] = "$0.000000"
-#
-#     # Basic fallback: assume non-English resume and set English to A1 if mentioned
-#     if response and "english" in response.lower():
-#         result["English"] = "A1"
-#
-#     if not add_tokens_info:
-#         result["Cost_of_Languages_CV_extraction"] = 0.0
-#
-#     return result
-
 
 def cv_languages_processing(cv_text: str, llm_handler: LLMHandler):
+    start_time = time.time()
     # Use ThreadPoolExecutor to run the functions concurrently
     with concurrent.futures.ThreadPoolExecutor() as executor:
         # Submit both tasks to the executor
@@ -333,6 +178,6 @@ def cv_languages_processing(cv_text: str, llm_handler: LLMHandler):
         translated_text_info = future2.result()
 
     cv_text = translated_text_info['text']
-
+    languages_extracted_data["Parsing Step1 Time (extract languages & translate)"] = time.time() - start_time
     return cv_text, languages_extracted_data
 

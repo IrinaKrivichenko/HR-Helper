@@ -1,7 +1,6 @@
 import re
 
-from src.nlp.tokenization import get_tokens
-import os
+from src.data_processing.nlp.tokenization import get_tokens
 from dotenv import load_dotenv
 load_dotenv()
 

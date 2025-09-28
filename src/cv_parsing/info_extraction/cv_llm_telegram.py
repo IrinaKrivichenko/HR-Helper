@@ -1,13 +1,17 @@
+import json
+import time
 from typing import Dict, Any, Optional, List
 from pydantic import BaseModel, Field, validator
 import re
-
 from src.cv_parsing.info_extraction.context_by_patterns import extract_context_by_patterns
+from src.cv_parsing.info_extraction.prepare_cv_sections import get_section_for_field
+from src.logger import logger  # Added logger import
 
 
 class TelegramExtraction(BaseModel):
     reasoning_steps: List[str] = Field(description="Step-by-step reasoning for Telegram extraction")
-    telegram_contacts: List[str] = Field(default=[], description="Extracted Telegram contacts in normalized format (@username or https://t.me/username)")
+    telegram_contacts: List[str] = Field(default=[],
+                                         description="Extracted Telegram contacts in normalized format (@username or https://t.me/username)")
     confidence: str = Field(description="Confidence in extraction (high/medium/low)")
 
     @validator("telegram_contacts", each_item=True)
@@ -28,16 +32,17 @@ class TelegramExtraction(BaseModel):
             return f"https://t.me/{contact}"
         return contact
 
+
 def extract_cv_telegram(
-    cv_text: str,
-    llm_handler: Any,
-    model: str = "gpt-4.1-nano",
-    add_tokens_info: bool = False
+        cv_sections: Dict,
+        llm_handler: Any,
+        model: str = "gpt-4.1-nano"
 ) -> Dict[str, Any]:
     """
     Extracts Telegram contacts from CV text using LLM.
     Returns a dictionary with extracted Telegram contacts and metadata.
     """
+    start_time = time.time()
     # Patterns for searching Telegram contacts
     telegram_patterns = [
         r'@\w+',  # Mentions like @username
@@ -48,6 +53,7 @@ def extract_cv_telegram(
     ]
 
     # Extract context with potential Telegram contacts
+    cv_text = get_section_for_field(cv_sections, "Telegram")
     telegram_context = extract_context_by_patterns(cv_text, telegram_patterns)
 
     prompt = [
@@ -75,7 +81,7 @@ def extract_cv_telegram(
         }
     ]
 
-    # Отправляем запрос в LLM
+    # Send request to LLM
     try:
         response = llm_handler.get_answer(
             prompt,
@@ -83,37 +89,46 @@ def extract_cv_telegram(
             max_tokens=400,
             response_format=TelegramExtraction
         )
-        extraction = response['parsed']
-        cost = response['cost']['total_cost']
 
-        # Формируем результат
-        result = {
+        extraction = response['parsed']
+        usage = response['usage']
+        cost_info = response['cost']
+
+        # Build result dictionary
+        result: Dict[str, Any] = {
             "Telegram": ', '.join(extraction.telegram_contacts) if extraction.telegram_contacts else "",
+            "Reasoning about Telegram": "\n".join(f"• {step}" for step in extraction.reasoning_steps),
+            "Model of_Telegram_CV_extraction": model,
+            "Completion Tokens of_Telegram_CV_extraction": str(usage.completion_tokens),
+            "Prompt Tokens _of_Telegram_CV_extraction": str(usage.prompt_tokens),
+            "Cost_of_Telegram_CV_extraction": cost_info['total_cost'],
+            "Confidence_Telegram": extraction.confidence,
+            "Time" : time.time()-start_time,
         }
 
-        if add_tokens_info:
-            result.update({
-                "Reasoning about Telegram": "\n".join(extraction.reasoning_steps),
-                "Model Used": model,
-                "Cost": f"${cost:.6f}",
-                "Confidence": extraction.confidence,
-            })
-        else:
-            result["Cost_of_Telegram_CV_extraction"] = cost
+        # Log the complete response in a single entry
+        logger.info(
+            f"Field extraction completed - Field: 'Telegram' | Response: {json.dumps(result, ensure_ascii=False)}")
 
         return result
+
     except Exception as e:
-        print(f"Telegram extraction failed: {e}")
-        if add_tokens_info:
-            return {
-                "Telegram": "",
-                "Reasoning about Telegram": f"Extraction failed: {e}",
-                "Model Used": model,
-                "Cost": "$0.000000",
-                "Confidence": "low",
-            }
-        else:
-            return {
-                "Telegram": "",
-                "Cost_of_Telegram_CV_extraction": 0.0,
-            }
+        logger.error(f"Telegram extraction failed: {e}")
+
+        # Build error result dictionary
+        result: Dict[str, Any] = {
+            "Telegram": "",
+            "Reasoning about Telegram": f"Extraction failed: {e}",
+            "Model of_Telegram_CV_extraction": model,
+            "Completion Tokens of_Telegram_CV_extraction": "0",
+            "Prompt Tokens of_Telegram_CV_extraction": "0",
+            "Cost_of_Telegram_CV_extraction": 0.0,
+            "Confidence_Telegram": "low",
+            "Time" : time.time()-start_time,
+        }
+
+        # Log the error response
+        logger.info(
+            f"Field extraction completed - Field: 'Telegram' | Response: {json.dumps(result, ensure_ascii=False)}")
+
+        return result

@@ -1,9 +1,9 @@
-import traceback
+from typing import Dict
 
 from src.cv_parsing.info_extraction.cv_llm_email import extract_cv_email
 from src.cv_parsing.info_extraction.cv_llm_expertise import extract_cv_expertise
 from src.cv_parsing.info_extraction.cv_llm_github import extract_cv_github
-from src.cv_parsing.info_extraction.cv_llm_industry import extract_cv_industry
+from src.cv_parsing.info_extraction.cv_llm_industries import extract_cv_industries
 from src.cv_parsing.info_extraction.cv_llm_linkedin import extract_cv_linkedin
 from src.cv_parsing.info_extraction.cv_llm_location import extract_cv_location
 from src.cv_parsing.info_extraction.cv_llm_name import extract_cv_name
@@ -12,37 +12,48 @@ from src.cv_parsing.info_extraction.cv_llm_roles import extract_cv_roles
 from src.cv_parsing.info_extraction.cv_llm_seniority import extract_cv_seniority
 from src.cv_parsing.info_extraction.cv_llm_stack import extract_cv_stack
 from src.cv_parsing.info_extraction.cv_llm_telegram import extract_cv_telegram
-from src.nlp.llm_handler import LLMHandler
+from src.data_processing.nlp.llm_handler import LLMHandler
 
+import time
+import traceback
 from concurrent.futures import ThreadPoolExecutor
 
-def extract_cv_info(cv: str, llm_handler: LLMHandler):#, extract_cv_roles=None):
+
+def extract_cv_info(cv: Dict, llm_handler: LLMHandler):
     """
-       Extracts all CV data in parallel using ThreadPoolExecutor.
-       Combines results from all extraction functions into a single dictionary.
+    Extracts all CV data in parallel using ThreadPoolExecutor.
+    Combines results from all extraction functions into a single dictionary.
+    Tracks execution time for each field extraction.
 
-       Args:
-           cv (str): The CV text to analyze.
-           llm_handler (LLMHandler): Instance of LLMHandler for API calls.
+    Args:
+        cv (str): The CV text to analyze.
+        llm_handler (LLMHandler): Instance of LLMHandler for API calls.
 
-       Returns:
-           dict: Combined dictionary with all extracted data.
-       """
-    # Define the extraction tasks as a list of tuples: (function, model, key_prefix)
+    Returns:
+        dict: Combined dictionary with all extracted data and timing information.
+    """
+    # Start timing the entire parallel extraction process
+    overall_start_time = time.time()
+
+    # Define the extraction tasks as a list of tuples: (function, model, field_name)
     extraction_tasks = [
         (extract_cv_name, "gpt-4o-mini", "Name"),
         (extract_cv_seniority, "gpt-4.1-nano", "Seniority"),
         (extract_cv_roles, "gpt-4o-mini", "Roles"),
         (extract_cv_expertise, "gpt-4.1-nano", "Expertise"),
         (extract_cv_stack, "gpt-4.1", "Stack"),
-        (extract_cv_industry, "gpt-4o-mini", "Industry"),
+        (extract_cv_industries, "gpt-4o-mini", "Industries"),
         (extract_cv_linkedin, "gpt-4.1-nano", "LinkedIn"),
         (extract_cv_telegram, "gpt-4.1-nano", "Telegram"),
         (extract_cv_phone, "gpt-4.1-nano", "Phone"),
         (extract_cv_email, "gpt-4.1-nano", "Email"),
         (extract_cv_github, "gpt-4.1-nano", "GitHub"),
-        (extract_cv_location, "gpt-4.1-nano", "Location"),
+        (extract_cv_location, "gpt-4.1-nano", "Location")
     ]
+
+    # Dictionary to store timing information for each field
+    field_times = {}
+
     # Create a ThreadPoolExecutor
     with ThreadPoolExecutor() as executor:
         # Submit all tasks and store futures in a list
@@ -50,25 +61,65 @@ def extract_cv_info(cv: str, llm_handler: LLMHandler):#, extract_cv_roles=None):
             executor.submit(task[0], cv, llm_handler, model=task[1])
             for task in extraction_tasks
         ]
+
         # Retrieve results as they complete
         results = {}
         for i, future in enumerate(futures):
+            field_name = extraction_tasks[i][2]
             try:
                 extracted_data = future.result()
-                key_prefix = extraction_tasks[i][2]
-                # Add the extracted data to the results dictionary
+
+                # Extract and save Time field if it exists
                 if isinstance(extracted_data, dict):
+                    if "Time" in extracted_data:
+                        field_times[field_name] = extracted_data["Time"]
+                        # Remove Time field from the extracted data
+                        del extracted_data["Time"]
+
+                    # Add the extracted data to the results dictionary
                     for key, value in extracted_data.items():
-                        # Use the key_prefix if the key might collide with other extractions
-                        new_key = f"{key_prefix}_{key}" if key in results else key
+                        # Use the field_name prefix if the key might collide with other extractions
+                        new_key = f"{field_name}_{key}" if key in results else key
                         results[new_key] = value
                 else:
-                    results[key_prefix] = extracted_data
+                    results[field_name] = extracted_data
+
             except Exception as e:
-                print(f"Error extracting {extraction_tasks[i][2]}: {e}")
+                print(f"Error extracting {field_name}: {e}")
                 print(f"Traceback: {traceback.format_exc()}")
+                # Record failed extraction with 0 time
+                field_times[field_name] = 0.0
                 continue
+
+    # Calculate actual total time (parallel execution time)
+    total_parallel_time = time.time() - overall_start_time
+
+    # Sort field times to find the longest running task
+    sorted_times = sorted(field_times.items(), key=lambda x: x[1], reverse=True)
+
+    # Create timing summary string with each field on a new line
+    timing_lines = []
+
+    # Add header with total time and longest operation
+    if field_times:
+        max_field = sorted_times[0][0]
+        max_time = sorted_times[0][1]
+        timing_lines.append(f"Total time: {total_parallel_time:.1f} sec")
+        timing_lines.append(f"Longest operation: {max_field} ({max_time:.1f} sec)")
+        timing_lines.append(f"{'=' * 35}")
+        timing_lines.append("Individual field times:")
+
+        # Add each field time on a new line
+        for field_name, time_taken in sorted_times:
+            # Format with padding for alignment and 1 decimal place
+            timing_lines.append(f"  {field_name:<15}: {time_taken:>5.1f} sec")
+    else:
+        timing_lines.append(f"Total parallel execution: {total_parallel_time:.1f} sec")
+
+    # Join all lines with newline character
+    timing_summary = "\n".join(timing_lines)
+
+    # Add timing summary to results
+    results["Parsing Step3 Time (extract fields)"] = timing_summary
+
     return results
-
-
-

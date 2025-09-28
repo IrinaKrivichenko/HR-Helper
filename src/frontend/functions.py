@@ -15,7 +15,7 @@ from nltk.tokenize import word_tokenize
 from nltk.data import path as nltk_path
 nltk_path.append('nltk_data')
 
-from src.nlp.tokenization import LocalModelHandler as LLMHandler
+from src.data_processing.nlp.tokenization import LocalModelHandler as LLMHandler
 
 NUMBER_OF_SPECIALIST_FIELDS = 26
 ATTENTION_SIGN = "⚠️"

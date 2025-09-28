@@ -1,9 +1,10 @@
-import json
+import time
 from typing import List, Literal, Dict, Any, Set, Optional
 from pydantic import BaseModel, Field
 from src.cv_parsing.info_extraction.new_role_analysis import process_proposed_roles
+from src.cv_parsing.info_extraction.prepare_cv_sections import get_section_for_field
 from src.google_services.sheets import read_specific_columns
-from src.nlp.llm_handler import LLMHandler
+from src.data_processing.nlp.llm_handler import LLMHandler
 from src.logger import logger
 
 class RoleMatch(BaseModel):
@@ -63,7 +64,7 @@ def normalize_role_names(roles: List[str]) -> List[str]:
     return normalized
 
 def extract_cv_roles(
-    cv: str,
+        cv_sections: Dict,
     llm_handler: LLMHandler,
     model: str = "gpt-4.1-mini"
 ) -> Dict[str, Any]:
@@ -71,12 +72,14 @@ def extract_cv_roles(
     Extract and analyze IT roles from a CV.
     Uses programming languages internally for accurate matching but returns only role names.
     """
+    start_time = time.time()
     # Load existing roles dynamically from Google Sheets
     roles_list: List[str] = list(
-        read_specific_columns(['Role Values'], 'values')['Role Values']
+        read_specific_columns(['Role Values'], 'values', remove_emonji=True)['Role Values']
     )
     roles_str = ', '.join(f'"{role}"' for role in roles_list)
 
+    cv = get_section_for_field(cv_sections, "Role")
     prompt = [
         {
             "role": "system",
@@ -162,6 +165,7 @@ def extract_cv_roles(
             "Prompt Tokens _of_Role_CV_extraction": str(usage.prompt_tokens),
             "Cost_of_Role_CV_extraction": cost_info['total_cost'],
             "Cost_of_new_roles_analysis": total_new_analysis_cost,
+            "Time" : time.time()-start_time,
         }
 
     logger.info(

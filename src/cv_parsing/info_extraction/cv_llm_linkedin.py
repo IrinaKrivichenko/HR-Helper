@@ -1,13 +1,17 @@
+import json
+import time
 from typing import Dict, Any, Optional, List
 from pydantic import BaseModel, Field, validator
 import re
-
 from src.cv_parsing.info_extraction.context_by_patterns import extract_context_by_patterns
+from src.cv_parsing.info_extraction.prepare_cv_sections import get_section_for_field
+from src.logger import logger  # Added logger import
 
 
 class LinkedInExtraction(BaseModel):
     reasoning_steps: List[str] = Field(description="Step-by-step reasoning for LinkedIn extraction")
-    linkedin_urls: List[str] = Field(default=[], description="Extracted LinkedIn URLs in normalized format (https://linkedin.com/in/<username>)")
+    linkedin_urls: List[str] = Field(default=[],
+                                     description="Extracted LinkedIn URLs in normalized format (https://linkedin.com/in/<username>)")
     confidence: str = Field(description="Confidence in extraction (high/medium/low)")
 
     @validator("linkedin_urls", each_item=True)
@@ -28,27 +32,29 @@ class LinkedInExtraction(BaseModel):
             return f"https://www.linkedin.com/in/{url}"
         return url
 
+
 def extract_cv_linkedin(
-    cv_text: str,
-    llm_handler: Any,
-    model: str = "gpt-4.1-nano",
-    add_tokens_info: bool = False
+        cv_sections: Dict,
+        llm_handler: Any,
+        model: str = "gpt-4.1-nano"
 ) -> Dict[str, Any]:
     """
     Extracts LinkedIn profiles from CV text using LLM.
     Returns a dictionary with extracted LinkedIn URLs and metadata.
     """
-    # Шаблоны для поиска LinkedIn-профилей
+    start_time = time.time()
+    # Patterns for searching LinkedIn profiles
     linkedin_patterns = [
-        r'linkedin\.com/in/[^\s/]+',  # Ссылки вида linkedin.com/in/username
-        r'linkedin\.com/[^\s/]+',     # Ссылки вида linkedin.com/username
-        r'in/[^\s/]+',                 # Ссылки вида in/username
+        r'linkedin\.com/in/[^\s/]+',  # Links like linkedin.com/in/username
+        r'linkedin\.com/[^\s/]+',  # Links like linkedin.com/username
+        r'in/[^\s/]+',  # Links like in/username
     ]
 
-    # Извлекаем контекст с потенциальными LinkedIn-профилями
+    # Extract context with potential LinkedIn profiles
+    cv_text = get_section_for_field(cv_sections, "Linkedin")
     linkedin_context = extract_context_by_patterns(cv_text, linkedin_patterns)
 
-    # Промпт для LLM
+    # Prompt for LLM
     prompt = [
         {
             "role": "system",
@@ -72,7 +78,7 @@ def extract_cv_linkedin(
         }
     ]
 
-    # Отправляем запрос в LLM
+    # Send request to LLM
     try:
         response = llm_handler.get_answer(
             prompt,
@@ -80,37 +86,46 @@ def extract_cv_linkedin(
             max_tokens=1000,
             response_format=LinkedInExtraction
         )
-        extraction = response['parsed']
-        cost = response['cost']['total_cost']
 
-        # Формируем результат
-        result = {
+        extraction = response['parsed']
+        usage = response['usage']
+        cost_info = response['cost']
+
+        # Build result dictionary
+        result: Dict[str, Any] = {
             "LinkedIn": ', '.join(extraction.linkedin_urls) if extraction.linkedin_urls else "",
+            "Reasoning about LinkedIn": "\n".join(f"• {step}" for step in extraction.reasoning_steps),
+            "Model of_LinkedIn_CV_extraction": model,
+            "Completion Tokens of_LinkedIn_CV_extraction": str(usage.completion_tokens),
+            "Prompt Tokens _of_LinkedIn_CV_extraction": str(usage.prompt_tokens),
+            "Cost_of_LinkedIn_CV_extraction": cost_info['total_cost'],
+            "Confidence_LinkedIn": extraction.confidence,
+            "Time" : time.time()-start_time,
         }
 
-        if add_tokens_info:
-            result.update({
-                "Reasoning about LinkedIn": "\n".join(extraction.reasoning_steps),
-                "Model Used": model,
-                "Cost": f"${cost:.6f}",
-                "Confidence": extraction.confidence,
-            })
-        else:
-            result["Cost_of_LinkedIn_CV_extraction"] = cost
+        # Log the complete response in a single entry
+        logger.info(
+            f"Field extraction completed - Field: 'LinkedIn' | Response: {json.dumps(result, ensure_ascii=False)}")
 
         return result
+
     except Exception as e:
-        print(f"LinkedIn extraction failed: {e}")
-        if add_tokens_info:
-            return {
-                "LinkedIn": "",
-                "Reasoning about LinkedIn": f"Extraction failed: {e}",
-                "Model Used": model,
-                "Cost": "$0.000000",
-                "Confidence": "low",
-            }
-        else:
-            return {
-                "LinkedIn": "",
-                "Cost_of_LinkedIn_CV_extraction": 0.0,
-            }
+        logger.error(f"LinkedIn extraction failed: {e}")
+
+        # Build error result dictionary
+        result: Dict[str, Any] = {
+            "LinkedIn": "",
+            "Reasoning about LinkedIn": f"Extraction failed: {e}",
+            "Model of_LinkedIn_CV_extraction": model,
+            "Completion Tokens of_LinkedIn_CV_extraction": "0",
+            "Prompt Tokens _of_LinkedIn_CV_extraction": "0",
+            "Cost_of_LinkedIn_CV_extraction": 0.0,
+            "Confidence_LinkedIn": "low",
+            "Time" : time.time()-start_time,
+        }
+
+        # Log the error response
+        logger.info(
+            f"Field extraction completed - Field: 'LinkedIn' | Response: {json.dumps(result, ensure_ascii=False)}")
+
+        return result

@@ -4,7 +4,7 @@ from typing import List, Optional, Literal, Tuple, Dict
 
 from src.google_services.sheets import write_specific_columns
 from src.logger import logger
-from src.nlp.llm_handler import LLMHandler
+from src.data_processing.nlp.llm_handler import LLMHandler
 
 
 class IndustryAnalysis(BaseModel):

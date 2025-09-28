@@ -13,7 +13,7 @@ def prepare_google_sheets():
     # Define the columns to extract by name
     columns_to_extract = [
         'First Name', 'Last Name', 'LVL of engagement', 'Seniority', 'Role',
-        'Stack', 'Industry', 'Expertise', 'English', 'Location'
+        'Stack', 'Industries', 'Expertise', 'English', 'Location'
     ]
     # Get specific columns with hyperlinks
     df = read_specific_columns(columns_to_extract, service=service)

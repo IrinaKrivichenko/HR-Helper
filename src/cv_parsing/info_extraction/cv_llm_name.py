@@ -1,8 +1,13 @@
+import json
+import time
 
 from pydantic import BaseModel, Field, validator
-from typing import List, Optional, Literal
+from typing import List, Optional, Literal, Dict
 
-from src.nlp.llm_handler import LLMHandler, extract_and_parse_token_section
+from src.cv_parsing.info_extraction.prepare_cv_sections import get_section_for_field
+from src.data_processing.nlp.llm_handler import LLMHandler
+from src.logger import logger  # Added logger import
+
 
 class CVNameExtraction(BaseModel):
     reasoning_steps: List[str] = Field(description="Step-by-step analysis in bullet points")
@@ -20,11 +25,17 @@ class CVNameExtraction(BaseModel):
         )
 
 
-def extract_cv_name(cv: str, llm_handler: LLMHandler, model="gpt-4.1-nano", add_tokens_info: bool = False):
+def extract_cv_name(
+        cv_sections: Dict,
+        llm_handler: LLMHandler,
+        model: str = "gpt-4.1-nano"
+):
     """
     Extract candidate name from a resume using Schema-Guided Reasoning (SGR) approach.
     Names are automatically capitalized. If last name is missing, returns "Hidden".
     """
+    start_time = time.time()
+    cv = get_section_for_field(cv_sections, "Name")
     prompt = [
         {
             "role": "system",
@@ -44,30 +55,38 @@ def extract_cv_name(cv: str, llm_handler: LLMHandler, model="gpt-4.1-nano", add_
             )
         }
     ]
+
     max_tokens = len(cv)  # Names don't need many tokens
+
     # Use structured output
     response = llm_handler.get_answer(
-        prompt, model=model, max_tokens=max_tokens,
+        prompt,
+        model=model,
+        max_tokens=max_tokens,
         response_format=CVNameExtraction
     )
+
     # Process structured response
     name_extraction = response['parsed']
     usage = response['usage']
     cost_info = response['cost']
-    # Build result dictionary
+
+    # Build result dictionary with all fields
     result = {
         "First Name": name_extraction.first_name or "",
-        "Last Name": name_extraction.last_name or "Hidden"
+        "Last Name": name_extraction.last_name or "Hidden",
+        "Reasoning about Name": "\n".join(f"• {step}" for step in name_extraction.reasoning_steps),
+        "Name Confidence": name_extraction.confidence,
+        "Full Name Found": name_extraction.full_name_found or "",
+        "Model of_Name_CV_extraction": model,
+        "Completion Tokens of_Name_CV_extraction": str(usage.completion_tokens),
+        "Prompt Tokens _of_Name_CV_extraction": str(usage.prompt_tokens),
+        "Cost_of_Name_CV_extraction": cost_info['total_cost'],
+            "Time" : time.time()-start_time,
     }
-    if add_tokens_info:
-        result["Reasoning about Name"] = "\n".join([f"• {step}" for step in name_extraction.reasoning_steps])
-        result["Name Confidence"] = name_extraction.confidence
-        result["Full Name Found"] = name_extraction.full_name_found or ""
-        result["Model Used"] = model
-        result["Completion Tokens"] = str(usage.completion_tokens)
-        result["Prompt Tokens"] = str(usage.prompt_tokens)
-        result["Cost"] = f"${cost_info['total_cost']:.6f}"
-    else:
-        result["Cost_of_Name_CV_extraction"] = cost_info['total_cost']
-    return result
 
+    # Log the complete response in a single entry
+    logger.info(
+        f"Field extraction completed - Fields: 'First Name', 'Last Name' | Response: {json.dumps(result, ensure_ascii=False)}")
+
+    return result

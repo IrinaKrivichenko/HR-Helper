@@ -1,8 +1,5 @@
-
-import pandas as pd
-
 from src.logger import logger
-from src.nlp.tokenization import get_tokens
+from src.data_processing.nlp.tokenization import get_tokens
 
 
 def mitigate_cloud_technologies_impact(tech_string):

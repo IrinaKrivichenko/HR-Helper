@@ -1,21 +1,34 @@
-from pydantic import BaseModel, Field
-from typing import List
+import json
+import time
 
-from src.nlp.llm_handler import extract_and_parse_token_section, LLMHandler
+from pydantic import BaseModel, Field
+from typing import List, Dict
+
+from src.cv_parsing.info_extraction.prepare_cv_sections import get_section_for_field
+from src.data_processing.nlp.llm_handler import LLMHandler
+from src.logger import logger  # Added logger import
+
 
 class TechnologyItem(BaseModel):
     name: str = Field(description="Technology name in format 'Full Name (Abbreviation)' if applicable")
     score: int = Field(ge=1, le=5, description="Proficiency score from 1-5")
+
 
 class CVStackAnalysis(BaseModel):
     reasoning_steps: List[str] = Field(description="Step-by-step analysis in bullet points")
     technologies: List[TechnologyItem] = Field(description="List of identified technologies with scores")
 
 
-def extract_cv_stack(cv: str, llm_handler: LLMHandler, model="gpt-4.1-nano", add_tokens_info: bool = False):
+def extract_cv_stack(
+        cv_sections: Dict,
+        llm_handler: LLMHandler,
+        model: str = "gpt-4.1-nano"
+):
     """
     Extract CV technology stack - now with structured outputs by default.
     """
+    start_time = time.time()
+    cv = get_section_for_field(cv_sections, "Stack")
     prompt = [
         {
             "role": "system",
@@ -36,38 +49,46 @@ def extract_cv_stack(cv: str, llm_handler: LLMHandler, model="gpt-4.1-nano", add
             )
         }
     ]
+
     max_tokens = max(len(cv), 200)
-    # Try structured output first
+
+    # Get structured response from LLM
     structured_response = llm_handler.get_answer(
-            prompt, model=model, max_tokens=max_tokens,
-            response_format=CVStackAnalysis
-        )
+        prompt,
+        model=model,
+        max_tokens=max_tokens,
+        response_format=CVStackAnalysis
+    )
+
     # Process structured response
     cv_analysis = structured_response['parsed']
     usage = structured_response['usage']
     cost_info = structured_response['cost']
 
-    result = {}
-
-    if add_tokens_info:
-        result["Reasoning about Stack"] = "\n".join([f"• {step}" for step in cv_analysis.reasoning_steps])
-        result["Model Used"] = model
-        result["Completion Tokens"] = str(usage.completion_tokens)
-        result["Prompt Tokens"] = str(usage.prompt_tokens)
-        cached_tokens = usage.prompt_tokens_details.cached_tokens if hasattr(usage, 'prompt_tokens_details') else 0
-        result["Cached Tokens"] = str(cached_tokens)
-        result["Cost"] = f"${cost_info['total_cost']:.6f}"
-
     # Format stack string
+    stack_string = ""
     if cv_analysis.technologies:
         sorted_techs = sorted(cv_analysis.technologies, key=lambda x: x.score, reverse=True)
         stack_string = ", ".join([f"{tech.name} - {tech.score}" for tech in sorted_techs])
-        result["Stack"] = stack_string
-    else:
-        result["Stack"] = ""
 
-    if not add_tokens_info:
-        result["Cost_of_Stack_CV_extraction"] = cost_info['total_cost']
+    # Get cached tokens if available
+    cached_tokens = 0
+    if hasattr(usage, 'prompt_tokens_details') and hasattr(usage.prompt_tokens_details, 'cached_tokens'):
+        cached_tokens = usage.prompt_tokens_details.cached_tokens
+
+    # Build result dictionary with all fields
+    result = {
+        "Stack": stack_string,
+        "Reasoning about Stack": "\n".join(f"• {step}" for step in cv_analysis.reasoning_steps),
+        "Model of_Stack_CV_extraction": model,
+        "Completion Tokens of_Stack_CV_extraction": str(usage.completion_tokens),
+        "Prompt Tokens _of_Stack_CV_extraction": str(usage.prompt_tokens),
+        "Cached Tokens of_Stack_CV_extraction": str(cached_tokens),
+        "Cost_of_Stack_CV_extraction": cost_info['total_cost'],
+            "Time" : time.time()-start_time,
+    }
+
+    # Log the complete response in a single entry
+    logger.info(f"Field extraction completed - Field: 'Stack' | Response: {json.dumps(result, ensure_ascii=False)}")
 
     return result
-

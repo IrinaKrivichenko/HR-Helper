@@ -12,8 +12,7 @@ from src.candidate_matching.vacancy_processing.vacancy_llm_processor import extr
 from src.candidate_matching.vacancy_processing.vacancy_googlesheet import check_existing_vacancy, save_vacancy_description
 from src.candidate_matching.vacancy_processing.vacancy_splitter import split_vacancies
 from src.logger import logger
-from src.nlp.embedding_handler import EmbeddingHandler
-from src.nlp.llm_handler import LLMHandler
+from src.data_processing.nlp.llm_handler import LLMHandler
 
 def get_roles(df):
     # Split the roles and explode them into separate rows

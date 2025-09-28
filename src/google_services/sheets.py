@@ -13,6 +13,14 @@ from src.logger import logger
 
 load_dotenv()
 
+
+SERVICE_ACCOUNT_JSON_PATH = os.getenv('SERVICE_ACCOUNT_JSON_PATH')
+SHEET_ID = os.getenv('SHEET_ID')
+CANDIDATES_SHEET_NAME = os.getenv('CANDIDATES_SHEET_NAME')
+CANDIDATES_SHEET_ID = os.getenv('CANDIDATES_SHEET_ID')
+VACANCIES_SHEET_NAME = os.getenv('VACANCIES_SHEET_NAME')
+VACANCIES_SHEET_ID = os.getenv('VACANCIES_SHEET_ID')
+
 # Dictionary mapping sheet names to column names and their letter indices
 sheets_columns_dict = {
     'staff': {
@@ -21,9 +29,9 @@ sheets_columns_dict = {
         'LVL of engagement': 'D',
         'Seniority': 'E', 'Role': 'F',
         'LinkedIn': 'G', 'Telegram': 'H', 'Phone': 'I', 'Email': 'J',
-        'Stack': 'K', 'Industry': 'L', 'Expertise': 'M',
+        'Stack': 'K', 'Industries': 'L', 'Expertise': 'M',
         'Belarusian': 'N', 'English': 'O',
-        'Works hrs/mnth': 'P',
+        'Work hrs/mnth': 'P',
         'Location': 'Q',
         'CV (original)': 'R', 'CV White Label': 'S',
         'Folder': 'T',
@@ -39,7 +47,7 @@ sheets_columns_dict = {
         'GitHub': 'AF',
         'Embedding': 'BA',
         'Role_Embedding': 'BB',
-        'Industry_Embedding': 'BC',
+        'Industries_Embedding': 'BC',
     },
 
     'values': {
@@ -47,10 +55,10 @@ sheets_columns_dict = {
         'LVL of engagement Values': 'B',
         'Seniority Values': 'C',
         'Role Values': 'D',
-        'Industry Values': 'E',
+        'Industries Values': 'E',
     },
 
-    'Cash': {
+    'Cash Search': {
         'Date': 'A',
         'vacancy description': 'B',
         'first_answer': 'C',
@@ -58,64 +66,69 @@ sheets_columns_dict = {
     }
 }
 
-def get_column_letters(columns, sheet_name, ignore_missing=False):
+def get_sheet_dict(sheet_name, sheet=None):
     """
-    Returns the column letters for the given column names from a specific sheet.
-
+    Returns a dictionary mapping column names to their letter designations for the specified sheet.
+    If the sheet is not found in the cache, loads the headers from Google Sheets.
     Args:
-        sheet_name (str): Name of the sheet ('staff', 'values', 'cash')
-        columns (str or list): Column name(s) to get letters for
-        ignore_missing (bool): If True, skip missing columns instead of raising error
-
+        sheet_name (str): Sheet name
+        sheet: service.spreadsheets() object (will be initialized if None)
     Returns:
-        str or list: Column letter(s) corresponding to the column name(s)
-
-    Raises:
-        ValueError: If sheet_name doesn't exist or column name not found (when ignore_missing=False)
+        dict: A dictionary mapping column names to their letter designations
     """
-    try:
-        # Check if sheet exists
-        if sheet_name not in sheets_columns_dict:
-            raise ValueError(f"Sheet '{sheet_name}' not found. Available sheets: {list(sheets_columns_dict.keys())}")
+    if sheet_name in sheets_columns_dict:
+        return sheets_columns_dict[sheet_name]
 
-        sheet_dict = sheets_columns_dict[sheet_name]
+    logger.info(f"Лист '{sheet_name}' не найден в кэше, загружаем заголовки из Google Sheets...")
+    if sheet is None:
+        service = initialize_google_sheets_api()
+        sheet = service.spreadsheets()
 
-        if isinstance(columns, str):
-            col = columns
+    range_name = f"{sheet_name}!1:1"
+    response = sheet.values().get(spreadsheetId=SHEET_ID, range=range_name).execute()
+    header_row = response.get('values', [])[0]
+    sheet_dict = {col.strip(): index_to_letter(i) for i, col in enumerate(header_row)}
+    sheets_columns_dict[sheet_name] = sheet_dict
+    return sheet_dict
+
+
+def get_column_letters(columns, sheet_name, ignore_missing=False, sheet=None):
+    """
+    Returns the column abbreviations for the specified column names from the specified sheet.
+    Args:
+        columns (str or list): The name(s) of the columns to retrieve the abbreviations for
+        sheet_name (str): The sheet name
+        ignore_missing (bool): If True, skips missing columns instead of raising an error
+        sheet: The service.spreadsheets() object (will be initialized if None)
+    Returns:
+        str or list: Column abbreviations
+    Raises:
+        ValueError: If the column name is not found (if ignore_missing=False)
+    """
+    sheet_dict = get_sheet_dict(sheet_name, sheet)
+    if isinstance(columns, str):
+        col = columns
+        if col not in sheet_dict:
+            if ignore_missing:
+                return None
+            raise ValueError(
+                f"Колонка '{col}' не найдена на листе '{sheet_name}'. Доступные колонки: {list(sheet_dict.keys())}")
+        return sheet_dict[col]
+    elif isinstance(columns, list):
+        result = []
+        for col in columns:
             if col not in sheet_dict:
                 if ignore_missing:
-                    return None
+                    continue
                 raise ValueError(
-                    f"Column '{col}' not found in sheet '{sheet_name}'. Available columns: {list(sheet_dict.keys())}")
-            return sheet_dict[col]
-
-        elif isinstance(columns, list):
-            result = []
-            for col in columns:
-                if col not in sheet_dict:
-                    if ignore_missing:
-                        continue
-                    raise ValueError(
-                        f"Column '{col}' not found in sheet '{sheet_name}'. Available columns: {list(sheet_dict.keys())}")
-                result.append(sheet_dict[col])
-            return result
-
-        else:
-            raise ValueError("get_column_letters() columns parameter should be a string or a list of strings.")
-
-    except Exception as e:
-        raise e
+                    f"Колонка '{col}' не найдена на листе '{sheet_name}'. Доступные колонки: {list(sheet_dict.keys())}")
+            result.append(sheet_dict[col])
+        return result
+    else:
+        raise ValueError("Параметр columns функции get_column_letters() должен быть строкой или списком строк.")
 
 
 # Authenticate with credentials.json
-
-SERVICE_ACCOUNT_JSON_PATH = os.getenv('SERVICE_ACCOUNT_JSON_PATH')
-SHEET_ID = os.getenv('SHEET_ID')
-CANDIDATES_SHEET_NAME = os.getenv('CANDIDATES_SHEET_NAME')
-CANDIDATES_SHEET_ID = os.getenv('CANDIDATES_SHEET_ID')
-VACANCIES_SHEET_NAME = os.getenv('VACANCIES_SHEET_NAME')
-VACANCIES_SHEET_ID = os.getenv('VACANCIES_SHEET_ID')
-
 def initialize_google_sheets_api():
     """
     Initializes and returns the Google Sheets API service.
@@ -157,23 +170,35 @@ def letter_to_index(col_letter):
         index = index * 26 + (ord(char.upper()) - ord('A')) + 1
     return index - 1
 
-def remove_invisible_chars(text):
-    visible_text = re.sub(r'[\x00-\x09\x0B-\x1F\x7F-\x9F]', '', text)
-    return visible_text
+def index_to_letter(col_index: int) -> str:
+    letters = []
+    while col_index >= 0:
+        letters.append(chr(ord('A') + col_index % 26))
+        col_index = col_index // 26 - 1
+    return ''.join(reversed(letters))
 
-def read_specific_columns(columns_to_extract, sheet_name=CANDIDATES_SHEET_NAME, service=None):
+
+def remove_invisible_chars(text, remove_emonji=False):
+    if remove_emonji:
+        pattern = r'[^\w\s&.,\-()]'
+    else:
+        pattern = r'[\x00-\x09\x0B-\x1F\x7F-\x9F]'
+    visible_text = re.sub(pattern, '', text)
+    return visible_text.strip()
+
+def read_specific_columns(columns_to_extract, sheet_name=CANDIDATES_SHEET_NAME, service=None, remove_emonji=False):
     """
     Fetches specific columns from the Google Sheet, handling hyperlinks.
     Creates missing columns and fills them with empty strings.
     Returns a DataFrame.
     """
-    # Convert column names to letters
-    columns_letters = get_column_letters(columns_to_extract, sheet_name)
 
     # Initialize Google Sheets API if service is not provided
     if service is None:
         service = initialize_google_sheets_api()
     sheet = service.spreadsheets()
+    # Convert column names to letters
+    columns_letters = get_column_letters(columns_to_extract, sheet_name, sheet=sheet)
 
     # Get the full sheet data with includeGridData
     spreadsheet = sheet.get(spreadsheetId=SHEET_ID, ranges=[sheet_name], includeGridData=True).execute()
@@ -185,7 +210,7 @@ def read_specific_columns(columns_to_extract, sheet_name=CANDIDATES_SHEET_NAME, 
 
     # Check if the headers match the expected column names
     for i, column_name in enumerate(columns_to_extract):
-        column_letter = get_column_letters(column_name, sheet_name)
+        column_letter = get_column_letters(column_name, sheet_name, sheet=sheet)
         i = letter_to_index(column_letter)
         if i < len(headers) and headers[i] != column_name:
             logger.error(f"Column name mismatch at column {column_letter}: Expected '{column_name}', found '{headers[i]}'")
@@ -207,7 +232,7 @@ def read_specific_columns(columns_to_extract, sheet_name=CANDIDATES_SHEET_NAME, 
                     # Otherwise, add the cell text
                     cell_text = cell.get('formattedValue', '') if 'formattedValue' in cell else ''
                     cell_text = cell_text.strip()
-                    cell_text = remove_invisible_chars(cell_text)
+                    cell_text = remove_invisible_chars(cell_text, remove_emonji)
                     row_data.append(cell_text)
             else:
                 # If the column index is out of range or None, add an empty value
@@ -224,60 +249,6 @@ def read_specific_columns(columns_to_extract, sheet_name=CANDIDATES_SHEET_NAME, 
     df = df.reset_index(drop=True)
     df['Row in Spreadsheets'] = df.index + 2
     return df
-#
-# def read_specific_columns(columns_to_extract, sheet_name=CANDIDATES_SHEET_NAME, service=None):
-#     """
-#     Fetches specific columns from the Google Sheet, handling hyperlinks.
-#     Creates missing columns and fills them with empty strings.
-#     Returns a DataFrame.
-#     """
-#     # Convert column names to letters
-#     columns_to_extract = get_column_letters(columns_to_extract, sheet_name)
-#
-#     # Initialize Google Sheets API if service is not provided
-#     if service is None:
-#         service = initialize_google_sheets_api()
-#     sheet = service.spreadsheets()
-#
-#     # Get the full sheet data with includeGridData
-#     spreadsheet = sheet.get(spreadsheetId=SHEET_ID, ranges=[sheet_name], includeGridData=True).execute()
-#     sheet_data = spreadsheet['sheets'][0]['data'][0]
-#
-#     # Extract values and hyperlinks for specific columns
-#     data = []
-#     rows = sheet_data.get('rowData', [])
-#     for row in rows:
-#         row_values = row.get('values', [])
-#         row_data = []
-#         for col_letter in columns_to_extract:
-#             col_index = letter_to_index(col_letter)
-#             if col_index is not None and col_index < len(row_values):
-#                 cell = row_values[col_index]
-#                 if 'hyperlink' in cell:
-#                     # If there is a hyperlink, add the URL
-#                     row_data.append(cell['hyperlink'])
-#                 else:
-#                     # Otherwise, add the cell text
-#                     cell_text = cell.get('formattedValue', '') if 'formattedValue' in cell else ''
-#                     cell_text = cell_text.strip()
-#                     cell_text = remove_invisible_chars(cell_text)
-#                     row_data.append(cell_text)
-#
-#             else:
-#                 # If the column index is out of range or None, add an empty value
-#                 row_data.append('')
-#
-#         # Check if the row contains only empty strings
-#         if not all(value == '' for value in row_data):
-#             data.append(row_data)
-#         else:
-#             break  # Exit the loop if the row is completely empty
-#
-#     # Create DataFrame with specific columns
-#     df = pd.DataFrame(data[1:], columns=data[0])
-#     df = df.reset_index(drop=True)
-#     df['Row in Spreadsheets'] = df.index + 2
-#     return df
 
 def write_specific_columns(
     df,
@@ -305,7 +276,7 @@ def write_specific_columns(
 
     # Update each column
     for column_name in df.columns:
-        column_letter = get_column_letters(column_name)
+        column_letter = get_column_letters(column_name, sheet_name, sheet=sheet)
         if column_letter is None:
             raise ValueError(f"Column name '{column_name}' is invalid or not mapped in column_dict.")
 
@@ -335,7 +306,7 @@ def write_specific_columns(
         requests = []
         for row in rows_to_highlight:
             for column_name in df.columns:
-                column_letter = get_column_letters(column_name)
+                column_letter = get_column_letters(column_name, sheet_name, sheet=sheet)
                 cell_range = f"{sheet_name}!{column_letter}{row + 2}"  # +2 because data starts at row 2
                 requests.append({
                     "repeatCell": {
@@ -362,6 +333,35 @@ def write_specific_columns(
             body=body
         ).execute()
 
+def get_sheet_id(sheet_name, sheet=None):
+    """
+    Returns the sheetId for a given sheet name in the spreadsheet.
+    Args:
+        sheet_name (str): Name of the sheet
+        sheet: Google Sheets API spreadsheets() object (will be initialized if None)
+    Returns:
+        int: sheetId
+    Raises:
+        ValueError: If sheet_name not found in the spreadsheet
+    """
+    try:
+        if sheet is None:
+            service = initialize_google_sheets_api()
+            sheet = service.spreadsheets()
+        spreadsheet_metadata = sheet.get(
+            spreadsheetId=SHEET_ID,
+            fields="sheets(properties(sheetId,title))"
+        ).execute()
+        sheets = spreadsheet_metadata.get('sheets', [])
+        target_sheet = next((s for s in sheets if s['properties']['title'] == sheet_name), None)
+        if not target_sheet:
+            raise ValueError(f"Sheet '{sheet_name}' not found in the spreadsheet.")
+        return target_sheet['properties']['sheetId']
+    except Exception as e:
+        logger.error(f"Error getting sheetId for '{sheet_name}': {str(e)}")
+        raise e
+
+
 def write_dict_to_sheet(data_dict, sheet_name, service=None, row_number=None):
     """
     Writes dictionary data to a Google Sheet row, matching keys to column names.
@@ -382,30 +382,25 @@ def write_dict_to_sheet(data_dict, sheet_name, service=None, row_number=None):
         # Initialize Google Sheets API if service is not provided
         if service is None:
             service = initialize_google_sheets_api()
-
-        # Check if sheet exists
-        if sheet_name not in sheets_columns_dict:
-            raise ValueError(f"Sheet '{sheet_name}' not found. Available sheets: {list(sheets_columns_dict.keys())}")
-
         sheet = service.spreadsheets()
 
-        # Get sheet columns dictionary
-        sheet_dict = sheets_columns_dict[sheet_name]
+        # Get the sheet columns dictionary
+        sheet_dict = get_sheet_dict(sheet_name, sheet)
 
         # Filter data_dict to only include keys that exist as columns
         filtered_data = {key: value for key, value in data_dict.items() if key in sheet_dict}
-
         if not filtered_data:
             logger.warning(f"No matching columns found for provided data keys: {list(data_dict.keys())}")
             return None
 
+        gid = get_sheet_id(sheet_name, sheet)
         # If no row_number specified, insert new row at position 2
         if row_number is None:
             # Insert a new row at position 2 (after headers)
             insert_request = {
                 'insertDimension': {
                     'range': {
-                        'sheetId': globals().get(f'{sheet_name.upper()}_SHEET_ID') or 0,  # fallback to 0 if not found
+                        'sheetId': gid,
                         'dimension': 'ROWS',
                         'startIndex': 1,  # Insert after row 1 (headers)
                         'endIndex': 2

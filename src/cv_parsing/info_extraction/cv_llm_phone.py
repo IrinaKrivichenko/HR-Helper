@@ -1,13 +1,17 @@
+import json
+import time
 from typing import Dict, Any, List
 from pydantic import BaseModel, Field, validator
 import re
-
 from src.cv_parsing.info_extraction.context_by_patterns import extract_context_by_patterns
+from src.cv_parsing.info_extraction.prepare_cv_sections import get_section_for_field
+from src.logger import logger  # Added logger import
 
 
 class PhoneExtraction(BaseModel):
     reasoning_steps: List[str] = Field(description="Step-by-step reasoning for phone extraction")
-    phone_numbers: List[str] = Field(default=[], description="Extracted phone numbers in international format (+<country_code><number>)")
+    phone_numbers: List[str] = Field(default=[],
+                                     description="Extracted phone numbers in international format (+<country_code><number>)")
     confidence: str = Field(description="Confidence in extraction (high/medium/low)")
 
     @validator("phone_numbers", each_item=True)
@@ -25,16 +29,17 @@ class PhoneExtraction(BaseModel):
         # (You can add logic to determine the country code from context here)
         return f"+{digits}"
 
+
 def extract_cv_phone(
-    cv_text: str,
-    llm_handler: Any,
-    model: str = "gpt-4.1-nano",
-    add_tokens_info: bool = False
+        cv_sections: Dict,
+        llm_handler: Any,
+        model: str = "gpt-4.1-nano"
 ) -> Dict[str, Any]:
     """
     Extracts phone numbers from CV text using LLM.
     Returns a dictionary with extracted phones and metadata.
     """
+    start_time = time.time()
     # Patterns for searching potential phones
     phone_patterns = [
         r'\+\d{1,3}[\(\s\-\.]?[\d\s\-\.\(\)]{5,15}\d',  # International numbers
@@ -43,8 +48,10 @@ def extract_cv_phone(
         r'\d{5,15}',  # Local numbers
     ]
 
-    # Extracting context with potential phones
+    # Extract context with potential phones
+    cv_text = get_section_for_field(cv_sections, "Phone")
     phone_context = extract_context_by_patterns(cv_text, phone_patterns)
+
     prompt = [
         {
             "role": "system",
@@ -71,6 +78,8 @@ def extract_cv_phone(
             )
         }
     ]
+
+    # Send request to LLM
     try:
         response = llm_handler.get_answer(
             prompt,
@@ -78,36 +87,44 @@ def extract_cv_phone(
             max_tokens=1000,
             response_format=PhoneExtraction
         )
-        extraction = response['parsed']
-        cost = response['cost']['total_cost']
 
-        result = {
+        extraction = response['parsed']
+        usage = response['usage']
+        cost_info = response['cost']
+
+        # Build result dictionary
+        result: Dict[str, Any] = {
             "Phone": ', '.join(extraction.phone_numbers) if extraction.phone_numbers else "",
+            "Reasoning about Phone": "\n".join(f"• {step}" for step in extraction.reasoning_steps),
+            "Model of_Phone_CV_extraction": model,
+            "Completion Tokens of_Phone_CV_extraction": str(usage.completion_tokens),
+            "Prompt Tokens _of_Phone_CV_extraction": str(usage.prompt_tokens),
+            "Cost_of_Phone_CV_extraction": cost_info['total_cost'],
+            "Confidence_Phone": extraction.confidence,
+            "Time" : time.time()-start_time,
         }
 
-        if add_tokens_info:
-            result.update({
-                "Reasoning about Phone": "\n".join(extraction.reasoning_steps),
-                "Model Used": model,
-                "Cost": f"${cost:.6f}",
-                "Confidence": extraction.confidence,
-            })
-        else:
-            result["Cost_of_Phone_CV_extraction"] = cost
+        # Log the complete response in a single entry
+        logger.info(f"Field extraction completed - Field: 'Phone' | Response: {json.dumps(result, ensure_ascii=False)}")
 
         return result
+
     except Exception as e:
-        print(f"Phone extraction failed: {e}")
-        if add_tokens_info:
-            return {
-                "Phone": "",
-                "Reasoning about Phone": f"Extraction failed: {e}",
-                "Model Used": model,
-                "Cost": "$0.000000",
-                "Confidence": "low",
-            }
-        else:
-            return {
-                "Phone": "",
-                "Cost_of_Phone_CV_extraction": 0.0,
-            }
+        logger.error(f"Phone extraction failed: {e}")
+
+        # Build error result dictionary
+        result: Dict[str, Any] = {
+            "Phone": "",
+            "Reasoning about Phone": f"Extraction failed: {e}",
+            "Model of_Phone_CV_extraction": model,
+            "Completion Tokens of_Phone_CV_extraction": "0",
+            "Prompt Tokens _of_Phone_CV_extraction": "0",
+            "Cost_of_Phone_CV_extraction": 0.0,
+            "Confidence_Phone": "low",
+            "Time" : time.time()-start_time,
+        }
+
+        # Log the error response
+        logger.info(f"Field extraction completed - Field: 'Phone' | Response: {json.dumps(result, ensure_ascii=False)}")
+
+        return result

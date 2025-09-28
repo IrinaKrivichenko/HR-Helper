@@ -1,6 +1,5 @@
 from src.google_services.sheets import read_specific_columns
-from src.logger import logger
-from src.nlp.llm_handler import LLMHandler, parse_token_usage_and_cost
+from src.data_processing.nlp.llm_handler import LLMHandler, parse_token_usage_and_cost
 
 import re
 import math
@@ -76,9 +75,9 @@ def parse_llm_vacancy_details_response(response: str, add_tokens_info: bool) -> 
             elif section_name == 'Extracted Seniority':
                 extracted_data['Extracted Seniority'] = section_content
 
-            # Extract industry if present
-            elif section_name == 'Extracted Industry':
-                extracted_data['Extracted Industry'] = section_content
+            # Extract industries if present
+            elif section_name == 'Extracted Industries':
+                extracted_data['Extracted Industries'] = section_content
 
             # Extract expertise if present
             elif section_name == 'Extracted Expertise':
@@ -139,7 +138,7 @@ def extract_vacancy_details(vacancy: str, llm_handler: LLMHandler, model, add_to
             "content": (
                 "Your task is to process the provided job description and extract the following information:\n\n"
                 "1. Reasoning: Provide a brief reasoning on how you extracted the information from the job description. "
-                f"Explain how you inferred the programming languages, technologies, seniority level, role, English level, industry, expertise and rate. "
+                f"Explain how you inferred the programming languages, technologies, seniority level, role, English level, industries, expertise and rate. "
                 f"If specific libraries or frameworks are mentioned, deduce the programming languages from them.\n"
                 "2. Extract the key programming languages mentioned in the job description and list them each on a new line. "
                 f"If no programming languages are explicitly mentioned, infer them from the technologies or libraries listed. "
@@ -157,7 +156,7 @@ def extract_vacancy_details(vacancy: str, llm_handler: LLMHandler, model, add_to
                 f"Extract the role directly from the job description. If no role is specified, return 'No role is specified'.\n"
                 "6. Identify the required level of English mentioned in the job description. The English level should be formatted as 'A1', 'B1', 'C1', etc. "
                 f"Consider 'Fluent' as 'B2'. If a range is provided, such as 'B2-C1', return it as a range. If no English level is specified, return 'No English level is specified'.\n"
-                "7. Identify the industry mentioned in the job description. If no industry is specified or the industry is not in the list, return 'No industry is specified'.\n"
+                "7. Identify the industries mentioned in the job description. If no industries is specified or the industry is not in the list, return 'No industry is specified'.\n"
                 "8. Identify the expertise required in the job description. If no expertise is specified, return 'No expertise is specified'.\n"
                 "9. Identify the rate or salary mentioned in the job description. The rate should be formatted as a number followed by a currency symbol and the period, for example, '10000$ per month'. "
                 f"If a range is provided, such as '25-28$ per hour', return it as a range with the period. If phrases like 'up to' are used, extract the numerical value and assume it is per month unless otherwise specified. "
@@ -173,7 +172,7 @@ def extract_vacancy_details(vacancy: str, llm_handler: LLMHandler, model, add_to
                 "## Extracted Seniority: The seniority level extracted by the language model from the vacancy description. Seniority level should be one of the following: 'Any', 'Junior', 'Middle', 'Senior', 'Principal'.\n"
                 "## Extracted Role: The role corresponding to the vacancy description extracted directly from the job description.\n"
                 "## Extracted English Level: The level of English extracted by the language model from the vacancy description.\n"
-                "## Extracted Industry: The industry extracted by the language model from the vacancy description.\n"
+                "## Extracted Industries: The industries extracted by the language model from the vacancy description.\n"
                 "## Extracted Expertise: The expertise extracted by the language model from the vacancy description.\n"
                 "## Extracted Rate: The rate extracted by the language model from the vacancy description.\n"
                 "## Reasoning about Roles: The reasoning on which roles from the list of existing roles could be suitable for this job description.\n"
@@ -197,8 +196,8 @@ def extract_vacancy_details(vacancy: str, llm_handler: LLMHandler, model, add_to
                 "## Extracted Seniority: Senior\n"
                 "## Extracted Role: ML Engineer\n"
                 "## Extracted English Level: C1\n"
-                "## Extracted Industry: No industry is specified\n"
-                "## Extracted Expertise: No expertise is specified\n"
+                "## Extracted Industries:\n No industry is specified\n"
+                "## Extracted Expertise:\n No expertise is specified\n"
                 "## Extracted Rate: 8000-10000$ per month\n"
                 "## Reasoning about Roles: The role of \"ML Engineer\" requires a strong background in machine learning, as evidenced by the need for experience with libraries such as PyTorch, TensorFlow, and Pandas, which are commonly used in machine learning and data analysis tasks, supports this match. Additionally, the role involves working on projects related to Computer Vision (CV) and Natural Language Processing (NLP). AI Engineer: This role is a good match because AI Engineers often work on similar technologies and projects involving machine learning and artificial intelligence. They typically have experience with the same libraries and frameworks mentioned in the job description. Data Scientist: Data Scientists also work extensively with machine learning models and data analysis, making this role a suitable match. They often use similar tools and techniques to extract insights and build predictive models. DL Engineer: Deep Learning Engineers specialize in developing and implementing deep learning models, which aligns well with the requirements of this job description. Their expertise in deep learning frameworks like PyTorch and TensorFlow is particularly relevant. ML Researcher: ML Researchers focus on advancing the field of machine learning through research and development. Their deep understanding of machine learning algorithms and techniques makes them a good fit for this role. CV Engineer: Given the mention of Computer Vision in the job description, a CV Engineer, who specializes in this area, is a relevant match. NLP Engineer: Similarly, the mention of Natural Language Processing tasks makes an NLP Engineer a suitable match for this role.\n"
                 "## Matched Roles:\n"

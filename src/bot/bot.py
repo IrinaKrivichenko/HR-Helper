@@ -5,7 +5,7 @@ from src.cv_parsing.save_cv import save_cv_info
 from src.google_services.drive import extract_text_from_google_file, extract_text_from_docx, extract_text_from_pdf
 from src.google_services.drive_authorization import start_google_drive_auth, handle_oauth_callback
 from src.logger import logger
-from src.nlp.llm_handler import LLMHandler
+from src.data_processing.nlp.llm_handler import LLMHandler
 from src.bot.authorization import auth_manager
 
 from dotenv import load_dotenv
@@ -17,7 +17,6 @@ from telegram.ext import filters, MessageHandler, ApplicationBuilder, ContextTyp
 
 import os
 import traceback
-import logging
 
 
 async def process_cv():
@@ -48,7 +47,6 @@ async def extract_text_from_document(document):
     except Exception as e:
         logger.error(f"Error processing file {document.file_name}: {str(e)}\n{traceback.format_exc()}")
         raise  # Pass the exception to `process_user_request`
-
 
 
 async def process_user_request(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

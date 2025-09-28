@@ -6,7 +6,7 @@ import pandas as pd
 from src.data_processing.jaccard_similarity import calculate_jaccard_similarity, find_most_similar_row
 from src.data_processing.json_conversion import df_to_json
 from src.logger import logger
-from src.nlp.llm_handler import LLMHandler, extract_and_parse_token_section
+from src.data_processing.nlp.llm_handler import LLMHandler, extract_and_parse_token_section
 
 
 def check_value(dictionary , key):
@@ -78,7 +78,7 @@ def process_candidates_with_llm(
     prog_lang = format_vacancy_parameter_string(vacancy_info, 'Programming Languages')
     technologies = format_vacancy_parameter_string(vacancy_info, 'Technologies')
     role = format_vacancy_parameter_string(vacancy_info, 'Role')
-    industry = format_vacancy_parameter_string(vacancy_info, 'Industry')
+    industries = format_vacancy_parameter_string(vacancy_info, 'Industries')
     expertise = format_vacancy_parameter_string(vacancy_info, 'Expertise')
     location = format_vacancy_parameter_string(vacancy_info, 'Location')
     rate = format_vacancy_parameter_string(vacancy_info, 'Rate')
@@ -96,7 +96,7 @@ def process_candidates_with_llm(
             # Convert the filtered DataFrame to JSON format
             columns_to_json = [
                 'Full Name', 'Seniority', 'Role',
-                'Stack', 'Industry', 'Expertise', 'Works hrs/mnth',
+                'Stack', 'Industries', 'Expertise', 'Work hrs/mnth',
                 'English', 'Location', 'Sell rate', 'Row in Spreadsheets'
             ]
             logger.info(filtered_df.columns)
@@ -128,7 +128,7 @@ def process_candidates_with_llm(
                     f"      \"Seniority\": \"Senior\",\n"
                     f"      \"Role\": \"Machine Learning Engineer\",\n"
                     f"      \"Stack\": \"Deep Learning, Computer Vision, Python\",\n"
-                    f"      \"Industry\": \"medicine\",\n"
+                    f"      \"Industries\": \"medicine\",\n"
                     f"      \"Expertise\": \"Healthcare\",\n"
                     f"      \"English\": \"C1\",\n"
                     f"      \"Location\": \"Poland\",\n"
@@ -140,7 +140,7 @@ def process_candidates_with_llm(
                     f"      \"Seniority\": \"Senior\",\n"
                     f"      \"Role\": \"AI Engineer\",\n"
                     f"      \"Stack\": \"Computer Vision, Python\",\n"
-                    f"      \"Industry\": \"medicine\",\n"
+                    f"      \"Industries\": \"medicine\",\n"
                     f"      \"Expertise\": \"Healthcare\",\n"
                     f"      \"English\": \"C1\",\n"
                     f"      \"Location\": \"Belarus\",\n"
@@ -152,7 +152,7 @@ def process_candidates_with_llm(
                     f"      \"Seniority\": \"Middle\",\n"
                     f"      \"Role\": \"Data Scientist\",\n"
                     f"      \"Stack\": \"Deep Learning, NLP, Python\",\n"
-                    f"      \"Industry\": \"Finance\",\n"
+                    f"      \"Industries\": \"Finance\",\n"
                     f"      \"Expertise\": \"Data Analysis\",\n"
                     f"      \"English\": \"B2\",\n"
                     f"      \"Location\": \"Serbia\",\n"
@@ -181,7 +181,7 @@ def process_candidates_with_llm(
                     f"{prog_lang}"
                     f"{technologies}"
                     f"{role}"
-                    f"{industry}"
+                    f"{industries}"
                     f"{expertise}"
                     f"{location}"
                     f"{rate}"

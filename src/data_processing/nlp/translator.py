@@ -1,8 +1,8 @@
 from typing import Dict
-from langdetect import detect, LangDetectException, DetectorFactory
+from langdetect import detect, LangDetectException
 from langcodes import Language
 
-from src.nlp.llm_handler import LLMHandler, extract_and_parse_token_section
+from src.data_processing.nlp.llm_handler import LLMHandler, extract_and_parse_token_section
 
 
 def parse_llm_translate_text_response(response: str) -> Dict[str, str]:

@@ -1,7 +1,10 @@
+import json
+import time
 from typing import Dict, Any, Optional, List
 from pydantic import BaseModel, Field
-
 from src.cv_parsing.info_extraction.context_by_patterns import extract_context_by_patterns
+from src.cv_parsing.info_extraction.prepare_cv_sections import get_section_for_field
+from src.logger import logger  # Added logger import
 
 
 class EmailExtraction(BaseModel):
@@ -9,22 +12,24 @@ class EmailExtraction(BaseModel):
     emails: List[str] = Field(default=[], description="Extracted email addresses")
     confidence: str = Field(description="Confidence in extraction (high/medium/low)")
 
+
 def extract_cv_email(
-    cv_text: str,
-    llm_handler: Any,
-    model: str = "gpt-4.1-nano",
-    add_tokens_info: bool = False
+        cv_sections: Dict,
+        llm_handler: Any,
+        model: str = "gpt-4.1-nano"
 ) -> Dict[str, Any]:
     """
     Extracts email addresses from CV text using LLM.
     Returns a dictionary with extracted emails and metadata.
     """
+    start_time = time.time()
     # Patterns for searching email addresses
     email_patterns = [
         r'\b[\w.-]+@[\w.-]+\.\w+\b',  # Standard pattern for email
     ]
 
     # Extract context with potential email addresses
+    cv_text = get_section_for_field(cv_sections, "Email")
     email_context = extract_context_by_patterns(cv_text, email_patterns)
 
     prompt = [
@@ -49,6 +54,7 @@ def extract_cv_email(
         }
     ]
 
+    # Send request to LLM
     try:
         response = llm_handler.get_answer(
             prompt,
@@ -56,36 +62,44 @@ def extract_cv_email(
             max_tokens=400,
             response_format=EmailExtraction
         )
-        extraction = response['parsed']
-        cost = response['cost']['total_cost']
 
-        result = {
+        extraction = response['parsed']
+        usage = response['usage']
+        cost_info = response['cost']
+
+        # Build result dictionary
+        result: Dict[str, Any] = {
             "Email": ', '.join(extraction.emails) if extraction.emails else "",
+            "Reasoning about Email": "\n".join(f"• {step}" for step in extraction.reasoning_steps),
+            "Model of_Email_CV_extraction": model,
+            "Completion Tokens of_Email_CV_extraction": str(usage.completion_tokens),
+            "Prompt Tokens _of_Email_CV_extraction": str(usage.prompt_tokens),
+            "Cost_of_Email_CV_extraction": cost_info['total_cost'],
+            "Confidence_Email": extraction.confidence,
+            "Time" : time.time()-start_time
         }
 
-        if add_tokens_info:
-            result.update({
-                "Reasoning about Email": "\n".join(extraction.reasoning_steps),
-                "Model Used": model,
-                "Cost": f"${cost:.6f}",
-                "Confidence": extraction.confidence,
-            })
-        else:
-            result["Cost_of_Email_CV_extraction"] = cost
+        # Log the complete response in a single entry
+        logger.info(f"Field extraction completed - Field: 'Email' | Response: {json.dumps(result, ensure_ascii=False)}")
 
         return result
+
     except Exception as e:
-        print(f"Email extraction failed: {e}")
-        if add_tokens_info:
-            return {
-                "Email": "",
-                "Reasoning about Email": f"Extraction failed: {e}",
-                "Model Used": model,
-                "Cost": "$0.000000",
-                "Confidence": "low",
-            }
-        else:
-            return {
-                "Email": "",
-                "Cost_of_Email_CV_extraction": 0.0,
-            }
+        logger.error(f"Email extraction failed: {e}")
+
+        # Build error result dictionary
+        result: Dict[str, Any] = {
+            "Email": "",
+            "Reasoning about Email": f"Extraction failed: {e}",
+            "Model of_Email_CV_extraction": model,
+            "Completion Tokens of_Email_CV_extraction": "0",
+            "Prompt Tokens _of_Email_CV_extraction": "0",
+            "Cost_of_Email_CV_extraction": 0.0,
+            "Confidence_Email": "low",
+
+        }
+
+        # Log the error response
+        logger.info(f"Field extraction completed - Field: 'Email' | Response: {json.dumps(result, ensure_ascii=False)}")
+
+        return result

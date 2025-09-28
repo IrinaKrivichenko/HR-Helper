@@ -1,8 +1,8 @@
 from src.google_services.sheets import read_specific_columns
-from src.nlp.llm_handler import parse_token_usage_and_cost, LLMHandler
+from src.data_processing.nlp.llm_handler import parse_token_usage_and_cost, LLMHandler
 
 
-def parse_llm_vacancy_industry_response(response: str, add_tokens_info: bool) -> dict:
+def parse_llm_vacancy_industries_response(response: str, add_tokens_info: bool) -> dict:
     # Initialize a dictionary to store extracted data
     extracted_data = {}
 
@@ -17,17 +17,17 @@ def parse_llm_vacancy_industry_response(response: str, add_tokens_info: bool) ->
             section_name = section_name.strip()
             section_content = section_content.strip()
 
-            # Extract industry if present
-            if section_name == 'Extracted Industry':
-                    # Store industry
-                    # extracted_data['Extracted Industry'] = section_content
+            # Extract industries if present
+            if section_name == 'Extracted Industries':
+                    # Store industries
+                    # extracted_data['Extracted Industries'] = section_content
                     industries = [
                         role.strip('- ').replace('-', '').strip()
                         for role in section_content.split('\n')
                         if role.strip() and not role.strip('- ').strip().startswith('NEW')
                     ]
                     # Join the matched roles with newlines and store them, or use an empty string if none are specified
-                    extracted_data['Extracted Industry'] = '\n'.join(industries) if industries else ''
+                    extracted_data['Extracted Industries'] = '\n'.join(industries) if industries else ''
 
             # Extract reasoning if present
             elif section_name == 'Reasoning':
@@ -37,7 +37,7 @@ def parse_llm_vacancy_industry_response(response: str, add_tokens_info: bool) ->
             # Parse token usage and cost information
             elif section_name == 'Token Usage and Cost':
                 print("add_tokens_info", add_tokens_info)
-                token_data = parse_token_usage_and_cost(section_content, additional_key_text=" vacancy_industry", add_tokens_info=add_tokens_info)
+                token_data = parse_token_usage_and_cost(section_content, additional_key_text=" vacancy_industries", add_tokens_info=add_tokens_info)
                 extracted_data.update(token_data)
 
     return extracted_data
@@ -45,8 +45,8 @@ def parse_llm_vacancy_industry_response(response: str, add_tokens_info: bool) ->
 
 
 
-def extract_vacancy_industry(vacancy: str, llm_handler: LLMHandler, model="gpt-4.1-nano", add_tokens_info: bool = False):
-    industries_list = list(read_specific_columns(['Industry Values'], 'values')['Industry Values'])
+def extract_vacancy_industries(vacancy: str, llm_handler: LLMHandler, model="gpt-4.1-nano", add_tokens_info: bool = False):
+    industries_list = list(read_specific_columns(['Industries Values'], 'values')['Industries Values'])
     industries = {'", "'.join(industries_list)}
     industries = f'"{industries}"'
 
@@ -61,9 +61,9 @@ def extract_vacancy_industry(vacancy: str, llm_handler: LLMHandler, model="gpt-4
             "content": (
                 "Your task is to process the provided job description and extract the following information:\n\n"
                 "1. **Reasoning**: Provide a brief explanation of how you extracted the information from the job description. "
-                "Explain how you inferred the industries. If the job description does not explicitly mention a specific industry from the list, "
-                "then conclude that no industry is specified.\n"
-                "2. **Industry Identification**: Identify all possible industries mentioned in the job description. Select the industries only from the following list: "
+                "Explain how you inferred the industries. If the job description does not explicitly mention a specific industries from the list, "
+                "then conclude that no industries is specified.\n"
+                "2. **Industries Identification**: Identify all possible industries mentioned in the job description. Select the industries only from the following list: "
                 f"{industries}. \n\n"
                 "When identifying industries:"
                 "1. Pay attention to explicit mentions of industries in the job description."
@@ -72,14 +72,14 @@ def extract_vacancy_industry(vacancy: str, llm_handler: LLMHandler, model="gpt-4
 
                 "Format the output in Markdown with the following sections:\n"
                 "## Reasoning: The reasoning on how the information was extracted.\n"
-                "## Extracted Industry: The industry extracted by the language model from the vacancy description.\n"
+                "## Extracted Industries: The industries extracted by the language model from the vacancy description.\n"
                 "\n"
                 "Here are some examples:\n\n"
                 "# Example 1:\n"
                 "We are seeking an experienced Web Developer to join our dynamic team, supporting the creation and deployment of a cutting-edge website for our expanding network of eateries across 30+ divisions in the EU. Your primary focus will be on designing and implementing a user-friendly and efficient online platform that enhances our production and delivery services. You will work closely with our cross-functional teams to ensure high-quality digital solutions that meet the needs of our diverse customer base. Salary - up to 5000$ gross.\n"
                 "\n"
                 "## Reasoning: The industries related to this project are Retail, Logistics, Manufacturing, and E-commerce.\n"
-                "## Extracted Industry: \n"
+                "## Extracted Industries: \n"
                 "  - Retail\n"
                 "  - Logistics\n"
                 "  - Manufacturing\n"
@@ -89,21 +89,21 @@ def extract_vacancy_industry(vacancy: str, llm_handler: LLMHandler, model="gpt-4
                 "We are looking for a Senior Front-End Developer to join our team. Candidates must not be located in Russia, Ukraine, or Belarus due to current operational constraints.\n"
                 "\n"
                 "## Reasoning: The job description does not mention any specific industry, so no industry is identified.\n"
-                "## Extracted Industry:\n"
+                "## Extracted Industries:\n"
                 "  - No industry is specified\n"
                 "\n"
                 "# Example 3:\n"
                 "Location: Remote (within Europe). We are seeking a skilled Data Analyst to join our retail team. The role involves analyzing data trends and providing insights to support business decisions across our European markets.\n"
                 "\n"
                 "## Reasoning: The mention of joining a 'retail team' suggests the industry is Retail.\n"
-                "## Extracted Industry: \n"
+                "## Extracted Industries:\n"
                 "  - Retail\n"
                 "\n"
                 "# Example 4:\n"
                 "We are seeking a skilled Cloud Engineer with experience in cloud infrastructure, cloud-native software engineering, security, and open-source contributions. Technologies include Kubernetes, Docker, and cloud hyperscalers (AWS, Azure, GCP).\n\n"
                 "## Reasoning:\n"
                 "The job description focuses on technologies and skills related to cloud infrastructure without explicitly mentioning a specific industry from the list.\n"
-                "## Extracted Industry:\n"
+                "## Extracted Industries:\n"
                 "  - No industry is specified\n"
                 "\n"
                 "# Example 5:\n"
@@ -142,7 +142,7 @@ def extract_vacancy_industry(vacancy: str, llm_handler: LLMHandler, model="gpt-4
                 "We are seeking a team to transform how organizational knowledge is captured, structured, and delivered using AI/ML and Generative AI technologies. Key objectives include automating processes (classification, summarization, and knowledge extraction), building and testing AI/ML prototypes, and developing scalable solutions that enhance consultant productivity. There is a strong emphasis on driving adoption of new formats of knowledge capture beyond traditional document-based approaches."
                 "## Reasoning:"
                 "The job description focuses on transforming organizational knowledge and enhancing consultant productivity, which are key aspects of management and organizational optimization. The emphasis on automating processes and improving knowledge capture aligns with the goals of the Management industry. No other industries from the provided list are explicitly mentioned or strongly implied."
-                "## Extracted Industry:"
+                "## Extracted Industries:\n"
                 "  - Management\n"
                 "# Example 10:"
                 "BioCatch is the leader in Behavioral Biometrics, a technology that leverages machine learning to analyze an online user’s physical and cognitive digital behavior to protect individuals online."
@@ -167,7 +167,7 @@ def extract_vacancy_industry(vacancy: str, llm_handler: LLMHandler, model="gpt-4
     response = llm_handler.get_answer(prompt, model=model, max_tokens=max_tokens)
 
     # Parse the response from the LLM
-    extracted_data = parse_llm_vacancy_industry_response(response, add_tokens_info=add_tokens_info)
+    extracted_data = parse_llm_vacancy_industries_response(response, add_tokens_info=add_tokens_info)
 
     return extracted_data
 

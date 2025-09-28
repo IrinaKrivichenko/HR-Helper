@@ -1,6 +1,6 @@
 import re
 
-from src.nlp.llm_handler import extract_and_parse_token_section
+from src.data_processing.nlp.llm_handler import extract_and_parse_token_section
 
 
 def split_vacancies(text, llm_handler, model="gpt-4o-mini"):

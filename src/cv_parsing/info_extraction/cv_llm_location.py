@@ -1,14 +1,20 @@
+import json
+import time
 import traceback
-from typing import List, Optional, Literal
+from typing import List, Optional, Literal, Dict
 from pydantic import BaseModel, Field, validator
 
-from src.nlp.llm_handler import LLMHandler
+from src.cv_parsing.info_extraction.prepare_cv_sections import get_section_for_field
+from src.data_processing.nlp.llm_handler import LLMHandler
+from src.logger import logger  # Added logger import
+
 
 class LocationExtraction(BaseModel):
     reasoning_steps: List[str] = Field(description="Step-by-step analysis for location extraction")
     locations: List[str] = Field(default=[], description="Locations, cities, countries mentioned in resume")
     detected_country: Optional[str] = Field(default=None, description="Primary country detected from resume context")
-    current_candidate_country: Optional[str] = Field(default=None, description="Final candidate country with emoji flag, no space")
+    current_candidate_country: Optional[str] = Field(default=None,
+                                                     description="Final candidate country with emoji flag, no space")
     confidence: Literal["high", "medium", "low"] = Field(description="Confidence in extraction")
 
     @validator("current_candidate_country", pre=True, always=True)
@@ -17,17 +23,23 @@ class LocationExtraction(BaseModel):
             return None
         # Remove the space between the flag and the country name (if there is one)
         if (len(value) >= 3 and
-            all(0x1F1E6 <= ord(c) <= 0x1F1FF for c in value[:2]) and
-            value[2] == " "):
+                all(0x1F1E6 <= ord(c) <= 0x1F1FF for c in value[:2]) and
+                value[2] == " "):
             value = value[:2] + value[3:]
         return value
 
 
-def extract_cv_location(cv: str, llm_handler: LLMHandler, model="gpt-4.1-nano", add_tokens_info: bool = False) -> dict:
+def extract_cv_location(
+        cv_sections: Dict,
+        llm_handler: LLMHandler,
+        model: str = "gpt-4.1-nano"
+) -> dict:
     """
     Extract Location via SGR, focusing on country detection with emoji flags.
     Returns: result dictionary
     """
+    start_time = time.time()
+    cv = get_section_for_field(cv_sections, "Location")
     prompt = [
         {
             "role": "system",
@@ -61,30 +73,62 @@ def extract_cv_location(cv: str, llm_handler: LLMHandler, model="gpt-4.1-nano", 
 
     try:
         response = llm_handler.get_answer(
-            prompt, model=model, max_tokens=400,
+            prompt,
+            model=model,
+            max_tokens=400,
             response_format=LocationExtraction
         )
+
         extraction = response['parsed']
-        cost = response['cost']['total_cost']
+        usage = response['usage']
+        cost_info = response['cost']
 
+        # Format main location field
+        location_value = extraction.current_candidate_country if extraction.current_candidate_country else ""
+        # Replace Belarus flag if needed
+        if "🇧🇾" in location_value:
+            location_value = location_value.replace("🇧🇾", "🏰", 1)
+
+        # Build result dictionary with all fields
         result = {
-            "Location": extraction.current_candidate_country if extraction.current_candidate_country else "",
+            "Location": location_value,
+            "Reasoning about Location": "\n".join(f"• {step}" for step in extraction.reasoning_steps),
+            "Detected Countries": ", ".join(extraction.locations) if extraction.locations else "",
+            "Model of_Location_CV_extraction": model,
+            "Completion Tokens of_Location_CV_extraction": str(usage.completion_tokens),
+            "Prompt Tokens _of_Location_CV_extraction": str(usage.prompt_tokens),
+            "Cost_of_Location_CV_extraction": cost_info['total_cost'],
+            "Confidence_Location": extraction.confidence,
+            "Time" : time.time()-start_time,
         }
-        if "🇧🇾" in result["Location"]:
-            result["Location"] = result["Location"].replace("🇧🇾", "🏰", 1)
 
-        if add_tokens_info:
-            result.update({
-                "Reasoning about Location": "\n".join(extraction.reasoning_steps),
-                "Detected Countries": extraction.locations,
-                "Model Used": model,
-                "Cost": f"${cost:.6f}",
-            })
-        else:
-            result["Cost_of_Location_CV_extraction"] = cost
+        # Log the complete response in a single entry
+        logger.info(
+            f"Field extraction completed - Field: 'Location' | Response: {json.dumps(result, ensure_ascii=False)}")
 
         return result
+
     except Exception as e:
-        print(f"Location SGR extraction failed: {e}")
-        print(f"Traceback: {traceback.format_exc()}")
-        return {"Location": "", "Cost_of_Location_CV_extraction": 0.0}
+        logger.error(f"Location SGR extraction failed: {e}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+
+        # Build error result dictionary
+        result = {
+            "Location": "",
+            "Reasoning about Location": f"Extraction failed: {e}",
+            "Detected Countries": "",
+            "Model of_Location_CV_extraction": model,
+            "Completion Tokens of_Location_CV_extraction": "0",
+            "Prompt Tokens _of_Location_CV_extraction": "0",
+            "Cost_of_Location_CV_extraction": 0.0,
+            "Confidence_Location": "low",
+            "Time" : time.time()-start_time,
+        }
+
+        # Log the error response
+        logger.info(
+            f"Field extraction completed - Field: 'Location' | Response: {json.dumps(result, ensure_ascii=False)}")
+
+        return result
+
+

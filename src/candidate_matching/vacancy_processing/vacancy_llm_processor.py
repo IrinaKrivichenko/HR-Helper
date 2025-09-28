@@ -1,9 +1,9 @@
 from src.candidate_matching.vacancy_processing.info_extraction.vacancy_llm_details import extract_vacancy_details
-from src.candidate_matching.vacancy_processing.info_extraction.vacancy_llm_industry import extract_vacancy_industry
+from src.candidate_matching.vacancy_processing.info_extraction.vacancy_llm_industries import extract_vacancy_industries
 from src.candidate_matching.vacancy_processing.info_extraction.vacancy_llm_location import extract_vacancy_location
 
 from src.logger import logger
-from src.nlp.llm_handler import LLMHandler
+from src.data_processing.nlp.llm_handler import LLMHandler
 
 import concurrent.futures
 
@@ -12,7 +12,7 @@ def extract_vacancy_info(vacancy: str, llm_handler: LLMHandler):
     with concurrent.futures.ThreadPoolExecutor() as executor:
         # Submit both tasks to the executor
         future1 = executor.submit(extract_vacancy_details, vacancy,  llm_handler, model="gpt-4o-mini")
-        future2 = executor.submit(extract_vacancy_industry, vacancy, llm_handler, model="gpt-4.1-nano")
+        future2 = executor.submit(extract_vacancy_industries, vacancy, llm_handler, model="gpt-4.1-nano")
         future3 = executor.submit(extract_vacancy_location, vacancy, llm_handler, model="gpt-4.1-nano")
 
         # Retrieve the results

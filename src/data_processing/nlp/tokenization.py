@@ -1,7 +1,7 @@
 import re
 from nltk import word_tokenize
 from nltk.data import path as nltk_path
-nltk_path.append("src/nlp/nltk_data")
+nltk_path.append("src/data_processing/nlp/nltk_data")
 
 def get_tokens(text):
     tokens = word_tokenize(text.lower())

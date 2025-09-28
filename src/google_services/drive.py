@@ -3,6 +3,8 @@ import io
 import re
 
 from docx import Document
+from googleapiclient.errors import HttpError
+from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from pdfminer.high_level import extract_text
 
@@ -63,6 +65,8 @@ def extract_text_from_google_file(url: str, service=None):
 
     if mime_type == 'application/vnd.google-apps.document':
         text_content = _extract_google_doc_with_links(doc_id, service)
+        if not text_content: # If we couldn't extract the text while preserving links, we try plain text
+            text_content = _extract_plain_text_from_google_doc(doc_id, service)
     elif mime_type == 'application/pdf':
         text_content = _extract_pdf_content(doc_id, service)
     else:
@@ -85,7 +89,6 @@ def _extract_pdf_content(doc_id: str, service) -> str:
 
 def _extract_google_doc_with_links(doc_id: str, drive_service) -> str:
     """Extract text from Google Doc with hyperlinks as separate paragraphs."""
-    from googleapiclient.discovery import build
     docs_service = build('docs', 'v1', credentials=drive_service._http.credentials)
     document = docs_service.documents().get(documentId=doc_id).execute()
     paragraphs = []
@@ -95,6 +98,17 @@ def _extract_google_doc_with_links(doc_id: str, drive_service) -> str:
             paragraph_parts = _process_paragraph(element['paragraph'])
             paragraphs.extend(paragraph_parts)
     return '\n\n'.join(filter(None, paragraphs))
+
+def _extract_plain_text_from_google_doc(doc_id, drive_service):
+    try:
+        doc = drive_service.files().export(fileId=doc_id, mimeType='text/plain').execute()
+        # Decode the content from bytes to a UTF-8 string
+        return doc.decode('utf-8')
+    except HttpError as e:
+        if "fileNotExportable" in str(e):
+            logger.error(f"File {doc_id} is not exportable as plain text.")
+            return "fileNotExportable"
+        raise  # Re-raise the exception if it's not due to fileNotExportable
 
 
 def _process_paragraph(paragraph) -> list:
@@ -129,23 +143,6 @@ def check_or_create_subfolder(parent_folder_id, folder_name, service=None):
     if not service:
         service = initialize_google_drive_api()
    # Check if the subfolder exists
-    query = (
-        f"parents='{parent_folder_id}' and "
-        f"trashed=false"
-    )
-    print(f"Query: {query}")
-    print(f"Parent folder ID: {parent_folder_id}")
-    response = service.files().list(
-        q=query,
-        corpora='allDrives',
-        includeItemsFromAllDrives=True,
-        supportsAllDrives=True,
-        fields='files(id, name)',
-        pageSize=100
-    ).execute()
-    folders = response.get('files', [])
-    print(f"number of folders: {len(folders)}")
-
     query = (
         f"name='{folder_name}' and "
         f"parents='{parent_folder_id}' and "

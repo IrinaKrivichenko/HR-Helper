@@ -27,9 +27,17 @@ def save_cv_info(extracted_data, file_path):
     extracted_data["№"] = "=AC3+1"
     local_timezone = get_localzone()
     extracted_data["Date of CV parsing"] = datetime.now(local_timezone).strftime('%Y-%m-%d %H:%M:%S %Z')
-    if extracted_data["Phone"]:
+    if  "Phone" in extracted_data and extracted_data["Phone"]:
         extracted_data["Phone"] = f"'{extracted_data['Phone']}"
+
     write_dict_to_sheet(data_dict=extracted_data, sheet_name="staff")
+    keys = ""
+    for key in extracted_data.keys():
+        keys = f"{keys}\t{key}"
+    print(keys)
+
+
+    write_dict_to_sheet(data_dict=extracted_data, sheet_name=os.getenv("PARSE_LOGS_SHEET_NAME"))
 
     doc_id = os.getenv("SHEET_ID")
     page_id = os.getenv("CANDIDATES_SHEET_ID")
