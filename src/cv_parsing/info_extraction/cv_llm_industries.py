@@ -64,7 +64,7 @@ def extract_cv_industries(
         }
     ]
 
-    max_tokens = len(cv)
+    max_tokens = max(len(cv), 200)
 
     # Use structured output
     response = llm_handler.get_answer(

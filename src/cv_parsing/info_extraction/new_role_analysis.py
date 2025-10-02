@@ -61,7 +61,7 @@ def process_proposed_roles(
         updated_roles = sorted(list(set(roles_list + to_add)))
         updated_df = pd.DataFrame({"Role Values": updated_roles})
         rows_to_highlight = [i for i, role in enumerate(updated_roles) if role in to_add]
-        write_specific_columns(df=updated_df, sheet_name="values", service=service, rows_to_highlight=rows_to_highlight)
+        # write_specific_columns(df=updated_df, sheet_name="values", service=service, rows_to_highlight=rows_to_highlight)
 
     to_add = [f"NEW {role}" for role in to_add]
     # Return combined list and total cost

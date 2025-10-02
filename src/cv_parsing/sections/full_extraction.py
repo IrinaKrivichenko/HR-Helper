@@ -80,7 +80,7 @@ def extract_full_sections(cv_text: str, llm_handler: Any, model: str) -> Dict[st
     response = llm_handler.get_answer(
         prompt,
         model=model,
-        max_tokens=min(len(cv_text) * 2, 8000),
+        max_tokens=max(len(cv_text) * 2, 30000),
         response_format=FullSectionsSchema
     )
     # Extract from structured response

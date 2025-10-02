@@ -1,8 +1,16 @@
 from typing import Dict, Any, List, Optional
 import time
+from pydantic import BaseModel, Field
+from typing import List, Optional
+
+class SectionExtraction(BaseModel):
+    reasoning: List[str] = Field(description="Step-by-step reasoning for section extraction")
+    content: str = Field(description="Extracted content of the section")
+
 
 # Required sections for extraction
 REQUIRED_SECTIONS = ["Header", "Skills", "Experience"]
+
 
 def extract_single_section(
     cv_text: str,
@@ -24,8 +32,8 @@ def extract_single_section(
     response = llm_handler.get_answer(
         prompt,
         model=model,
-        max_tokens=min(len(cv_text) * 1.5, 8000),
-        response_format={"content": str, "reasoning": str}
+        max_tokens=max(len(cv_text) * 2, 10000),
+        response_format=SectionExtraction
     )
 
     content = response.get("content", "").strip()

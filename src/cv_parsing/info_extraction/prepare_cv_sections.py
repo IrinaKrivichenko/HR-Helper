@@ -28,10 +28,6 @@ def get_section_for_field(cv_sections: Dict[str, str], field_name: str) -> str:
     Returns:
         Text from appropriate section(s) for field extraction
     """
-    # Check for fallback sections
-    if "_full_text_backup" in cv_sections:
-        return cv_sections["_full_text_backup"]
-
 
     # Get text from preferred sections
     preferred_sections = FIELD_MAPPING.get(field_name, [])

@@ -49,7 +49,7 @@ def extract_cv_seniority(
         }
     ]
 
-    max_tokens = len(cv)
+    max_tokens = max(len(cv), 200)
 
     # Use structured output with existing get_answer method
     response = llm_handler.get_answer(

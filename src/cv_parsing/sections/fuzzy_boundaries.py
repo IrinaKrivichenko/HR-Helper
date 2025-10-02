@@ -64,7 +64,7 @@ def extract_fuzzy_boundaries(cv_text: str, llm_handler: Any, model: str) -> Dict
     response = llm_handler.get_answer(
         prompt,
         model=model,
-        max_tokens=1000,
+        max_tokens=max(len(cv_text) * 2, 10000),
         response_format=BoundaryMarkersSchema
     )
     markers = response['parsed']

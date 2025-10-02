@@ -19,11 +19,15 @@ import os
 import traceback
 
 
-async def process_cv():
-    ...
+async def process_cv(update: Update, text: str,  file_path: str,   user_name: str, llm_handler):
+    await send_message(update, f"Parsing CV")
+    extracted_data = await parse_cv(text, llm_handler)
+    message_to_user = save_cv_info(extracted_data, file_path)
+    await send_message(update, message_to_user)
 
-async def process_vacancy():
-    ...
+async def process_vacancy(update: Update, text: str,  user_name: str, llm_handler):
+    await send_message(update, "Please wait.")
+    await match_candidats(update, text, user_name, llm_handler)
 
 async def extract_text_from_document(document):
     try:
@@ -91,13 +95,9 @@ async def process_user_request(update: Update, context: ContextTypes.DEFAULT_TYP
             else:
                 llm_handler = LLMHandler()
                 if input_type == "vacancy":
-                    await send_message(update, "Please wait.")
-                    await match_candidats(update, text, user_name, llm_handler)
+                    await process_vacancy(update, text, user_name, llm_handler)
                 elif input_type == "CV":
-                    await send_message(update, f"Parsing {input_type}")
-                    extracted_data = await parse_cv(text, user_name, llm_handler)
-                    message_to_user = save_cv_info(extracted_data, file_path)
-                    await send_message(update, message_to_user)
+                    await process_cv(update, text,  file_path, user_name, llm_handler)
     except Exception as e:
         logger.error(f"{str(e)}\n{traceback.format_exc()}")
         await update.message.reply_text(f"Please forward this message to @irina_199: {str(e)}")

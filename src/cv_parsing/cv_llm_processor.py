@@ -51,8 +51,8 @@ def extract_cv_info(cv: Dict, llm_handler: LLMHandler):
         (extract_cv_location, "gpt-4.1-nano", "Location")
     ]
 
-    # Dictionary to store timing information for each field
     field_times = {}
+    error_logs = []
 
     # Create a ThreadPoolExecutor
     with ThreadPoolExecutor() as executor:
@@ -85,10 +85,13 @@ def extract_cv_info(cv: Dict, llm_handler: LLMHandler):
                     results[field_name] = extracted_data
 
             except Exception as e:
+                # Append error log with number, field name, and traceback
+                error_logs.append(
+                    f"Error #{len(error_logs) + 1} - Extracting Field: {field_name}\n"
+                    f"Traceback:\n{traceback.format_exc()}\n"
+                    f"{'=' * 50}\n"
+                )
                 print(f"Error extracting {field_name}: {e}")
-                print(f"Traceback: {traceback.format_exc()}")
-                # Record failed extraction with 0 time
-                field_times[field_name] = 0.0
                 continue
 
     # Calculate actual total time (parallel execution time)
@@ -121,5 +124,6 @@ def extract_cv_info(cv: Dict, llm_handler: LLMHandler):
 
     # Add timing summary to results
     results["Parsing Step3 Time (extract fields)"] = timing_summary
+    results["Error Logs"] = "".join(error_logs) if error_logs else ""
 
     return results

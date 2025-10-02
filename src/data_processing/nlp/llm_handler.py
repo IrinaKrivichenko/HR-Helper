@@ -93,7 +93,6 @@ import json
 
 T = TypeVar('T', bound=BaseModel)
 
-
 class LLMHandler:
 
     def __init__(self, api_key=None, url=None):
