@@ -126,7 +126,7 @@ def extract_cv_roles(
 
     # Validate matched roles against predefined list
     roles_set: Set[str] = set(roles_list)
-    validated_matches: List[str] = []  # Теперь это просто список строк
+    validated_matches: List[str] = []
     invalid_matches: List[str] = []
 
     for match in role_extraction.matched_roles:

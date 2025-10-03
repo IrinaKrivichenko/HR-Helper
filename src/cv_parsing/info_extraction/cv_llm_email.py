@@ -4,6 +4,7 @@ from typing import Dict, Any, Optional, List
 from pydantic import BaseModel, Field
 from src.cv_parsing.info_extraction.context_by_patterns import extract_context_by_patterns
 from src.cv_parsing.info_extraction.prepare_cv_sections import get_section_for_field
+from src.data_processing.nlp.llm_handler import LLMHandler
 from src.logger import logger  # Added logger import
 
 
@@ -15,7 +16,7 @@ class EmailExtraction(BaseModel):
 
 def extract_cv_email(
         cv_sections: Dict,
-        llm_handler: Any,
+        llm_handler: LLMHandler,
         model: str = "gpt-4.1-nano"
 ) -> Dict[str, Any]:
     """

@@ -3,19 +3,22 @@ import time
 from pydantic import BaseModel, Field
 from typing import List, Optional
 
+from src.data_processing.nlp.llm_handler import LLMHandler
+
+
 class SectionExtraction(BaseModel):
     reasoning: List[str] = Field(description="Step-by-step reasoning for section extraction")
     content: str = Field(description="Extracted content of the section")
 
 
 # Required sections for extraction
-REQUIRED_SECTIONS = ["Header", "Skills", "Experience"]
+MANDATORY_SECTIONS = ["Header", "Skills", "Experience"]
 
 
 def extract_single_section(
     cv_text: str,
     section_name: str,
-    llm_handler: Any,
+    llm_handler: LLMHandler,
     model: str
 ) -> Dict[str, Any]:
     """
@@ -32,7 +35,7 @@ def extract_single_section(
     response = llm_handler.get_answer(
         prompt,
         model=model,
-        max_tokens=max(len(cv_text) * 2, 10000),
+        max_tokens=max(len(cv_text) * 3, 1000),
         response_format=SectionExtraction
     )
 
@@ -53,7 +56,7 @@ def extract_single_section(
 
 def extract_section_by_section(
     cv_text: str,
-    llm_handler: Any,
+    llm_handler: LLMHandler,
     model: str,
     existing_sections: Dict[str, str] = None
 ) -> Dict[str, Any]:
@@ -72,7 +75,7 @@ def extract_section_by_section(
     total_completion_tokens = 0
 
     # Determine which sections are missing
-    missing_sections = [section for section in REQUIRED_SECTIONS if section not in sections or not sections[section]]
+    missing_sections = [section for section in MANDATORY_SECTIONS if section not in sections or not sections[section]]
 
     # Extract only missing sections
     for section in missing_sections:
@@ -91,14 +94,14 @@ def extract_section_by_section(
 
     # Validate that all required sections are non-empty
     validation = {
-        "is_valid": all(sections[section] for section in REQUIRED_SECTIONS),
+        "is_valid": all(sections[section] for section in MANDATORY_SECTIONS),
         "method": "section_by_section",
-        "issues": [f"Section '{section}' is empty" for section in REQUIRED_SECTIONS if not sections[section]],
+        "issues": [f"Section '{section}' is empty" for section in MANDATORY_SECTIONS if not sections[section]],
         "metrics": {
             "sections_found": len(sections),
-            "empty_sections": [section for section in REQUIRED_SECTIONS if not sections[section]]
+            "empty_sections": [section for section in MANDATORY_SECTIONS if not sections[section]]
         },
-        "summary": "All sections extracted successfully" if all(sections[section] for section in REQUIRED_SECTIONS) else "Some sections are empty"
+        "summary": "All sections extracted successfully" if all(sections[section] for section in MANDATORY_SECTIONS) else "Some sections are empty"
     }
 
     return {

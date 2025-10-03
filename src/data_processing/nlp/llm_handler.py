@@ -106,7 +106,7 @@ class LLMHandler:
             self.MAX_TOKENS_BY_MODEL = {
                 "gpt-4o-mini": 16384,
                 # "gpt-4.1-mini": 8192,
-                # "gpt-4.1-nano": 4096,
+                "gpt-4.1-nano": 32768,
                 # "gpt-5-mini": 32768,
                 # "gpt-5-nano": 16384,
             }

@@ -56,7 +56,7 @@ def extract_cv_name(
         }
     ]
 
-    max_tokens = max(len(cv), 100)  # Names don't need many tokens
+    max_tokens = max(len(cv)*5, 500)
 
     # Use structured output
     response = llm_handler.get_answer(
