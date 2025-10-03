@@ -82,7 +82,18 @@ def identify_resume_sections(
 
     # Add gaps if any
     if "Gaps" in result:
-        final_result["Gaps"] = result["Gaps"]
+        gaps_dict = result["Gaps"]
+        gaps_str = []
+        for key, value in gaps_dict.items():
+            if key == "coverage_percent":
+                continue  # Skip coverage_percent, we'll add it separately
+            gaps_str.append(f"{key} - PREVIOUS SECTION: {value}")
+        # Join gaps with double newlines
+        formatted_gaps = "\n\n".join(gaps_str)
+        # Add coverage_percent at the end
+        if "coverage_percent" in gaps_dict:
+            formatted_gaps += f"\n\nCoverage: {gaps_dict['coverage_percent']:.1f}%"
+        final_result["Gaps"] = formatted_gaps
 
     # Add metadata
     final_result["Section Extraction Time"] = time.time() - start_time
@@ -97,8 +108,8 @@ def identify_resume_sections(
         total_prompt_tokens += fallback_result.get("token_usage", {}).get("completion_tokens", 0)
         total_cost += fallback_result.get("cost", 0)
 
-    final_result["Total Tokens"] = total_prompt_tokens
-    final_result["Total Cost"] = total_cost
+    final_result["Total Section Extraction tokens"] = total_prompt_tokens
+    final_result["Total Section Extraction cost"] = total_cost
     final_result["Section Extraction Path"] = "\n".join(path_steps)
 
     logger.info(f"Section identification completed in {final_result['Section Extraction Time']:.2f}s")
