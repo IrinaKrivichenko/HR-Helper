@@ -1,3 +1,4 @@
+import time
 from typing import List, Dict
 from openai import OpenAI, AuthenticationError, OpenAIError
 from dotenv import load_dotenv
@@ -184,55 +185,62 @@ class LLMHandler:
     def get_answer(self, prompt: List[Dict[str, str]], model="gpt-4.1-nano",
                    max_tokens=1000, temperature=0, seed=42, response_format=None):
         """
-        Enhanced get_answer method with optional structured output support.
+        Enhanced get_answer method with optional structured output support and retry logic for APITimeoutError.
         """
-        try:
-            completion_params = {
-                "model": model,
-                "messages": prompt,
-                "temperature": temperature,
-                "seed": seed,
-            }
+        max_retries = 4
+        retry_delay = 1  # seconds
 
-            # Add max tokens parameter based on model
-            if model in self.MAX_TOKENS_BY_MODEL:
-                max_tokens = min(max_tokens, self.MAX_TOKENS_BY_MODEL[model])
-            if model in ["gpt-4.1-mini", "gpt-4.1-nano", "gpt-4o-mini"]:
-                completion_params["max_tokens"] = max_tokens
-            else:
-                completion_params["max_completion_tokens"] = max_tokens
+        for attempt in range(max_retries):
+            try:
+                completion_params = {
+                    "model": model,
+                    "messages": prompt,
+                    "temperature": temperature,
+                    "seed": seed,
+                }
+                if model in self.MAX_TOKENS_BY_MODEL:
+                    max_tokens = min(max_tokens, self.MAX_TOKENS_BY_MODEL[model])
+                if model in ["gpt-4.1-mini", "gpt-4.1-nano", "gpt-4o-mini"]:
+                    completion_params["max_tokens"] = max_tokens
+                else:
+                    completion_params["max_completion_tokens"] = max_tokens
 
-            # Handle structured outputs
-            if response_format is not None:
-                try:
-                    completion_params["response_format"] = response_format
-                    response = self.openai_client.chat.completions.parse(**completion_params)
-
-                    # Return structured response as dictionary
-                    token_usage = response.usage
-                    cost = self.calculate_cost(token_usage, model)
-
-                    return {
-                        'parsed': response.choices[0].message.parsed,
-                        'usage': token_usage,
-                        'cost': cost,
-                        'model': model
-                    }
-
-                except AttributeError as e:
-                    # Fallback to JSON mode if parse method not available
-                    logger.warning(f"Structured outputs not available for {model}: {e}")
-                    completion_params["response_format"] = {"type": "json_object"}
+                if response_format is not None:
+                    try:
+                        completion_params["response_format"] = response_format
+                        response = self.openai_client.chat.completions.parse(**completion_params)
+                        token_usage = response.usage
+                        cost = self.calculate_cost(token_usage, model)
+                        return {
+                            'parsed': response.choices[0].message.parsed,
+                            'usage': token_usage,
+                            'cost': cost,
+                            'model': model
+                        }
+                    except AttributeError as e:
+                        logger.warning(f"Structured outputs not available for {model}: {e}")
+                        completion_params["response_format"] = {"type": "json_object"}
+                        response = self.openai_client.chat.completions.create(**completion_params)
+                        answer = response.choices[0].message.content
+                        token_usage = response.usage
+                        cost = self.calculate_cost(token_usage, model)
+                        cached_tokens = getattr(getattr(token_usage, 'prompt_tokens_details', None), 'cached_tokens', 0)
+                        token_info = (
+                            f"\n\n## Token Usage and Cost:\n"
+                            f" - Model Used: {model}\n"
+                            f" - Completion Tokens: {token_usage.completion_tokens}\n"
+                            f" - Prompt Tokens: {token_usage.prompt_tokens}\n"
+                            f" - Cached Tokens: {cached_tokens}\n"
+                            f" - Cost: ${cost['total_cost']:.6f}"
+                        )
+                        answer += token_info
+                        return answer
+                else:
                     response = self.openai_client.chat.completions.create(**completion_params)
-
-                    # Return JSON response with token info for manual parsing
                     answer = response.choices[0].message.content
                     token_usage = response.usage
                     cost = self.calculate_cost(token_usage, model)
-
-                    cached_tokens = token_usage.prompt_tokens_details.cached_tokens if hasattr(token_usage,
-                                                                                               'prompt_tokens_details') and hasattr(
-                        token_usage.prompt_tokens_details, 'cached_tokens') else 0
+                    cached_tokens = getattr(getattr(token_usage, 'prompt_tokens_details', None), 'cached_tokens', 0)
                     token_info = (
                         f"\n\n## Token Usage and Cost:\n"
                         f" - Model Used: {model}\n"
@@ -243,32 +251,15 @@ class LLMHandler:
                     )
                     answer += token_info
                     return answer
-            else:
-                # Regular completion
-                response = self.openai_client.chat.completions.create(**completion_params)
 
-                answer = response.choices[0].message.content
-                token_usage = response.usage
-                cost = self.calculate_cost(token_usage, model)
-
-                cached_tokens = token_usage.prompt_tokens_details.cached_tokens if hasattr(token_usage,
-                                                                                           'prompt_tokens_details') and hasattr(
-                    token_usage.prompt_tokens_details, 'cached_tokens') else 0
-                token_info = (
-                    f"\n\n## Token Usage and Cost:\n"
-                    f" - Model Used: {model}\n"
-                    f" - Completion Tokens: {token_usage.completion_tokens}\n"
-                    f" - Prompt Tokens: {token_usage.prompt_tokens}\n"
-                    f" - Cached Tokens: {cached_tokens}\n"
-                    f" - Cost: ${cost['total_cost']:.6f}"
-                )
-                answer += token_info
-                return answer
-
-        except Exception as e:
-            logger.error(f"An error occurred while getting the answer from model {model}: {e}")
-            raise
-
+            except Exception as e:
+                if isinstance(e, TimeoutError) or "timeout" in str(e).lower():
+                    if attempt < max_retries - 1:
+                        logger.warning(f"Timeout occurred, retrying... (attempt {attempt + 1}/{max_retries})")
+                        time.sleep(retry_delay * (attempt + 1))
+                        continue
+                logger.error(f"An error occurred while getting the answer from model {model}: {e}")
+                raise
 
     def _handle_structured_response(self, response, model):
         """Handle structured output response"""
