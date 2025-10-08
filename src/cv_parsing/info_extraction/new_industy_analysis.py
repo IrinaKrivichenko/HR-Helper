@@ -1,19 +1,92 @@
 import pandas as pd
-from pydantic import BaseModel, Field
-from typing import List, Optional, Literal, Tuple, Dict
+from pydantic import BaseModel, Field, create_model
+from typing import List, Optional, Literal, Type, TypeVar, Tuple, Dict
 
 from src.google_services.sheets import write_specific_columns
 from src.logger import logger
 from src.data_processing.nlp.llm_handler import LLMHandler
 
+def create_industry_analysis_model(existing_industries: List[str]) -> Type[BaseModel]:
+    """
+    Dynamically creates IndustryAnalysis model with Literal type for overlaps_with field.
+    Args:
+        existing_industries: List of predefined industries for overlaps_with field.
+    Returns:
+        Pydantic model IndustryAnalysis with Literal type for overlaps_with.
+    """
+    if not existing_industries:
+        raise ValueError("Existing industries list cannot be empty")
+    # Create Literal type for overlaps_with field
+    OverlapsType = Literal[*existing_industries]  # For Python < 3.11: Literal.__getitem__(tuple(existing_industries))
+    return create_model(
+        'IndustryAnalysis',
+        proposed_industry=(str, Field(description="Name of the proposed industry being analyzed")),
+        pros=(List[str], Field(max_length=5, description="Arguments for adding this industry")),
+        cons=(List[str], Field(max_length=5, description="Arguments against adding this industry")),
+        justification=(str, Field(description="Final reasoning for the decision")),
+        recommendation=(Literal["Add", "Overlaps"], Field(description="Final recommendation")),
+        overlaps_with=(Optional[OverlapsType], Field(
+            default=None,
+            description="Existing industry it overlaps with (if recommendation is Overlaps)"
+        )),
+    )
 
-class IndustryAnalysis(BaseModel):
-    proposed_industry: str = Field(description="Name of the proposed industry being analyzed")
-    pros: List[str] = Field(max_length=5, description="Arguments for adding this industry")
-    cons: List[str] = Field(max_length=5, description="Arguments against adding this industry")
-    justification: str = Field(description="Final reasoning for the decision")
-    recommendation: Literal["Add", "Overlaps"] = Field(description="Final recommendation")
-    overlaps_with: Optional[str] = Field(default=None, description="Existing industry it overlaps with (if recommendation is Overlaps)")
+
+def _analyze_single_industry(proposed_industry: str,
+                             existing_industries: List[str],
+                             llm_handler: LLMHandler,
+                             model: str) -> Tuple[Dict, float]:
+    """
+    Analyze a single proposed industry using SGR.
+    """
+
+    industries_str = f'"{", ".join(existing_industries)}"'
+
+    prompt = [
+        {
+            "role": "system",
+            "content": (
+                "You are a senior data architect and taxonomist. "
+                "Your task is to analyze a single proposed industry for inclusion in a master list of IT project industries. "
+                "Your analysis must be precise, logical, and follow strict non-overlapping principles."
+            )
+        },
+        {
+            "role": "user",
+            "content": (
+                f"Current master list of industries: {industries_str}\n\n"
+                f"The master list must adhere to two principles:\n"
+                f"1. **Non-Overlapping**: Each industry must represent a unique domain\n"
+                f"2. **Comprehensive**: The list must cover most IT project domains\n\n"
+                f"Analyze the following proposed industry: **{proposed_industry}**\n\n"
+                f"Provide thorough analysis with pros, cons, and final recommendation."
+            )
+        }
+    ]
+    # Dynamically create IndustryAnalysis model
+    IndustryAnalysis = create_industry_analysis_model(existing_industries)
+    # Use structured output
+    response = llm_handler.get_answer(
+        prompt, model=model, max_tokens=1000,
+        response_format=IndustryAnalysis
+    )
+
+    # Process response
+    analysis = response['parsed']
+    cost = response['cost']['total_cost']
+
+    # Convert to dictionary format
+    result = {
+        "proposed_industry": analysis.proposed_industry,
+        "pros": analysis.pros,
+        "cons": analysis.cons,
+        "justification": analysis.justification,
+        "recommendation": analysis.recommendation,
+        "overlaps_with": analysis.overlaps_with,
+        "cost": cost
+    }
+
+    return result, cost
 
 
 def process_proposed_industries(
@@ -69,60 +142,4 @@ def process_proposed_industries(
     # Return combined list and total cost
     combined_list = to_add + overlaps
     return combined_list, total_cost
-
-
-def _analyze_single_industry(proposed_industry: str,
-                             existing_industries: List[str],
-                             llm_handler: LLMHandler,
-                             model: str) -> Tuple[Dict, float]:
-    """
-    Analyze a single proposed industry using SGR.
-    """
-
-    industries_str = f'"{", ".join(existing_industries)}"'
-
-    prompt = [
-        {
-            "role": "system",
-            "content": (
-                "You are a senior data architect and taxonomist. "
-                "Your task is to analyze a single proposed industry for inclusion in a master list of IT project industries. "
-                "Your analysis must be precise, logical, and follow strict non-overlapping principles."
-            )
-        },
-        {
-            "role": "user",
-            "content": (
-                f"Current master list of industries: {industries_str}\n\n"
-                f"The master list must adhere to two principles:\n"
-                f"1. **Non-Overlapping**: Each industry must represent a unique domain\n"
-                f"2. **Comprehensive**: The list must cover most IT project domains\n\n"
-                f"Analyze the following proposed industry: **{proposed_industry}**\n\n"
-                f"Provide thorough analysis with pros, cons, and final recommendation."
-            )
-        }
-    ]
-
-    # Use structured output
-    response = llm_handler.get_answer(
-        prompt, model=model, max_tokens=1000,
-        response_format=IndustryAnalysis
-    )
-
-    # Process response
-    analysis = response['parsed']
-    cost = response['cost']['total_cost']
-
-    # Convert to dictionary format
-    result = {
-        "proposed_industry": analysis.proposed_industry,
-        "pros": analysis.pros,
-        "cons": analysis.cons,
-        "justification": analysis.justification,
-        "recommendation": analysis.recommendation,
-        "overlaps_with": analysis.overlaps_with,
-        "cost": cost
-    }
-
-    return result, cost
 

@@ -61,7 +61,7 @@ def extract_cv_expertise(
     ]
 
     # Calculate max tokens based on CV length
-    max_tokens = max(len(cv), 200)
+    max_tokens = max(len(cv)*3, 800)
 
     # Use structured output
     response = llm_handler.get_answer(

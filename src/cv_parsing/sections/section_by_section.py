@@ -25,13 +25,27 @@ def extract_single_section(
     Extracts a single section from the resume text.
     Returns the extracted section, reasoning, cost, and token usage.
     """
-    prompt = f"""
-    Find and extract the ENTIRE '{section_name}' section from this resume.
-    Consider that the text may be broken or mixed with other sections.
-    If the section does not exist, return an empty string.
-    ---
-    {cv_text}
-    """
+    prompt = [
+        {
+            "role": "system",
+            "content": """
+                You are a helpful assistant specialized in parsing resumes.
+                Your task is to accurately identify and extract specific sections from the provided resume text.
+                If the section is not found, return an empty string.
+                """
+        },
+        {
+            "role": "user",
+            "content": f"""
+                Find and extract the ENTIRE '{section_name}' section from this resume.
+                Consider that the text may be broken or mixed with other sections.
+                If the section does not exist, return an empty string.
+                ---
+                {cv_text}
+                """
+        }
+    ]
+
     response = llm_handler.get_answer(
         prompt,
         model=model,
@@ -39,20 +53,32 @@ def extract_single_section(
         response_format=SectionExtraction
     )
 
-    content = response.get("content", "").strip()
-    reasoning = response.get("reasoning", "")
-    usage = response.get("usage", {})
-    cost_info = response.get("cost", {})
+    if isinstance(response, dict) and "parsed" in response:
+        parsed = response["parsed"]
+        content = parsed.content.strip() if hasattr(parsed, 'content') else ""
+        reasoning = parsed.reasoning if hasattr(parsed, 'reasoning') else []
+        usage = response.get("usage", None)
+        cost_info = response.get("cost", {})
+    else:
+        content = ""
+        reasoning = []
+        usage = None
+        cost_info = {}
+
+
+    prompt_tokens = usage.prompt_tokens if usage else 0
+    completion_tokens = usage.completion_tokens if usage else 0
 
     return {
         "content": content,
         "reasoning": reasoning,
         "cost": cost_info.get("total_cost", 0),
         "token_usage": {
-            "prompt_tokens": usage.get("prompt_tokens", 0),
-            "completion_tokens": usage.get("completion_tokens", 0)
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens
         }
     }
+
 
 def extract_section_by_section(
     cv_text: str,

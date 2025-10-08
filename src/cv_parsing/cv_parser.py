@@ -14,6 +14,14 @@ async def parse_cv(cv_text: str, llm_handler: LLMHandler = None) -> dict:
     logs = []  # List to accumulate logs for all steps
 
     try:
+        if not cv_text or len(cv_text)<100:
+            logs.append(
+                f"Error in Step 0: Reading file\n"
+                # f"Traceback:\n{traceback.format_exc()}\n"
+                f"{'=' * 50}\n"
+            )
+            raise
+
         if llm_handler is None:
             llm_handler = LLMHandler()
 
