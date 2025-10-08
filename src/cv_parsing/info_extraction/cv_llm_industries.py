@@ -1,7 +1,7 @@
 import json
 import time
-from typing import List, Literal, Dict, Any
-from pydantic import BaseModel, Field
+from typing import List, Literal, Type, Dict, Any
+from pydantic import BaseModel, Field, create_model
 from src.cv_parsing.info_extraction.new_industy_analysis import process_proposed_industries
 from src.cv_parsing.info_extraction.prepare_cv_sections import get_section_for_field
 from src.data_processing.allowed_values_matcher import match_values
@@ -9,10 +9,12 @@ from src.google_services.sheets import read_specific_columns
 from src.data_processing.nlp.llm_handler import LLMHandler
 from src.logger import logger  # Added logger import
 
-from typing import List, Literal, Type, TypeVar
-from pydantic import BaseModel, Field, create_model
 
-T = TypeVar('T', bound=BaseModel)
+
+
+
+
+
 
 def create_industry_match_model(industries_list: List[str]) -> Type[BaseModel]:
     """

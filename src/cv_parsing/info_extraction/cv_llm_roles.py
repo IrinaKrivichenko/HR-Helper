@@ -8,6 +8,8 @@ from src.google_services.sheets import read_specific_columns
 from src.data_processing.nlp.llm_handler import LLMHandler
 from src.logger import logger
 
+
+
 def create_role_match_model(roles_list: List[str]) -> Type[BaseModel]:
     """
     Dynamically creates RoleMatch model with Literal type based on roles_list.
@@ -202,3 +204,4 @@ def extract_cv_roles(
         f"Total cost: ${cost_info['total_cost'] + total_new_analysis_cost:.6f}"
     )
     return result
+
