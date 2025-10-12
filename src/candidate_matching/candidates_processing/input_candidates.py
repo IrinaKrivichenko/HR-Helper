@@ -100,7 +100,7 @@ def get_df_for_vacancy_search():
         if pd.notnull(row['margin_numeric']) and pd.notnull(row['ewr_currency']) else "_",
         axis=1
     )
-    df = df.drop(['Entry wage rate (EWR)', 'sell_rate_numeric', 'ewr_numeric', 'ewr_currency', 'margin_numeric'], axis=1)
+    df = df.drop(['sell_rate_numeric', 'ewr_numeric', 'ewr_currency', 'margin_numeric'], axis=1)
 
     initial_count = len(df)
     df = df[~((df['Role'] == '') & (df['Stack'] == ''))]

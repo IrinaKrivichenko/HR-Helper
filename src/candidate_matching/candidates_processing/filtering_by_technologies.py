@@ -1,5 +1,8 @@
 from src.logger import logger
 from src.data_processing.nlp.tokenization import get_tokens
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 
 def mitigate_cloud_technologies_impact(tech_string):
@@ -27,6 +30,21 @@ def mitigate_cloud_technologies_impact(tech_string):
 
     return tech_string
 
+def filter_technologies_by_vacancy_tokens(candidate_stack: str, vacancy_tokens: set) -> str:
+    # Split the candidate stack into individual technologies
+    technologies = [tech.strip() for tech in candidate_stack.split(',')]
+    # Retain only those technologies in which at least one token from the vacancy was found
+    filtered_techs = [
+        tech for tech in technologies
+        if any(token.lower() in tech.lower() for token in vacancy_tokens)
+    ]
+    return ', '.join(filtered_techs)
+
+def calculate_tech_coverage(candidate_stack: str, vacancy_technologies_list: list) -> str:
+    candidate_techs = [tech.strip() for tech in candidate_stack.split(',') if tech.strip()]
+    candidate_count = len(candidate_techs)
+    vacancy_count = len(vacancy_technologies_list)
+    return f"{candidate_count}/{vacancy_count}"
 
 def covered_percentage(vacancy_set: set, candidate_set: set) -> float:
     """
@@ -57,20 +75,24 @@ def filter_by_technologies(vacancy_info, df):
     Returns:
     - tuple: Filtered DataFrame and coverage percentage.
     """
+    MIN_CANDIDATES_THRESHOLD = int(os.getenv("MIN_CANDIDATES_THRESHOLD"))
     coverage_percentage = "0%"
+    vacancy_programming_languages = vacancy_info.get("Extracted Programming Languages", "")
+    vacancy_programming_set = get_tokens(vacancy_programming_languages)
+    vacancy_technologies = vacancy_info.get("Extracted Technologies", "")
+    vacancy_technologies = mitigate_cloud_technologies_impact(vacancy_technologies)
+    vacancy_technologies_set = get_tokens(vacancy_technologies)
 
     # Step 3: Get candidates with fully covered programming languages
-    vacancy_programming_languages = vacancy_info.get("Extracted Programming Languages", "")
     pl_threshold = 100
     if vacancy_programming_languages and not vacancy_programming_languages.startswith('No'):
-        vacancy_programming_set = get_tokens(vacancy_programming_languages)
         df['Coverage'] = df['Stack'].apply(
             lambda x: covered_percentage(vacancy_programming_set, get_tokens(x))
         )
         full_pl_coverage_df = df[df['Coverage'] == pl_threshold]
         logger.info(f"Number of candidates with full programming languages coverage: {len(full_pl_coverage_df)}\n{get_names(full_pl_coverage_df)}\n{vacancy_programming_languages}")
 
-        if full_pl_coverage_df.empty:
+        if len(full_pl_coverage_df) < MIN_CANDIDATES_THRESHOLD: # full_pl_coverage_df.empty:
             pl_threshold = 60
             partial_pl_coverage_df = df[df['Coverage'] >= pl_threshold]
             logger.info(f"Number of candidates with partial programming languages coverage (>= {pl_threshold}%): {len(partial_pl_coverage_df)}\n{get_names(partial_pl_coverage_df)}\n{vacancy_programming_languages}")
@@ -84,21 +106,18 @@ def filter_by_technologies(vacancy_info, df):
 
     # Step 5: Get candidates with coverage of other technologies
     tech_threshold = 30
-    vacancy_technologies = vacancy_info.get("Extracted Technologies", "")
     if vacancy_technologies and not vacancy_technologies.startswith('No'):
-        vacancy_technologies = mitigate_cloud_technologies_impact(vacancy_technologies)
-        vacancy_technologies_set = get_tokens(vacancy_technologies)
         partial_pl_coverage_df['Coverage'] = partial_pl_coverage_df['Stack'].apply(
             lambda x: covered_percentage(vacancy_technologies_set, get_tokens(x))
         )
         full_tech_coverage_df = partial_pl_coverage_df[partial_pl_coverage_df['Coverage'] >= tech_threshold]
         logger.info(f"Number of candidates with full technologies coverage (>= {tech_threshold}%): {len(full_tech_coverage_df)}\n{get_names(full_tech_coverage_df)}\n{vacancy_technologies}")
 
-        if full_tech_coverage_df.empty:
+        if len(full_tech_coverage_df) < MIN_CANDIDATES_THRESHOLD:  #full_tech_coverage_df.empty:
             tech_threshold = 20
             partial_tech_coverage_df = partial_pl_coverage_df[partial_pl_coverage_df['Coverage'] >= tech_threshold]
             logger.info(f"Number of candidates with partial technologies coverage (>= {tech_threshold}%): {len(partial_tech_coverage_df)}\n{get_names(partial_tech_coverage_df)}\n{vacancy_technologies}")
-            if partial_tech_coverage_df.empty:
+            if len(partial_tech_coverage_df) < MIN_CANDIDATES_THRESHOLD: #partial_tech_coverage_df.empty:
                 tech_threshold = 10
                 partial_tech_coverage_df = partial_pl_coverage_df[partial_pl_coverage_df['Coverage'] >= tech_threshold]
                 logger.info(f"Number of candidates with partial technologies coverage (>= {tech_threshold}%): {len(partial_tech_coverage_df)}\n{get_names(partial_tech_coverage_df)}\n{vacancy_technologies}")
@@ -108,6 +127,12 @@ def filter_by_technologies(vacancy_info, df):
     else:
         partial_tech_coverage_df = partial_pl_coverage_df
         logger.info("No technologies specified in vacancy.")
+
+    all_vacancy_tokens_set = vacancy_programming_set.union(vacancy_technologies_set)
+    partial_tech_coverage_df['Stack'] = partial_tech_coverage_df['Stack'].apply(lambda stack: filter_technologies_by_vacancy_tokens(stack, all_vacancy_tokens_set))
+    all_vacancy_technologies = f"{vacancy_programming_languages}\n{vacancy_technologies}"
+    all_vacancy_technologies_list = [tech.strip() for tech in all_vacancy_technologies.split('\n') if tech.strip()]
+    partial_tech_coverage_df['Tech Coverage'] = partial_tech_coverage_df['Stack'].apply(lambda stack: calculate_tech_coverage(stack, all_vacancy_technologies_list))
 
     return partial_tech_coverage_df, coverage_percentage
 
