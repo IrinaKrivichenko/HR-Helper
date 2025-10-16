@@ -110,6 +110,8 @@ def prepare_logs_data(vacancy_description, vacancy_dict, user, current_date):
         vacancy_dict.get("Cost vacancy_industries", 0),
         vacancy_dict.get("Model Used vacancy_location", ""),
         vacancy_dict.get("Cost vacancy_location", 0),
+        vacancy_dict.get("Model Used vacancy_rate", ""),
+        vacancy_dict.get("Cost vacancy_rate", 0),
         vacancy_dict.get("Model Used candidates_selection", ""),
         vacancy_dict.get("Cost candidates_selection", 0),
         total_cost
@@ -158,7 +160,7 @@ def insert_new_row(service, sheet_id, sheet_name, sheet_index):
     }
 
     service.spreadsheets().batchUpdate(spreadsheetId=sheet_id, body=insert_request).execute()
-    return f"{sheet_name}!A2:AM2" if sheet_name == os.getenv("SEARCH_LOGS_SHEET_NAME") else f"{sheet_name}!A2:D2"
+    return f"{sheet_name}!A2:AO2" if sheet_name == os.getenv("SEARCH_LOGS_SHEET_NAME") else f"{sheet_name}!A2:D2"
 
 def save_vacancy_description(vacancy_description, existing_vacancy, vacancy_dict, user, service=None):
     if service is None:
@@ -176,7 +178,7 @@ def save_vacancy_description(vacancy_description, existing_vacancy, vacancy_dict
 
         if existing_vacancy is not None:
             row_index = existing_vacancy['Row in Spreadsheets']
-            range_logs = f"{SEARCH_LOGS_SHEET_NAME}!A{row_index}:AM{row_index}"
+            range_logs = f"{SEARCH_LOGS_SHEET_NAME}!A{row_index}:AO{row_index}"
             range_cache = f"{SEARCH_CACHE_SHEET_NAME}!A{row_index}:D{row_index}"
         else:
             range_logs = insert_new_row(service, SHEET_ID, SEARCH_LOGS_SHEET_NAME, LOGS_SHEET_ID)

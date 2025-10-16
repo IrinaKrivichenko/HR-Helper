@@ -4,37 +4,6 @@ from src.data_processing.nlp.llm_handler import LLMHandler, parse_token_usage_an
 import re
 import math
 
-def parse_extracted_rate(rate_str):
-    """
-    Parses the 'Extracted Rate' string according to specified conditions.
-    Args:
-    - rate_str (str): The rate string to parse.
-    Returns:
-    - str: The parsed rate as a string.
-    """
-    if not rate_str or '$' not in rate_str:
-        return rate_str
-
-    # Extract numerical values from the rate string
-    numbers = re.findall(r'\d+', rate_str)
-    if not numbers:
-        return rate_str
-
-    numbers = [int(num) for num in numbers]
-    if 'per hour' in rate_str.lower():
-        return rate_str
-        # If there's a range, take the second number; otherwise, take the first
-        rate = max(numbers) if len(numbers) > 1 else numbers[0]
-        return str(rate)
-    elif 'per month' in rate_str.lower():
-        # If there's a range, take the second number; otherwise, take the first
-        rate = max(numbers) if len(numbers) > 1 else numbers[0]
-        hourly_rate = rate / 168
-        rounded_rate = math.ceil(hourly_rate * 100) / 100
-        return f"{rounded_rate:.2f}$ per hour"
-    else:
-        return rate_str
-
 
 def parse_llm_vacancy_details_response(response: str, add_tokens_info: bool) -> dict:
     # Initialize a dictionary to store extracted data
@@ -91,10 +60,6 @@ def parse_llm_vacancy_details_response(response: str, add_tokens_info: bool) -> 
             elif section_name == 'Reasoning':
                 extracted_data['Vacancy Reasoning'] = section_content
 
-            # Extract rate if present
-            elif section_name == 'Extracted Rate':
-                extracted_data['Extracted Rate'] = parse_extracted_rate(section_content)
-
             # Extract reasoning about roles if present
             elif section_name == 'Reasoning about Roles':
                 extracted_data['Reasoning about Roles'] = section_content
@@ -138,7 +103,7 @@ def extract_vacancy_details(vacancy: str, llm_handler: LLMHandler, model, add_to
             "content": (
                 "Your task is to process the provided job description and extract the following information:\n\n"
                 "1. Reasoning: Provide a brief reasoning on how you extracted the information from the job description. "
-                f"Explain how you inferred the programming languages, technologies, seniority level, role, English level, industries, expertise and rate. "
+                f"Explain how you inferred the programming languages, technologies, seniority level, role, English level, industries, expertise. "
                 f"If specific libraries or frameworks are mentioned, deduce the programming languages from them.\n"
                 "2. Extract the key programming languages mentioned in the job description and list them each on a new line. "
                 f"If no programming languages are explicitly mentioned, infer them from the technologies or libraries listed. "
@@ -158,13 +123,10 @@ def extract_vacancy_details(vacancy: str, llm_handler: LLMHandler, model, add_to
                 f"Consider 'Fluent' as 'B2'. If a range is provided, such as 'B2-C1', return it as a range. If no English level is specified, return 'No English level is specified'.\n"
                 "7. Identify the industries mentioned in the job description. If no industries is specified or the industry is not in the list, return 'No industry is specified'.\n"
                 "8. Identify the expertise required in the job description. If no expertise is specified, return 'No expertise is specified'.\n"
-                "9. Identify the rate or salary mentioned in the job description. The rate should be formatted as a number followed by a currency symbol and the period, for example, '10000$ per month'. "
-                f"If a range is provided, such as '25-28$ per hour', return it as a range with the period. If phrases like 'up to' are used, extract the numerical value and assume it is per month unless otherwise specified. "
-                f"If no rate or salary is specified, return 'No rate is specified'.\n"
-                "10. Reasoning about Roles: Provide reasoning on which roles from the list of existing roles could be suitable for this job description. "
+                "9.  Reasoning about Roles: Provide reasoning on which roles from the list of existing roles could be suitable for this job description. "
                 f"Compare the extracted role with the following list of existing roles: {existing_roles}. "
                 f"Explain why certain roles match based on the overlap in required skills and technologies.\n"
-                "11. Matched Roles: List all approximately matching roles from the existing roles list, each on a new line with a dash. If there are no matches at all, write 'NEW' followed by the role extracted from the vacancy.\n"
+                "10. Matched Roles: List all approximately matching roles from the existing roles list, each on a new line with a dash. If there are no matches at all, write 'NEW' followed by the role extracted from the vacancy.\n"
                 f"The output should be formatted in Markdown with the following sections:\n"
                 "## Reasoning: The reasoning on how the information was extracted.\n"
                 "## Extracted Programming Languages: The programming languages extracted by the language model from the vacancy description. Each programming language should be listed on a new line.\n"
@@ -174,7 +136,6 @@ def extract_vacancy_details(vacancy: str, llm_handler: LLMHandler, model, add_to
                 "## Extracted English Level: The level of English extracted by the language model from the vacancy description.\n"
                 "## Extracted Industries: The industries extracted by the language model from the vacancy description.\n"
                 "## Extracted Expertise: The expertise extracted by the language model from the vacancy description.\n"
-                "## Extracted Rate: The rate extracted by the language model from the vacancy description.\n"
                 "## Reasoning about Roles: The reasoning on which roles from the list of existing roles could be suitable for this job description.\n"
                 "## Matched Roles: The roles from the existing roles list that match the extracted role, each on a new line with a dash. If no matches are found, write 'NEW' followed by the role extracted from the vacancy.\n"
                 f"\n"
@@ -198,7 +159,6 @@ def extract_vacancy_details(vacancy: str, llm_handler: LLMHandler, model, add_to
                 "## Extracted English Level: C1\n"
                 "## Extracted Industries:\n No industry is specified\n"
                 "## Extracted Expertise:\n No expertise is specified\n"
-                "## Extracted Rate: 8000-10000$ per month\n"
                 "## Reasoning about Roles: The role of \"ML Engineer\" requires a strong background in machine learning, as evidenced by the need for experience with libraries such as PyTorch, TensorFlow, and Pandas, which are commonly used in machine learning and data analysis tasks, supports this match. Additionally, the role involves working on projects related to Computer Vision (CV) and Natural Language Processing (NLP). AI Engineer: This role is a good match because AI Engineers often work on similar technologies and projects involving machine learning and artificial intelligence. They typically have experience with the same libraries and frameworks mentioned in the job description. Data Scientist: Data Scientists also work extensively with machine learning models and data analysis, making this role a suitable match. They often use similar tools and techniques to extract insights and build predictive models. DL Engineer: Deep Learning Engineers specialize in developing and implementing deep learning models, which aligns well with the requirements of this job description. Their expertise in deep learning frameworks like PyTorch and TensorFlow is particularly relevant. ML Researcher: ML Researchers focus on advancing the field of machine learning through research and development. Their deep understanding of machine learning algorithms and techniques makes them a good fit for this role. CV Engineer: Given the mention of Computer Vision in the job description, a CV Engineer, who specializes in this area, is a relevant match. NLP Engineer: Similarly, the mention of Natural Language Processing tasks makes an NLP Engineer a suitable match for this role.\n"
                 "## Matched Roles:\n"
                 f"  - AI Engineer\n"
@@ -221,7 +181,6 @@ def extract_vacancy_details(vacancy: str, llm_handler: LLMHandler, model, add_to
     # Send the prompt to the LLM handler and get the response
     response = llm_handler.get_answer(prompt, model=model, max_tokens=max_tokens)
 
-    response = response.replace("GoLang", "Go").replace("Golang", "Go").replace("golang", "Go")
     response = response.replace("- GitHub\n", "").replace("- Github\n", "").replace("- Git\n", "")
     response = response.replace("- GitLab\n", "").replace("- Gitlab\n", "")
 

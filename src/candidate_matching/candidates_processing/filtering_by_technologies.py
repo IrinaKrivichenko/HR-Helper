@@ -78,7 +78,6 @@ def filter_by_technologies(vacancy_info, df):
     MIN_CANDIDATES_THRESHOLD = int(os.getenv("MIN_CANDIDATES_THRESHOLD"))
     coverage_percentage = "0%"
     vacancy_programming_languages = vacancy_info.get("Extracted Programming Languages", "")
-    vacancy_programming_set = get_tokens(vacancy_programming_languages)
     vacancy_technologies = vacancy_info.get("Extracted Technologies", "")
     vacancy_technologies = mitigate_cloud_technologies_impact(vacancy_technologies)
     vacancy_technologies_set = get_tokens(vacancy_technologies)
@@ -86,6 +85,7 @@ def filter_by_technologies(vacancy_info, df):
     # Step 3: Get candidates with fully covered programming languages
     pl_threshold = 100
     if vacancy_programming_languages and not vacancy_programming_languages.startswith('No'):
+        vacancy_programming_set = get_tokens(vacancy_programming_languages)
         df['Coverage'] = df['Stack'].apply(
             lambda x: covered_percentage(vacancy_programming_set, get_tokens(x))
         )
@@ -102,11 +102,13 @@ def filter_by_technologies(vacancy_info, df):
             coverage_percentage = f"full programming languages coverage"
     else:
         partial_pl_coverage_df = df
+        vacancy_programming_set = set()
         logger.info("No programming languages specified in vacancy.")
 
     # Step 5: Get candidates with coverage of other technologies
     tech_threshold = 30
     if vacancy_technologies and not vacancy_technologies.startswith('No'):
+        vacancy_technologies_set = get_tokens(vacancy_technologies)
         partial_pl_coverage_df['Coverage'] = partial_pl_coverage_df['Stack'].apply(
             lambda x: covered_percentage(vacancy_technologies_set, get_tokens(x))
         )
@@ -126,6 +128,7 @@ def filter_by_technologies(vacancy_info, df):
         coverage_percentage = f"{coverage_percentage}\nother technologies coverage (>= {tech_threshold}%"
     else:
         partial_tech_coverage_df = partial_pl_coverage_df
+        vacancy_technologies_set = set()
         logger.info("No technologies specified in vacancy.")
 
     all_vacancy_tokens_set = vacancy_programming_set.union(vacancy_technologies_set)

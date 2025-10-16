@@ -166,12 +166,15 @@ def generate_final_response(better_fit_df, lesser_fit_df, llm_extracted_data):
     # Extract and format vacancy technologies
     extracted_programming_languages = llm_extracted_data.get('Extracted Programming Languages', '')
     extracted_technologies = llm_extracted_data.get('Extracted Technologies', '')
-
     # Combine programming languages and technologies
     extracted_technologies_text = f"{extracted_programming_languages}\n{extracted_technologies}"
-
     # Extract location
     extracted_location = llm_extracted_data.get('Extracted Location', 'Any location')
+    extracted_rate = llm_extracted_data.get("Extracted Rate", "No rate specified")
+    if extracted_rate == "No rate specified":
+        extracted_rate = ""
+    else:
+        extracted_rate = f"<u><b>Rate:</b></u>\n{extracted_rate}\n\n"
 
     # Get the minimum candidates threshold from environment variables
     min_candidates_threshold = int(os.getenv("MIN_CANDIDATES_THRESHOLD", 5))  # Default value is 5 if not set
@@ -184,6 +187,7 @@ def generate_final_response(better_fit_df, lesser_fit_df, llm_extracted_data):
         final_response = (
             f"<u><b>Location:</b></u>\n{extracted_location}\n\n"
             f"<u><b>Technologies required for the vacancy:</b></u>\n{extracted_technologies_text}\n\n"
+            f"{extracted_rate}"
         )
 
     if better_fit_summaries == "_" and lesser_fit_summaries == "_":

@@ -1,5 +1,6 @@
 import time
 
+from src.data_processing.nlp.languages_info import LanguageItem
 from src.data_processing.nlp.translator import translate_text_with_llm
 
 import concurrent.futures
@@ -9,11 +10,6 @@ from pydantic import BaseModel, Field
 from typing import List
 from src.data_processing.nlp.llm_handler import LLMHandler
 from src.logger import logger  # Added logger import
-
-
-class LanguageItem(BaseModel):
-    language: str = Field(description="Language name")
-    level: str = Field(description="CEFR level (A1, A2, B1, B2, C1, C2)")
 
 
 class CVLanguagesAnalysis(BaseModel):
@@ -50,7 +46,10 @@ def extract_cv_languages(
                 f"**Special Rules for English Level:**\n"
                 f"- If the resume is NOT in English: the English level is most likely A1 and definitely not higher than A2.\n"
                 f"- If the resume is in English but other languages are clearly indicated: use this information.\n"
-                f"- If the CV is in English but other languages are not clearly indicated: Infer from the quality of the CV and the candidate's location whether it is B1 or B2.\n\n"
+                f"- If the CV is in English but other languages are not clearly indicated: Infer from the quality of the CV and the candidate's location whether it is B1 or B2.\n"
+                f"- If a language is listed but the proficiency level is unclear, default to B1.\n"
+                f"- Consider the candidate's location when assigning B1 level (e.g., if the candidate is in a country where the language is widely spoken, B1 is a reasonable default).\n"
+                f"\n"
                 f"**Rules:**\n"
                 f"- Only include languages with identifiable proficiency levels\n"
                 f"- If no level can be inferred, exclude the language\n"

@@ -2,6 +2,7 @@
 import pandas as pd
 
 from src.candidate_matching.candidates_processing.filtering_by_location import filter_candidates_by_location
+from src.candidate_matching.candidates_processing.filtering_by_rate import filter_candidates_by_rate
 from src.candidate_matching.candidates_processing.filtering_by_technologies import filter_by_technologies
 from src.logger import logger
 
@@ -82,6 +83,8 @@ def primary_filtering_by_vacancy(vacancy_info, df):
     Returns:
     - tuple: Filtered DataFrame with candidates meeting the criteria and coverage percentage.
     """
+    MIN_CANDIDATES_THRESHOLD = int(os.getenv("MIN_CANDIDATES_THRESHOLD"))
+
     # Step 1: Filter by location
     location_filtered_df = filter_candidates_by_location(df, vacancy_info.get("Extracted Location", "Any location"))
     logger.info(f"Number of candidates after location filtering: {len(location_filtered_df)}\n{get_names(location_filtered_df)}")
@@ -98,20 +101,23 @@ def primary_filtering_by_vacancy(vacancy_info, df):
     if required_roles and len(tech_filtered_df) > 10:
         roles_filtered_df = filter_candidates_by_roles(tech_filtered_df, required_roles)
         logger.info(f"Number of candidates after role filtering: {len(roles_filtered_df)}\n{get_names(roles_filtered_df)}")
-        if roles_filtered_df.empty:
+        if len(roles_filtered_df) < MIN_CANDIDATES_THRESHOLD:
             roles_filtered_df = tech_filtered_df
     else:
         roles_filtered_df = tech_filtered_df
 
-    # Step 8: Filter by industries if industries are specified and the number of candidates exceeds the number of candidates LLM is capable to process in one time
+    # Step 8
+    rate_filtered_df = filter_candidates_by_rate(roles_filtered_df, vacancy_info.get("Extracted Rate", ""))
+
+    # Step 9: Filter by industries if industries are specified and the number of candidates exceeds the number of candidates LLM is capable to process in one time
     required_industries = vacancy_info.get("Extracted Industries", "")
-    if required_industries and len(roles_filtered_df) > 10:
-        industries_filtered_df = filter_candidates_by_industries(roles_filtered_df, required_industries)
+    if required_industries and len(rate_filtered_df) > 10:
+        industries_filtered_df = filter_candidates_by_industries(rate_filtered_df, required_industries)
         logger.info(f"Number of candidates after role filtering: {len(industries_filtered_df)}\n{get_names(industries_filtered_df)}")
-        if industries_filtered_df.empty:
-            industries_filtered_df = roles_filtered_df
+        if len(industries_filtered_df) < MIN_CANDIDATES_THRESHOLD:
+            industries_filtered_df = rate_filtered_df
     else:
-        industries_filtered_df = roles_filtered_df
+        industries_filtered_df = rate_filtered_df
 
     final_filtered_df = industries_filtered_df
     logger.info(f"Number of candidates after final filtering: {len(final_filtered_df)}")

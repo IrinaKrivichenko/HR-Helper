@@ -12,8 +12,8 @@ FIELD_MAPPING = {
     "Stack": ["Skills", "Experience", "Education"],
     "Languages": ["Header", "Skills", "Education"],
     "Expertise": ["Experience", "Education"],
-    "Role": ["Skills", "Experience", "Education"],
-    "Seniority": ["Summary", "Skills", "Experience", "Education"],
+    "Role": ["Header", "Skills", "Experience", "Education"],
+    "Seniority": ["Header", "Summary", "Skills", "Experience", "Education"],
     "Industries": ["Summary", "Skills", "Experience", "Education"],
 }
 

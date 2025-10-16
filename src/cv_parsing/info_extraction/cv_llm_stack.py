@@ -10,6 +10,7 @@ from src.logger import logger  # Added logger import
 
 
 class TechnologyItem(BaseModel):
+    reasoning_about_technology: str = Field(default="", description="Reasoning about the technology proficiency")
     name: str = Field(description="Technology name in format 'Full Name (Abbreviation)' if applicable")
     score: int = Field(ge=1, le=5, description="Proficiency score from 1-5")
 
@@ -71,6 +72,13 @@ def extract_cv_stack(
         sorted_techs = sorted(cv_analysis.technologies, key=lambda x: x.score, reverse=True)
         stack_string = ", ".join([f"{tech.name} - {tech.score}" for tech in sorted_techs])
 
+        # Format reasoning about stack: each technology with its reasoning
+    reasoning_about_stack = ""
+    if cv_analysis.technologies:
+        reasoning_about_stack = "\n".join(
+            [f"• {tech.name}: {tech.reasoning_about_technology}" for tech in sorted_techs]
+        )
+
     # Get cached tokens if available
     cached_tokens = 0
     if hasattr(usage, 'prompt_tokens_details') and hasattr(usage.prompt_tokens_details, 'cached_tokens'):
@@ -79,7 +87,7 @@ def extract_cv_stack(
     # Build result dictionary with all fields
     result = {
         "Stack": stack_string,
-        "Reasoning about Stack": "\n".join(f"• {step}" for step in cv_analysis.reasoning_steps),
+        "Reasoning about Stack": reasoning_about_stack,
         "Model of_Stack_CV_extraction": model,
         "Completion Tokens of_Stack_CV_extraction": str(usage.completion_tokens),
         "Prompt Tokens _of_Stack_CV_extraction": str(usage.prompt_tokens),
