@@ -53,7 +53,7 @@ def filter_candidates_by_engagement(df: pd.DataFrame) -> pd.DataFrame:
         # "🔄 WorkING",
         # "🏁 WorkED",
         "💔 Refused Further Work",
-        "🚧Currently on hold",
+        "🚧On hold",
         "📵 Candidate unreachable",
         "❌ Checked: fake detected"
     }

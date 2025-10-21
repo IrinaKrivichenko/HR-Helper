@@ -1,33 +1,12 @@
 import re
 
 from src.data_processing.emoji_processing import extract_emoji
+from src.data_processing.nlp.languages_info import language_codes
 from src.data_processing.nlp.tokenization import get_tokens
 from dotenv import load_dotenv
 load_dotenv()
 
 def convert_language_levels(language_string):
-    language_codes = {
-        "Albanian": "SQ", "Arabic": "AR", "Armenian": "HY", "Azerbaijani": "AZ",
-        "Bashkir": "BA", "Belarussian": "BE", "Belarusian": "BE", "Bulgarian": "BG",
-        "Chinese": "ZH", "Chuvash": "CV", "Croatian": "HR", "Czech": "CS",
-        "Danish": "DA", "Dutch": "NL",
-        "English": "EN", "Estonian": "ET",
-        "Finnish": "FI", "French": "FR",
-        "Georgian": "KA", "German": "DE", "Greek": "EL",
-        "Hebrew": "HE", "Hindi": "HI", "Hungarian": "HU",
-        "Indonesian": "ID", "Italian": "IT",
-        "Japanese": "JA",
-        "Kazakh": "KK", "Korean": "KO", "Kyrgyz": "KY",
-        "Latvian": "LV", "Lithuanian": "LT",
-        "Macedonian": "MK", "Moldovan": "MO", "Mongolian": "MN",
-        "Norwegian": "NO",
-        "Persian": "FA", "Polish": "PL", "Portuguese": "PT",
-        "Romanian": "RO", "Russian": "RU",
-        "Serbian": "SR", "Slovak": "SK", "Slovenian": "SL", "Spanish": "ES", "Swedish": "SV",
-        "Tajik": "TG", "Tatar": "TT", "Thai": "TH", "Turkish": "TR",
-        "Ukrainian": "UK", "Uzbek": "UZ",
-        "Vietnamese": "VI",
-    }
     # Regular expression to search for language and level
     pattern = re.compile(r'(\w+)\s+([A-Za-z0-9]+)')
     def replace_match(match):
@@ -83,6 +62,7 @@ def format_candidate_string(row, stack, index,  show_reasoning=False):
     person_from = row.get('From', '_')
     engagement = extract_emoji(row['LVL of engagement'])
     seniority = row.get('Seniority', '_')
+    roles = ", ".join(row.get('Matched Roles', []))
     location = extract_emoji(row.get('Location', '_'))
     tech_coverage = ""# row.get('Tech Coverage', '')
     stack = row.get('Stack', '_').replace("\n", ", ").replace(" ,", ",").replace(",,", ",")
@@ -102,7 +82,7 @@ def format_candidate_string(row, stack, index,  show_reasoning=False):
 
 
     candidate_str = f"""
-{index}. {google_sheet_row_link} {suitability}% {person_from} {engagement} {seniority} {location} — {tech_coverage} <code>{stack}</code> {languages} {cv}/{wl} {contacts}
+{index}. {google_sheet_row_link} {suitability}% {person_from} {engagement} {seniority} {roles} {location} — {tech_coverage} <code>{stack}</code> {languages} {cv}/{wl} {contacts}
 {reasoning}
 🟥{buy_rate} 🟨{sell_rate} 🟩{margin}"""
 
@@ -165,40 +145,41 @@ def generate_final_response(better_fit_df, lesser_fit_df, llm_extracted_data):
 
     # Extract and format vacancy technologies
     extracted_programming_languages = llm_extracted_data.get('Extracted Programming Languages', '')
+    extracted_programming_languages.replace(", ", " • ")
     extracted_technologies = llm_extracted_data.get('Extracted Technologies', '')
+    extracted_technologies.replace(", ", " • ")
     # Combine programming languages and technologies
-    extracted_technologies_text = f"{extracted_programming_languages}\n{extracted_technologies}"
+    extracted_technologies_text = f" • ".join([extracted_programming_languages, extracted_technologies])
+    extracted_role = llm_extracted_data.get('Extracted Role', '')
     # Extract location
     extracted_location = llm_extracted_data.get('Extracted Location', 'Any location')
     extracted_rate = llm_extracted_data.get("Extracted Rate", "No rate specified")
-    if extracted_rate == "No rate specified":
-        extracted_rate = ""
-    else:
-        extracted_rate = f"<u><b>Rate:</b></u>\n{extracted_rate}\n\n"
 
     # Get the minimum candidates threshold from environment variables
     min_candidates_threshold = int(os.getenv("MIN_CANDIDATES_THRESHOLD", 5))  # Default value is 5 if not set
 
     # Form the final response
     if better_fit_summaries == "_" and lesser_fit_summaries == "_" and extracted_technologies_text.strip() == "":
-        final_response = f"{llm_extracted_data.get('Vacancy Reasoning', '_')}\n\n"
-        return final_response
+        telegram_response = f"{llm_extracted_data.get('Vacancy Reasoning', '_')}\n\n"
+        return telegram_response
     else:
-        final_response = (
-            f"<u><b>Location:</b></u>\n{extracted_location}\n\n"
-            f"<u><b>Technologies required for the vacancy:</b></u>\n{extracted_technologies_text}\n\n"
-            f"{extracted_rate}"
+        telegram_response = (
+            f"<b>📍 Location: </b>{extracted_location}\n"
+            f"<b>🧑‍💼 Role: </b>{extracted_role}\n"
+            f"<b>🔣 ProgLang: </b>{extracted_programming_languages}\n"
+            f"<b>🧰 Stack: </b>{extracted_technologies}\n"
+            f"<b>💸 Rate: </b>{extracted_rate}\n•••"
         )
 
     if better_fit_summaries == "_" and lesser_fit_summaries == "_":
-        final_response += "There are no candidates matching for the vacancy in the specified location\n"
+        telegram_response += "There are no candidates matching for the vacancy in the specified location\n"
     else:
-        final_response += f"<u><b>Better Fit Candidates:</b></u>\n\n{better_fit_summaries}\n\n"
+        telegram_response += f"\n<b>🎯 Best-fit:</b>\n{better_fit_summaries}\n"
 
         # Check if the number of lesser fit candidates exceeds the threshold
         if (len(better_fit_df) >= min_candidates_threshold or (len(better_fit_df)+len(lesser_fit_df)) >= 2*min_candidates_threshold):
             lesser_fit_summaries = "_"
-        final_response += f"<u><b>Lesser Fit Candidates:</b></u>\n\n{lesser_fit_summaries}\n"
+        telegram_response += f"\n<b>🧩 Low-fit:</b>\n{lesser_fit_summaries}\n"
 
-    return final_response
+    return telegram_response
 

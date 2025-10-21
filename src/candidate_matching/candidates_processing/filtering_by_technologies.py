@@ -64,7 +64,7 @@ def get_names(df):
     return names_string
 
 
-def filter_by_technologies(vacancy_info, df):
+def filter_candidates_by_technologies(df, vacancy_info):
     """
     Filters candidates based on programming languages and technologies mentioned in the vacancy information.
 
@@ -133,9 +133,6 @@ def filter_by_technologies(vacancy_info, df):
 
     all_vacancy_tokens_set = vacancy_programming_set.union(vacancy_technologies_set)
     partial_tech_coverage_df['Stack'] = partial_tech_coverage_df['Stack'].apply(lambda stack: filter_technologies_by_vacancy_tokens(stack, all_vacancy_tokens_set))
-    all_vacancy_technologies = f"{vacancy_programming_languages}\n{vacancy_technologies}"
-    all_vacancy_technologies_list = [tech.strip() for tech in all_vacancy_technologies.split('\n') if tech.strip()]
-    partial_tech_coverage_df['Tech Coverage'] = partial_tech_coverage_df['Stack'].apply(lambda stack: calculate_tech_coverage(stack, all_vacancy_technologies_list))
 
     return partial_tech_coverage_df, coverage_percentage
 

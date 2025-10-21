@@ -21,7 +21,7 @@ def format_vacancy_parameter_string(vacancy_info, parameter):
     if parameter!="Role":
         return f"- **Vacancy {parameter}**:\n{value}\n" if value else ""
     else:
-        seniority = check_value(vacancy_info , "Seniority")
+        seniority = check_value(vacancy_info , "Extracted Seniority")
         return f"- **Vacancy Role**:\n{seniority} {value}\n" if value else ""
 
 def parse_llm_process_candidates_response(response: str, add_tokens_info:bool=False) -> Dict[str, str]:

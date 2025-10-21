@@ -38,7 +38,7 @@ def convert_to_usd(rate_str):
         return None  # Return None if conversion fails
 
 
-def filter_candidates_by_rate(df, vacancy_rate_str: str, rate_tolerance:int=10):
+def filter_candidates_by_rate(df, vacancy_rate_str: str, rate_tolerance:int=5):
     """
     Filters candidates based on their sell rate compared to the vacancy rate.
     Args:

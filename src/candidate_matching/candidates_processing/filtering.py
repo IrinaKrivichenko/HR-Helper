@@ -1,9 +1,10 @@
 
 import pandas as pd
+from lxml.doctestcompare import strip
 
 from src.candidate_matching.candidates_processing.filtering_by_location import filter_candidates_by_location
 from src.candidate_matching.candidates_processing.filtering_by_rate import filter_candidates_by_rate
-from src.candidate_matching.candidates_processing.filtering_by_technologies import filter_by_technologies
+from src.candidate_matching.candidates_processing.filtering_by_technologies import filter_candidates_by_technologies
 from src.logger import logger
 
 import os
@@ -34,22 +35,39 @@ def filter_candidates_by_seniority(df, required_seniority):
     filtered_df = df[df['Seniority'].isin(allowed_seniorities)]
     return filtered_df
 
-def filter_candidates_by_roles(df, required_roles):
+def filter_candidates_by_roles(df, required_roles_list):
     """
-    Filters a DataFrame to retain only rows where the "Role" column contains at least one of the required roles as a substring.
+    Filters candidates by required roles.
+    Creates a 'Matched Roles' column in the DataFrame with only the roles that match the required_roles_list.
+    Keeps only candidates with at least one matching role.
+
     Args:
-    - df (pd.DataFrame): The DataFrame to filter.
-    - required_roles (str): A string of role substrings separated by newline characters.
+        df (DataFrame): DataFrame with candidates.
+        required_roles_list (List[str]): List of required roles.
+
     Returns:
-    - pd.DataFrame: A filtered DataFrame containing only rows that match the criteria.
+        DataFrame: Filtered DataFrame.
     """
-    # Split the required_roles string into a list
-    required_roles_list = required_roles.split('\n')
-    # Create a boolean mask where any of the required_roles is a substring in the "Role" column
-    mask = df['Role'].str.contains('|'.join(required_roles_list), case=False, na=False)
+    # Create 'Matched Roles' column by filtering roles from 'Role' column
+    df['Matched Roles'] = df['Role'].apply(
+        lambda roles: [
+            role.strip()
+            for role in roles.split(',')
+            if role.strip() in required_roles_list
+        ]
+    )
+    # Handle the case where 'No Role is specified' is the only role
+    df['Matched Roles'] = df['Matched Roles'].apply(lambda matched_roles: matched_roles if matched_roles else [])
+
+    if len(required_roles_list) == 1 and required_roles_list[0].startswith("No "):
+        return df
+
+    # Filter candidates: keep only those with at least one matching role
+    mask = df['Matched Roles'].apply(lambda matched_roles: len(matched_roles) > 0)
     # Apply the mask to filter the DataFrame
-    filtered_df = df[mask]
+    filtered_df = df.loc[mask, :].copy()
     return filtered_df
+
 
 def filter_candidates_by_industries(df, required_industries):
     """
@@ -86,32 +104,42 @@ def primary_filtering_by_vacancy(vacancy_info, df):
     MIN_CANDIDATES_THRESHOLD = int(os.getenv("MIN_CANDIDATES_THRESHOLD"))
 
     # Step 1: Filter by location
-    location_filtered_df = filter_candidates_by_location(df, vacancy_info.get("Extracted Location", "Any location"))
-    logger.info(f"Number of candidates after location filtering: {len(location_filtered_df)}\n{get_names(location_filtered_df)}")
+    location = vacancy_info.get("Extracted Location", "Any location")
+    location_filtered_df = filter_candidates_by_location(df, location)
+    logger.info(f"Number of candidates after location filtering: "
+                f"{len(location_filtered_df)}\n{get_names(location_filtered_df)}")
 
     # Step 2: Filter by seniority
-    seniority_filtered_df = filter_candidates_by_seniority(location_filtered_df, vacancy_info.get("Extracted Seniority", "Any"))
-    logger.info(f"Number of candidates after seniority filtering: {len(seniority_filtered_df)}\n{get_names(seniority_filtered_df)}")
+    seniority = vacancy_info.get("Extracted Seniority", "Any")
+    seniority_filtered_df = filter_candidates_by_seniority(location_filtered_df, seniority)
+    logger.info(f"Number of candidates after seniority filtering: "
+                f"{len(seniority_filtered_df)}\n{get_names(seniority_filtered_df)}")
+
+    # Step 3: Filter by roles if roles are specified and the number of candidates exceeds the number of candidates LLM is capable to process in one time
+    required_roles = vacancy_info.get("Matched Roles", "")
+    roles_filtered_df = filter_candidates_by_roles(seniority_filtered_df, required_roles)
+    logger.info(f"Number of candidates after role filtering: "
+                f"{len(roles_filtered_df)}\n{get_names(roles_filtered_df)}")
+
 
     # Step 3-6: Filter by technologies
-    tech_filtered_df, coverage_percentage = filter_by_technologies(vacancy_info, seniority_filtered_df)
+    tech_filtered_df, coverage_percentage = filter_candidates_by_technologies(roles_filtered_df, vacancy_info)
 
-    # Step 7: Filter by roles if roles are specified and the number of candidates exceeds the number of candidates LLM is capable to process in one time
-    required_roles = vacancy_info.get("Matched Roles", "")
-    if required_roles and len(tech_filtered_df) > 10:
-        roles_filtered_df = filter_candidates_by_roles(tech_filtered_df, required_roles)
-        logger.info(f"Number of candidates after role filtering: {len(roles_filtered_df)}\n{get_names(roles_filtered_df)}")
-        if len(roles_filtered_df) < MIN_CANDIDATES_THRESHOLD:
-            roles_filtered_df = tech_filtered_df
-    else:
-        roles_filtered_df = tech_filtered_df
 
     # Step 8
-    rate_filtered_df = filter_candidates_by_rate(roles_filtered_df, vacancy_info.get("Extracted Rate", ""))
+    rate = vacancy_info.get("Extracted Rate", "")
+    print
+    rate_filtered_df = filter_candidates_by_rate(tech_filtered_df, rate)
+    logger.info(f"Number of candidates after rate filtering: "
+                f"{len(rate_filtered_df)}\n{get_names(rate_filtered_df)}")
+    # if len(rate_filtered_df) < MIN_CANDIDATES_THRESHOLD:
+    #         rate_filtered_df = tech_filtered_df
+
+
 
     # Step 9: Filter by industries if industries are specified and the number of candidates exceeds the number of candidates LLM is capable to process in one time
     required_industries = vacancy_info.get("Extracted Industries", "")
-    if required_industries and len(rate_filtered_df) > 10:
+    if required_industries and len(rate_filtered_df) > 30:
         industries_filtered_df = filter_candidates_by_industries(rate_filtered_df, required_industries)
         logger.info(f"Number of candidates after role filtering: {len(industries_filtered_df)}\n{get_names(industries_filtered_df)}")
         if len(industries_filtered_df) < MIN_CANDIDATES_THRESHOLD:

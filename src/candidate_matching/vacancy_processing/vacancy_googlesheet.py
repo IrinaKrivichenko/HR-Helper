@@ -74,14 +74,14 @@ def prepare_logs_data(vacancy_description, vacancy_dict, user, current_date):
     )
 
     logs_results = [
-        current_date,
+        current_date, # A
         vacancy_dict.get("error_logs", ""),
         vacancy_description,
         vacancy_dict.get("final_answer", ""),
         vacancy_dict.get("Vacancy Reasoning", ""),
         vacancy_dict.get("Extracted Seniority", ""),
         vacancy_dict.get("Extracted Role", ""),
-        vacancy_dict.get("Matched Roles", ""),
+        "\n ".join(vacancy_dict.get("Matched Roles", "")),
         vacancy_dict.get("Extracted Programming Languages", ""),
         vacancy_dict.get("Extracted Technologies", ""),
         vacancy_dict.get("Extracted English Level", ""),
@@ -106,6 +106,8 @@ def prepare_logs_data(vacancy_description, vacancy_dict, user, current_date):
         f"{vacancy_dict.get('total_time', 0):.1f} sec",
         vacancy_dict.get("Model Used vacancy_details", ""),
         vacancy_dict.get("Cost vacancy_details", 0),
+        vacancy_dict.get("Model Used vacancy_roles", ""),
+        vacancy_dict.get("Cost vacancy_roles", 0),
         vacancy_dict.get("Model Used vacancy_industries", ""),
         vacancy_dict.get("Cost vacancy_industries", 0),
         vacancy_dict.get("Model Used vacancy_location", ""),
@@ -160,7 +162,7 @@ def insert_new_row(service, sheet_id, sheet_name, sheet_index):
     }
 
     service.spreadsheets().batchUpdate(spreadsheetId=sheet_id, body=insert_request).execute()
-    return f"{sheet_name}!A2:AO2" if sheet_name == os.getenv("SEARCH_LOGS_SHEET_NAME") else f"{sheet_name}!A2:D2"
+    return f"{sheet_name}!A2:AQ2" if sheet_name == os.getenv("SEARCH_LOGS_SHEET_NAME") else f"{sheet_name}!A2:D2"
 
 def save_vacancy_description(vacancy_description, existing_vacancy, vacancy_dict, user, service=None):
     if service is None:
@@ -178,7 +180,7 @@ def save_vacancy_description(vacancy_description, existing_vacancy, vacancy_dict
 
         if existing_vacancy is not None:
             row_index = existing_vacancy['Row in Spreadsheets']
-            range_logs = f"{SEARCH_LOGS_SHEET_NAME}!A{row_index}:AO{row_index}"
+            range_logs = f"{SEARCH_LOGS_SHEET_NAME}!A{row_index}:AQ{row_index}"
             range_cache = f"{SEARCH_CACHE_SHEET_NAME}!A{row_index}:D{row_index}"
         else:
             range_logs = insert_new_row(service, SHEET_ID, SEARCH_LOGS_SHEET_NAME, LOGS_SHEET_ID)

@@ -10,7 +10,7 @@ from src.logger import logger  # Added logger import
 
 
 class TechnologyItem(BaseModel):
-    reasoning_about_technology: str = Field(default="", description="Reasoning about the technology proficiency")
+    reasoning_about_technology: str = Field(default="", description="One sentence reasoning about the technology proficiency")
     name: str = Field(description="Technology name in format 'Full Name (Abbreviation)' if applicable")
     score: int = Field(ge=1, le=5, description="Proficiency score from 1-5")
 
@@ -23,7 +23,7 @@ class CVStackAnalysis(BaseModel):
 def extract_cv_stack(
         cv_sections: Dict,
         llm_handler: LLMHandler,
-        model: str = "gpt-4.1-nano"
+        model: str = "gpt-4.1"
 ):
     """
     Extract CV technology stack - now with structured outputs by default.
@@ -51,7 +51,7 @@ def extract_cv_stack(
         }
     ]
 
-    max_tokens = max(len(cv), 200)
+    max_tokens = max(len(cv)*9, 2000)
 
     # Get structured response from LLM
     structured_response = llm_handler.get_answer(

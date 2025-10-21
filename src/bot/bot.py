@@ -73,9 +73,8 @@ async def process_user_request(update: Update, context: ContextTypes.DEFAULT_TYP
                     # await check_google_token(update, context)
                     return
 
-        if not auth_manager.is_user_authorized(user_name):
+        if not await auth_manager.is_user_authorized(user_name, text, update):
             print(f"NOT authorized {user_name} have send: ({text})")
-            await auth_manager.add_user(user_name, text, update)
         else:
             print(f"authorized {user_name} have send: ({text})")
 
