@@ -2,6 +2,7 @@ import re
 import numpy as np
 import pandas as pd
 
+from src.data_processing.emoji_processing import extract_emoji
 from src.data_processing.jaccard_similarity import calculate_jaccard_similarity
 from src.google_services.sheets import read_specific_columns
 from src.logger import logger
@@ -57,14 +58,24 @@ def filter_candidates_by_engagement(df: pd.DataFrame) -> pd.DataFrame:
         "📵 Candidate unreachable",
         "❌ Checked: fake detected"
     }
+    forbidden_emojis = set()
+    for level in not_valid_engagement_levels:
+        emojis = extract_emoji(level)
+        if emojis:
+            forbidden_emojis.update(emojis)
+
+    # Function for checking for prohibited emojis
+    def contains_forbidden_emoji(text):
+        emojis_in_text = extract_emoji(str(text))
+        if emojis_in_text:
+            return any(forbidden in emojis_in_text for forbidden in forbidden_emojis)
+        return False
+
     # Filter the DataFrame
     df['LVL of engagement'] = df['LVL of engagement'].astype(str).str.strip()
-    filtered_df = df[df['LVL of engagement'].apply(lambda x: not any(
-          calculate_jaccard_similarity(x, invalid_lvl) >= 0.8 for invalid_lvl in not_valid_engagement_levels
-      ))]
-
-    # filtered_df = filtered_df.drop('LVL of engagement', axis=1)
+    filtered_df = df[~df['LVL of engagement'].apply(contains_forbidden_emoji)]
     return filtered_df
+
 
 def clean_and_extract_first_word(name):
     cleaned_name = re.sub(r'[^a-zA-Z\s]', '', name)

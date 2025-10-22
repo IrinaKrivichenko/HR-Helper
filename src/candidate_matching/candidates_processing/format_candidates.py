@@ -63,7 +63,7 @@ def format_candidate_string(row, stack, index,  show_reasoning=False):
     engagement = extract_emoji(row['LVL of engagement'])
     seniority = row.get('Seniority', '_')
     roles = ", ".join(row.get('Matched Roles', []))
-    location = extract_emoji(row.get('Location', '_'))
+    location = row.get('Location', '_')
     tech_coverage = ""# row.get('Tech Coverage', '')
     stack = row.get('Stack', '_').replace("\n", ", ").replace(" ,", ",").replace(",,", ",")
     languages = row.get('English', '_')
@@ -145,9 +145,9 @@ def generate_final_response(better_fit_df, lesser_fit_df, llm_extracted_data):
 
     # Extract and format vacancy technologies
     extracted_programming_languages = llm_extracted_data.get('Extracted Programming Languages', '')
-    extracted_programming_languages.replace(", ", " • ")
+    extracted_programming_languages = extracted_programming_languages.replace(", ", " • ")
     extracted_technologies = llm_extracted_data.get('Extracted Technologies', '')
-    extracted_technologies.replace(", ", " • ")
+    extracted_technologies = extracted_technologies.replace(", ", " • ")
     # Combine programming languages and technologies
     extracted_technologies_text = f" • ".join([extracted_programming_languages, extracted_technologies])
     extracted_role = llm_extracted_data.get('Extracted Role', '')
@@ -167,19 +167,20 @@ def generate_final_response(better_fit_df, lesser_fit_df, llm_extracted_data):
             f"<b>📍 Location: </b>{extracted_location}\n"
             f"<b>🧑‍💼 Role: </b>{extracted_role}\n"
             f"<b>🔣 ProgLang: </b>{extracted_programming_languages}\n"
-            f"<b>🧰 Stack: </b>{extracted_technologies}\n"
-            f"<b>💸 Rate: </b>{extracted_rate}\n•••"
+            f"<b>🧰 Techs: </b>{extracted_technologies}\n"
+            f"<b>💸 Rate: </b>{extracted_rate}\n"
         )
 
     if better_fit_summaries == "_" and lesser_fit_summaries == "_":
         telegram_response += "There are no candidates matching for the vacancy in the specified location\n"
+        telegram_response += 'Consider <a href="https://www.linkedin.com/my-items/posted-jobs/">adding hiring job post</a> to increase our DB.'
     else:
-        telegram_response += f"\n<b>🎯 Best-fit:</b>\n{better_fit_summaries}\n"
+        telegram_response += f"\n<b>🎯 Best-fit:</b>{better_fit_summaries}\n"
 
         # Check if the number of lesser fit candidates exceeds the threshold
         if (len(better_fit_df) >= min_candidates_threshold or (len(better_fit_df)+len(lesser_fit_df)) >= 2*min_candidates_threshold):
             lesser_fit_summaries = "_"
-        telegram_response += f"\n<b>🧩 Low-fit:</b>\n{lesser_fit_summaries}\n"
+        telegram_response += f"\n<b>🧩 Low-fit:</b>{lesser_fit_summaries}\n"
 
     return telegram_response
 

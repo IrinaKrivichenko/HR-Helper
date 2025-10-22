@@ -61,7 +61,7 @@ class UserAuthorizationManager:
             self.authorized_users[user] = chat_id
             print("chat_id = ", self.authorized_users[user])
             await update.message.reply_text("Hey! Glad you're here!")
-            return True
+            # return True
         return False
 
     async def remove_user(self, user, word, update):
@@ -70,18 +70,18 @@ class UserAuthorizationManager:
                 if user in self.authorized_users:
                     chat_id = self.authorized_users.pop(user)
                     await update.message.reply_text("Bye bye! See you soon!")
-            # return True
+            return True
         return False
 
     async def is_user_authorized(self, user, text, update):
         with self.lock:
             if user in self.authorized_users:
-                if text.lower() in self.passwords:
+                if text and text.lower() in self.passwords:
                     await update.message.reply_text("You are already authorized")
                     return False
                 return True
             else:
-                if text.lower() in self.passwords:
+                if text and text.lower() in self.passwords:
                     return await self.add_user(user, text, update)
                 return False
 
