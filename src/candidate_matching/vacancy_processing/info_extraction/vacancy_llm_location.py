@@ -26,7 +26,7 @@ def parse_llm_vacancy_location_response(response: str, add_tokens_info: bool) ->
             elif section_name == 'Reasoning':
                 if not section_content.startswith('No'):
                     # Store reasoning
-                    extracted_data['Vacancy Reasoning'] = section_content
+                    extracted_data['Vacancy Location Reasoning'] = section_content
 
             # Parse token usage and cost information
             elif section_name == 'Token Usage and Cost':

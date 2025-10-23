@@ -1,10 +1,12 @@
 import re
+from typing import List
 
 from src.data_processing.emoji_processing import extract_emoji
 from src.data_processing.nlp.languages_info import language_codes
-from src.data_processing.nlp.tokenization import get_tokens
+from src.data_processing.nlp.tokenization import create_tokens_set
 from dotenv import load_dotenv
 load_dotenv()
+import os
 
 def convert_language_levels(language_string):
     # Regular expression to search for language and level
@@ -65,7 +67,7 @@ def format_candidate_string(row, stack, index,  show_reasoning=False):
     roles = ", ".join(row.get('Matched Roles', []))
     location = row.get('Location', '_')
     tech_coverage = ""# row.get('Tech Coverage', '')
-    stack = row.get('Stack', '_').replace("\n", ", ").replace(" ,", ",").replace(",,", ",")
+    stack = row.get('_Stack', '_').replace("\n", ", ").replace(" ,", ",").replace(",,", ",")
     languages = row.get('English', '_')
     if len(languages) > 2:
         languages = f" English {languages}"
@@ -85,20 +87,19 @@ def format_candidate_string(row, stack, index,  show_reasoning=False):
 {index}. {google_sheet_row_link} {suitability}% {person_from} {engagement} {seniority} {roles} {location} — {tech_coverage} <code>{stack}</code> {languages} {cv}/{wl} {contacts}
 {reasoning}
 🟥{buy_rate} 🟨{sell_rate} 🟩{margin}"""
-
     return candidate_str
 
 
 
 def generate_candidates_summary_for_df(df, start_index, extracted_technologies, show_reasoning):
     summaries = []
-    extracted_technologies_tokenized = get_tokens(extracted_technologies)
+    extracted_technologies_tokenized = create_tokens_set(extracted_technologies)
     for index, (_, row) in enumerate(df.iterrows(), start=start_index):
         # Extract common technologies
         stack = row.get('Stack', '')
         common_technologies = ''
         if stack:
-            stack_values_tokenized = get_tokens(stack)
+            stack_values_tokenized = create_tokens_set(stack)
             common_technologies_tokenized = stack_values_tokenized.intersection(extracted_technologies_tokenized)
             common_technologies = ', '.join(common_technologies_tokenized)
         candidate_summary = format_candidate_string(row, common_technologies, index, show_reasoning)
@@ -126,7 +127,15 @@ def generate_candidates_summary(better_fit_df, lesser_fit_df, extracted_technolo
 
     return better_fit_df, lesser_fit_df
 
-import os
+
+def format_tech_sting(extracted_technologies: List, nice_to_have_technologies: List, sep: str=" • "):
+    extracted_technologies = sep.join(extracted_technologies)
+    nice_to_have_technologies = sep.join(nice_to_have_technologies)
+    if nice_to_have_technologies:
+        extracted_technologies = f"{extracted_technologies} ✨ {nice_to_have_technologies}"
+    if not extracted_technologies:
+        extracted_technologies = "_"
+    return extracted_technologies
 
 def generate_final_response(better_fit_df, lesser_fit_df, llm_extracted_data):
     """
@@ -144,12 +153,12 @@ def generate_final_response(better_fit_df, lesser_fit_df, llm_extracted_data):
     lesser_fit_summaries = join_all_df_summaries(lesser_fit_df)
 
     # Extract and format vacancy technologies
-    extracted_programming_languages = llm_extracted_data.get('Extracted Programming Languages', '')
-    extracted_programming_languages = extracted_programming_languages.replace(", ", " • ")
-    extracted_technologies = llm_extracted_data.get('Extracted Technologies', '')
-    extracted_technologies = extracted_technologies.replace(", ", " • ")
+    extracted_programming_languages = format_tech_sting(llm_extracted_data.get('Extracted Programming Languages', []),
+                                                        llm_extracted_data.get('Nice to have Programming Languages', []))
+    extracted_technologies = format_tech_sting(llm_extracted_data.get('Extracted Technologies', []),
+                                               llm_extracted_data.get('Nice to have Technologies', []))
+
     # Combine programming languages and technologies
-    extracted_technologies_text = f" • ".join([extracted_programming_languages, extracted_technologies])
     extracted_role = llm_extracted_data.get('Extracted Role', '')
     # Extract location
     extracted_location = llm_extracted_data.get('Extracted Location', 'Any location')
@@ -159,7 +168,7 @@ def generate_final_response(better_fit_df, lesser_fit_df, llm_extracted_data):
     min_candidates_threshold = int(os.getenv("MIN_CANDIDATES_THRESHOLD", 5))  # Default value is 5 if not set
 
     # Form the final response
-    if better_fit_summaries == "_" and lesser_fit_summaries == "_" and extracted_technologies_text.strip() == "":
+    if better_fit_summaries == "_" and lesser_fit_summaries == "_" and extracted_programming_languages == "_" and extracted_technologies == "_":
         telegram_response = f"{llm_extracted_data.get('Vacancy Reasoning', '_')}\n\n"
         return telegram_response
     else:

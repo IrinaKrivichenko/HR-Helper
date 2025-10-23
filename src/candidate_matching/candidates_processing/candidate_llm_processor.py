@@ -10,8 +10,14 @@ from src.data_processing.nlp.llm_handler import LLMHandler, extract_and_parse_to
 
 
 def check_value(dictionary , key):
-    if key in dictionary and not dictionary[key].startswith('No'):
-        return dictionary[key]
+    if key in dictionary :
+        value = dictionary[key]
+        if isinstance(value, list):
+            return ", ".join([str(value) for value in value])
+        elif not dictionary[key].startswith('No'):
+            return dictionary[key]
+        else:
+            return ""
     else:
         return ""
 
@@ -89,9 +95,10 @@ def process_candidates_with_llm(
     # Initialize DataFrames to store better and lesser fit candidates
     better_fit_df = pd.DataFrame(columns=filtered_df.columns)
     lesser_fit_df = pd.DataFrame(columns=filtered_df.columns)
+    max_try_time = len(filtered_df)//10 + 1
 
     # Process candidates in batches
-    while len(filtered_df) and try_time<5:
+    while len(filtered_df) and try_time<=max_try_time:
         try:
             # Convert the filtered DataFrame to JSON format
             columns_to_json = [

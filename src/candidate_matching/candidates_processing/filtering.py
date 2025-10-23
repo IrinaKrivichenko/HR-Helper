@@ -102,56 +102,67 @@ def primary_filtering_by_vacancy(vacancy_info, df):
     - tuple: Filtered DataFrame with candidates meeting the criteria and coverage percentage.
     """
     MIN_CANDIDATES_THRESHOLD = int(os.getenv("MIN_CANDIDATES_THRESHOLD"))
+    filter_history = []
 
     # Step 1: Filter by location
     location = vacancy_info.get("Extracted Location", "Any location")
     location_filtered_df = filter_candidates_by_location(df, location)
-    logger.info(f"Number of candidates after location filtering: "
-                f"{len(location_filtered_df)}\n{get_names(location_filtered_df)}")
+    candidates_count = len(location_filtered_df)
+    candidates_names = get_names(location_filtered_df)
+    filter_history.append(f"Location: {location} -> {candidates_count} candidates ({candidates_names})")
+    logger.info(filter_history[-1])
 
     # Step 2: Filter by seniority
     seniority = vacancy_info.get("Extracted Seniority", "Any")
     seniority_filtered_df = filter_candidates_by_seniority(location_filtered_df, seniority)
-    logger.info(f"Number of candidates after seniority filtering: "
-                f"{len(seniority_filtered_df)}\n{get_names(seniority_filtered_df)}")
+    candidates_count = len(seniority_filtered_df)
+    candidates_names = get_names(seniority_filtered_df)
+    filter_history.append(f"Seniority: {seniority} -> {candidates_count} candidates ({candidates_names})")
+    logger.info(filter_history[-1])
 
     # Step 3: Filter by roles if roles are specified and the number of candidates exceeds the number of candidates LLM is capable to process in one time
     required_roles = vacancy_info.get("Matched Roles", "")
     roles_filtered_df = filter_candidates_by_roles(seniority_filtered_df, required_roles)
-    logger.info(f"Number of candidates after role filtering: "
-                f"{len(roles_filtered_df)}\n{get_names(roles_filtered_df)}")
+    candidates_count = len(roles_filtered_df)
+    candidates_names = get_names(roles_filtered_df)
+    filter_history.append(f"Matched Roles: {', '.join(required_roles)} -> {candidates_count} candidates ({candidates_names})")
+    logger.info(filter_history[-1])
 
-
-    # Step 3-6: Filter by technologies
-    tech_filtered_df, coverage_percentage = filter_candidates_by_technologies(roles_filtered_df, vacancy_info)
-
-
-    # Step 8
+    # Step 4
     rate = vacancy_info.get("Extracted Rate", "")
-    print
-    rate_filtered_df = filter_candidates_by_rate(tech_filtered_df, rate)
-    logger.info(f"Number of candidates after rate filtering: "
-                f"{len(rate_filtered_df)}\n{get_names(rate_filtered_df)}")
+    rate_filtered_df = filter_candidates_by_rate(roles_filtered_df, rate)
+    candidates_count = len(rate_filtered_df)
+    candidates_names = get_names(rate_filtered_df)
+    filter_history.append(f"Rate: {rate} -> {candidates_count} candidates ({candidates_names})")
+    logger.info(filter_history[-1])
     # if len(rate_filtered_df) < MIN_CANDIDATES_THRESHOLD:
     #         rate_filtered_df = tech_filtered_df
 
+    # Step 5: Filter by technologies
+    tech_filtered_df, tech_filter_history_str = filter_candidates_by_technologies(rate_filtered_df, vacancy_info)
+    filter_history.append(tech_filter_history_str)
 
-
-    # Step 9: Filter by industries if industries are specified and the number of candidates exceeds the number of candidates LLM is capable to process in one time
+    # Step 7: Filter by industries if industries are specified and the number of candidates exceeds the number of candidates LLM is capable to process in one time
     required_industries = vacancy_info.get("Extracted Industries", "")
-    if required_industries and len(rate_filtered_df) > 30:
-        industries_filtered_df = filter_candidates_by_industries(rate_filtered_df, required_industries)
-        logger.info(f"Number of candidates after role filtering: {len(industries_filtered_df)}\n{get_names(industries_filtered_df)}")
+    if required_industries and len(tech_filtered_df) > 30:
+        industries_filtered_df = filter_candidates_by_industries(tech_filtered_df, required_industries)
+        candidates_count = len(industries_filtered_df)
+        candidates_names = get_names(industries_filtered_df)
+        filter_history.append(f"Industries: {', '.join(required_industries)} -> {candidates_count} candidates ({candidates_names})")
+        logger.info(filter_history[-1])
         if len(industries_filtered_df) < MIN_CANDIDATES_THRESHOLD:
-            industries_filtered_df = rate_filtered_df
+            industries_filtered_df = tech_filtered_df
+            filter_history.append(f"After Industries filtration less then {MIN_CANDIDATES_THRESHOLD} candidates left going back to Rate filtration list")
+            logger.info(filter_history[-1])
     else:
-        industries_filtered_df = rate_filtered_df
+        industries_filtered_df = tech_filtered_df
 
     final_filtered_df = industries_filtered_df
     logger.info(f"Number of candidates after final filtering: {len(final_filtered_df)}")
 
     if len(final_filtered_df) == len(df):
         final_filtered_df = pd.DataFrame(columns=final_filtered_df.columns)
+    filter_history_str = "\n".join(filter_history)
 
-    return final_filtered_df, coverage_percentage
+    return final_filtered_df, filter_history_str
 

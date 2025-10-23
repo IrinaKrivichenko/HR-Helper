@@ -32,7 +32,7 @@ def parse_llm_vacancy_industries_response(response: str, add_tokens_info: bool) 
             # Extract reasoning if present
             elif section_name == 'Reasoning':
                     # Store reasoning
-                    extracted_data['Vacancy Reasoning'] = section_content
+                    extracted_data['Vacancy Industries Reasoning'] = section_content
 
             # Parse token usage and cost information
             elif section_name == 'Token Usage and Cost':

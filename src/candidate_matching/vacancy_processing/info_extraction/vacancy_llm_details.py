@@ -58,7 +58,7 @@ def parse_llm_vacancy_details_response(response: str, add_tokens_info: bool) -> 
 
             # Extract reasoning if present
             elif section_name == 'Reasoning':
-                extracted_data['Vacancy Reasoning'] = section_content
+                extracted_data['Vacancy Language Reasoning'] = section_content
 
             # # Extract reasoning about roles if present
             # elif section_name == 'Reasoning about Roles':
@@ -73,7 +73,7 @@ def parse_llm_vacancy_details_response(response: str, add_tokens_info: bool) -> 
             #     extracted_data['Matched Roles'] = ', '.join(matched_roles)
 
             elif section_name == 'Token Usage and Cost':
-                token_data = parse_token_usage_and_cost(section_content, additional_key_text=" vacancy_details", add_tokens_info=add_tokens_info)
+                token_data = parse_token_usage_and_cost(section_content, additional_key_text=" vacancy_languages", add_tokens_info=add_tokens_info)
                 extracted_data.update(token_data)
 
     return extracted_data
@@ -102,16 +102,17 @@ def extract_vacancy_details(vacancy: str, llm_handler: LLMHandler, model, add_to
             "role": "user",
             "content": (
                 "Your task is to process the provided job description and extract the following information:\n\n"
-                "1. Reasoning: Provide a brief reasoning on how you extracted the information from the job description. "
-                f"Explain how you inferred the programming languages, technologies, seniority level, role, English level, industries, expertise. "
-                f"If specific libraries or frameworks are mentioned, deduce the programming languages from them.\n"
-                "2. Extract the key programming languages mentioned in the job description and list them each on a new line. "
-                f"If no programming languages are explicitly mentioned, infer them from the technologies or libraries listed. "
-                f"If no programming languages are specified, return 'No programming languages specified'.\n"
-                "3. Extract the key technologies mentioned in the job description and list them each on a new line. "
-                f"If a technology has a commonly recognized abbreviation, return the full name followed by the abbreviation in parentheses. "
-                f"If no technologies are specified, return 'No technologies specified'.\n"
-                "4. Identify the required level of English mentioned in the job description. The English level should be formatted as 'A1', 'B1', 'C1', etc. "
+                "1. Reasoning: Provide a brief reasoning on how you extracted the information of re from the job description. "
+                # "1. Reasoning: Provide a brief reasoning on how you extracted the information from the job description. "
+                # f"Explain how you inferred the programming languages, technologies, seniority level, role, English level, industries, expertise. "
+                # f"If specific libraries or frameworks are mentioned, deduce the programming languages from them.\n"
+                # "2. Extract the key programming languages mentioned in the job description and list them each on a new line. "
+                # f"If no programming languages are explicitly mentioned, infer them from the technologies or libraries listed. "
+                # f"If no programming languages are specified, return 'No programming languages specified'.\n"
+                # "3. Extract the key technologies mentioned in the job description and list them each on a new line. "
+                # f"If a technology has a commonly recognized abbreviation, return the full name followed by the abbreviation in parentheses. "
+                # f"If no technologies are specified, return 'No technologies specified'.\n"
+                "2. Identify the required level of English mentioned in the job description. The English level should be formatted as 'A1', 'B1', 'C1', etc. "
                 f"Consider 'Fluent' as 'B2'. If a range is provided, such as 'B2-C1', return it as a range. If no English level is specified, return 'No English level is specified'.\n"
                 # "5. Identify the seniority level described in the job description. "
                 # f"Seniority level should be one of the following: 'Any', 'Junior', 'Middle', 'Senior', 'Principal'. "
@@ -129,8 +130,8 @@ def extract_vacancy_details(vacancy: str, llm_handler: LLMHandler, model, add_to
                 # "10. Matched Roles: List all approximately matching roles from the existing roles list, each on a new line with a dash. If there are no matches at all, write 'NEW' followed by the role extracted from the vacancy.\n"
                 # f"The output should be formatted in Markdown with the following sections:\n"
                 "## Reasoning: The reasoning on how the information was extracted.\n"
-                "## Extracted Programming Languages: The programming languages extracted by the language model from the vacancy description. Each programming language should be listed on a new line.\n"
-                "## Extracted Technologies: The technologies extracted by the language model from the vacancy description. Each technology should be listed on a new line.\n"
+                # "## Extracted Programming Languages: The programming languages extracted by the language model from the vacancy description. Each programming language should be listed on a new line.\n"
+                # "## Extracted Technologies: The technologies extracted by the language model from the vacancy description. Each technology should be listed on a new line.\n"
                 "## Extracted English Level: The level of English extracted by the language model from the vacancy description.\n"
                 # "## Extracted Seniority: The seniority level extracted by the language model from the vacancy description. Seniority level should be one of the following: 'Any', 'Junior', 'Middle', 'Senior', 'Principal'.\n"
                 # "## Extracted Role: The role corresponding to the vacancy description extracted directly from the job description.\n"

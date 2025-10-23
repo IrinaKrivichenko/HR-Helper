@@ -32,9 +32,9 @@ async def find_candidates_for_vacancy(vacancy, llm_handler, user):
     vacancy_dict['step0_time'] = time.time() - step0_start_time
 
     if (prev_call is not None) and \
-       ('first_answer' in prev_call) and \
+       ('tg_answer' in prev_call) and \
        int(prev_call['step1 num number of initial candidates']) == len(get_df_for_vacancy_search()):
-        return prev_call['first_answer']
+        return prev_call['tg_answer']
 
     # Step 1: Initialize list of candidates
     step1_start_time = time.time()
@@ -49,7 +49,7 @@ async def find_candidates_for_vacancy(vacancy, llm_handler, user):
 
     # Step 3: Filter candidates by vacancy information
     step3_start_time = time.time()
-    filtered_candidates_df, vacancy_dict['technologies_coverage'] = primary_filtering_by_vacancy(vacancy_dict, initial_candidates_df)
+    filtered_candidates_df, vacancy_dict['filtering_history'] = primary_filtering_by_vacancy(vacancy_dict, initial_candidates_df)
     vacancy_dict['list_of_filtered_candidates'] = ", ".join(filtered_candidates_df['Full Name'])
     vacancy_dict['step3_candidates_number'] = len(filtered_candidates_df)
     vacancy_dict['step3_time'] = time.time() - step3_start_time
@@ -68,14 +68,14 @@ async def find_candidates_for_vacancy(vacancy, llm_handler, user):
     # Step 5: Generate answer
     step5_start_time = time.time()
     better_fit_df, lesser_fit_df = generate_candidates_summary(better_fit_df, lesser_fit_df, vacancy_dict.get('Extracted Technologies', ''))
-    vacancy_dict['final_answer'] = generate_final_response(better_fit_df, lesser_fit_df, vacancy_dict)
+    vacancy_dict['tg_answer'] = generate_final_response(better_fit_df, lesser_fit_df, vacancy_dict)
     vacancy_dict['step5_time'] = time.time() - step5_start_time
 
     # Step 6: Save results to Google Sheets
     vacancy_dict['total_time'] = time.time() - start_time
     save_vacancy_description(vacancy, prev_call, vacancy_dict, user)
 
-    return vacancy_dict['final_answer']
+    return vacancy_dict['tg_answer']
 
 
 

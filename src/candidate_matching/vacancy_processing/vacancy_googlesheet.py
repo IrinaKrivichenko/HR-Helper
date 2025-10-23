@@ -1,6 +1,8 @@
 
 import os
 from datetime import datetime, timedelta
+from typing import List
+
 from googleapiclient.errors import HttpError
 from dotenv import load_dotenv
 from tzlocal import get_localzone
@@ -32,7 +34,7 @@ def check_existing_vacancy(vacancy_description):
     some_days_ago = datetime.now() - timedelta(days=int(os.getenv("VACANCY_CACHE_TIME")))
 
     # Define columns to extract
-    columns_to_extract = ["Date", "vacancy description", "first_answer",
+    columns_to_extract = ["Date", "vacancy description", "tg_answer",
                           "step1 num number of initial candidates"]
 
     # Read specific columns from the vacancies sheet
@@ -59,11 +61,16 @@ def check_existing_vacancy(vacancy_description):
         if jaccard_similarity >= 1:
             return row
         if jaccard_similarity >= 0.8:
-            del row['first_answer']
+            del row['tg_answer']
             return row  # Return the row index and the user
 
     return None
 
+def format_tech_sting(extracted_technologies: List, nice_to_have_technologies: List, sep: str="\n "):
+    extracted_technologies = sep.join(extracted_technologies)
+    nice_to_have_technologies = sep.join(nice_to_have_technologies)
+    extracted_technologies = f"Extracted: \n{extracted_technologies} \n\nNice to have:\n{nice_to_have_technologies}"
+    return extracted_technologies
 
 def prepare_logs_data(vacancy_description, vacancy_dict, user, current_date):
     total_cost = (
@@ -72,27 +79,34 @@ def prepare_logs_data(vacancy_description, vacancy_dict, user, current_date):
         float(vacancy_dict.get('Cost vacancy_location', 0)) +
         float(vacancy_dict.get('Cost candidates_selection', 0))
     )
-
+    extracted_programming_languages = format_tech_sting(vacancy_dict.get('Extracted Programming Languages', []),
+                                                        vacancy_dict.get('Nice to have Programming Languages', []))
+    extracted_technologies = format_tech_sting(vacancy_dict.get('Extracted Technologies', []),
+                                               vacancy_dict.get('Nice to have Technologies', []))
     logs_results = [
         current_date, # A
         vacancy_dict.get("error_logs", ""),
         vacancy_description,
-        vacancy_dict.get("final_answer", ""),
-        vacancy_dict.get("Vacancy Reasoning", ""),
-        vacancy_dict.get("Extracted Seniority", ""),
-        vacancy_dict.get("Extracted Role", ""),
+        vacancy_dict.get("tg_answer", ""),
+        vacancy_dict.get("Vacancy Roles Reasoning", ""),
+        vacancy_dict.get("Extracted Seniority", ""), # F
+        vacancy_dict.get("Extracted Role", ""), # G
         "\n ".join(vacancy_dict.get("Matched Roles", "")),
-        vacancy_dict.get("Extracted Programming Languages", ""),
-        vacancy_dict.get("Extracted Technologies", ""),
+        vacancy_dict.get("Vacancy Technologies Reasoning", ""),
+        extracted_programming_languages, # J
+        extracted_technologies, # K
+        vacancy_dict.get("Vacancy Language Reasoning", ""), # L
         vacancy_dict.get("Extracted English Level", ""),
+        vacancy_dict.get("Vacancy Rate Reasoning", ""), # N
         vacancy_dict.get("Extracted Rate", ""),
-        vacancy_dict.get("Extracted Expertise", ""),
+        vacancy_dict.get("Vacancy Industries Reasoning", ""), # P
         vacancy_dict.get("Extracted Industries", ""),
+        vacancy_dict.get("Vacancy Location Reasoning", ""), #
         vacancy_dict.get("Extracted Location", ""),
         vacancy_dict.get("Selected Candidates", ""),
         vacancy_dict.get("Reasoning", ""),
         vacancy_dict.get("step1_candidates_number", ""),
-        vacancy_dict.get("technologies_coverage", ""),
+        vacancy_dict.get("filtering_history", ""),
         vacancy_dict.get("step3_candidates_number", ""),
         vacancy_dict.get("step4_candidates_number", ""),
         user,
@@ -104,10 +118,12 @@ def prepare_logs_data(vacancy_description, vacancy_dict, user, current_date):
         f"{vacancy_dict.get('step4_time', 0):.1f} sec",
         f"{vacancy_dict.get('step5_time', 0):.1f} sec",
         f"{vacancy_dict.get('total_time', 0):.1f} sec",
-        vacancy_dict.get("Model Used vacancy_details", ""),
-        vacancy_dict.get("Cost vacancy_details", 0),
         vacancy_dict.get("Model Used vacancy_roles", ""),
         vacancy_dict.get("Cost vacancy_roles", 0),
+        vacancy_dict.get("Model Used vacancy_technologies", ""),
+        vacancy_dict.get("Cost vacancy_technologies", 0),  # AL
+        vacancy_dict.get("Model Used vacancy_languages", ""),
+        vacancy_dict.get("Cost vacancy_languages", 0),
         vacancy_dict.get("Model Used vacancy_industries", ""),
         vacancy_dict.get("Cost vacancy_industries", 0),
         vacancy_dict.get("Model Used vacancy_location", ""),
@@ -125,7 +141,7 @@ def prepare_cache_data(vacancy_description, vacancy_dict, current_date):
     cache_results = [
         current_date,
         vacancy_description,
-        vacancy_dict.get("final_answer", ""),
+        vacancy_dict.get("tg_answer", ""),
         vacancy_dict.get("step1_candidates_number", "")
     ]
 
@@ -162,7 +178,7 @@ def insert_new_row(service, sheet_id, sheet_name, sheet_index):
     }
 
     service.spreadsheets().batchUpdate(spreadsheetId=sheet_id, body=insert_request).execute()
-    return f"{sheet_name}!A2:AQ2" if sheet_name == os.getenv("SEARCH_LOGS_SHEET_NAME") else f"{sheet_name}!A2:D2"
+    return f"{sheet_name}!A2:AW2" if sheet_name == os.getenv("SEARCH_LOGS_SHEET_NAME") else f"{sheet_name}!A2:D2"
 
 def save_vacancy_description(vacancy_description, existing_vacancy, vacancy_dict, user, service=None):
     if service is None:
@@ -180,7 +196,7 @@ def save_vacancy_description(vacancy_description, existing_vacancy, vacancy_dict
 
         if existing_vacancy is not None:
             row_index = existing_vacancy['Row in Spreadsheets']
-            range_logs = f"{SEARCH_LOGS_SHEET_NAME}!A{row_index}:AQ{row_index}"
+            range_logs = f"{SEARCH_LOGS_SHEET_NAME}!A{row_index}:AW{row_index}"
             range_cache = f"{SEARCH_CACHE_SHEET_NAME}!A{row_index}:D{row_index}"
         else:
             range_logs = insert_new_row(service, SHEET_ID, SEARCH_LOGS_SHEET_NAME, LOGS_SHEET_ID)

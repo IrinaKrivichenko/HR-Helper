@@ -25,6 +25,8 @@ def parse_extracted_rate(extracted_rate: ExtractedRate) -> Optional[ExtractedRat
         return "No rate specified"
     try:
         value = extracted_rate.value
+        if value == 0 :
+            return "No rate specified"
         currency = extracted_rate.currency
         period = extracted_rate.period
         if period == "per day":
@@ -58,7 +60,7 @@ def parse_llm_vacancy_rate(response, add_tokens_info) -> VacancyRateResponse:
     if add_tokens_info:
         result: Dict[str, str] = {
             "Extracted Rate": rate,
-            "Reasoning vacancy_rate": reasoning,
+            "Vacancy Rate Reasoning": reasoning,
             "Model Used vacancy_rate": model,
             "Completion Tokens vacancy_rate": str(usage.completion_tokens),
             "Prompt Tokens vacancy_rate": str(usage.prompt_tokens),
@@ -67,7 +69,7 @@ def parse_llm_vacancy_rate(response, add_tokens_info) -> VacancyRateResponse:
     else:
         result: Dict[str, str] = {
             "Extracted Rate": rate,
-            "Reasoning vacancy_rate": reasoning,
+            "Vacancy Rate Reasoning": reasoning,
             "Model Used vacancy_rate": model,
             "Cost vacancy_rate": str(cost_info['total_cost'])
         }

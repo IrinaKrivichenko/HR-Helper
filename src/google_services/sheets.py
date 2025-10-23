@@ -61,7 +61,7 @@ sheets_columns_dict = {
     'Cash Search': {
         'Date': 'A',
         'vacancy description': 'B',
-        'first_answer': 'C',
+        'tg_answer': 'C',
         'step1 num number of initial candidates': 'D'
     }
 }

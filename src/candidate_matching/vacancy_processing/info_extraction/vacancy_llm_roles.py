@@ -224,7 +224,7 @@ def extract_vacancy_role(
     ]
 
     # Calculate max tokens
-    max_tokens = min(max(len(vacancy) * 3, 500), 4096)
+    max_tokens = max(len(vacancy) * 3, 900)
 
     # Get the structured response from the LLM
     response = llm_handler.get_answer(
@@ -256,7 +256,7 @@ def extract_vacancy_role(
         # "Extracted Technologies": role_extraction.extracted_technologies,
         "Extracted Seniority": role_extraction.seniority,
         "Matched Roles": [role.name for role in filtered_roles],
-        "Vacancy Reasoning": (
+        "Vacancy Roles Reasoning": (
             f"{role_extraction.reasoning}\n\n"
             f"{role_extraction.reasoning_about_roles}\n\n"
             + "\n\n".join(
