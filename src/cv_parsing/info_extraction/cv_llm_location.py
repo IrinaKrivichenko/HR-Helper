@@ -5,6 +5,7 @@ from typing import List, Optional, Literal, Dict
 from pydantic import BaseModel, Field, validator
 
 from src.cv_parsing.info_extraction.prepare_cv_sections import get_section_for_field
+from src.data_processing.nlp.countries_info import CountryFlag
 from src.data_processing.nlp.llm_handler import LLMHandler
 from src.logger import logger  # Added logger import
 
@@ -13,21 +14,8 @@ class LocationExtraction(BaseModel):
     reasoning_steps: List[str] = Field(description="Step-by-step analysis for location extraction")
     locations: List[str] = Field(default=[], description="Locations, cities, countries mentioned in resume")
     detected_country: Optional[str] = Field(default=None, description="Primary country detected from resume context")
-    current_candidate_country: Optional[str] = Field(default=None,
-                                                     description="Final candidate country with emoji flag, no space")
+    current_candidate_country: CountryFlag = Field(description="Final candidate country with emoji flag, no space")
     confidence: Literal["high", "medium", "low"] = Field(description="Confidence in extraction")
-
-    @validator("current_candidate_country", pre=True, always=True)
-    def format_country_with_emoji(cls, value):
-        if not value:
-            return None
-        # Remove the space between the flag and the country name (if there is one)
-        if (len(value) >= 3 and
-                all(0x1F1E6 <= ord(c) <= 0x1F1FF for c in value[:2]) and
-                value[2] == " "):
-            value = value[:2] + value[3:]
-        return value
-
 
 def extract_cv_location(
         cv_sections: Dict,
@@ -50,8 +38,6 @@ def extract_cv_location(
                 "1. **Country Name Format**: Return the country name in one word if possible. "
                 "If the country name is traditionally two words (e.g., 'United States'), return both words. "
                 "Never use abbreviations (e.g., 'USA' is invalid; use 'United States').\n"
-                "2. **Emoji Flag**: Prepend the country name with its corresponding emoji flag, WITHOUT a space. "
-                # "For example: '🇺🇸United States', '🇷🇺Russia', '🇩🇪Germany'.\n"
                 "3. **Detection Rules**:\n"
                 "   - Look for explicit mentions of countries.\n"
                 "   - If only a city is mentioned, infer the country and return only the country with emoji.\n"
@@ -85,8 +71,9 @@ def extract_cv_location(
 
         # Format main location field
         location_value = extraction.current_candidate_country if extraction.current_candidate_country else ""
-        # Replace Belarus flag if needed
-        if "🇧🇾" in location_value:
+        if location_value.startswith("NO"):
+            location_value = ""
+        elif "🇧🇾" in location_value: # Replace Belarus flag if needed
             location_value = location_value.replace("🇧🇾", "🏰", 1)
 
         # Build result dictionary with all fields

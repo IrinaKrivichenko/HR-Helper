@@ -176,9 +176,7 @@ def insert_new_row(service, sheet_id, sheet_name, sheet_index):
             }
         ]
     }
-
     service.spreadsheets().batchUpdate(spreadsheetId=sheet_id, body=insert_request).execute()
-    return f"{sheet_name}!A2:AW2" if sheet_name == os.getenv("SEARCH_LOGS_SHEET_NAME") else f"{sheet_name}!A2:D2"
 
 def save_vacancy_description(vacancy_description, existing_vacancy, vacancy_dict, user, service=None):
     if service is None:
@@ -194,15 +192,16 @@ def save_vacancy_description(vacancy_description, existing_vacancy, vacancy_dict
         local_timezone = get_localzone()
         current_date = datetime.now(local_timezone).strftime('%Y-%m-%d %H:%M:%S %Z')
 
+        insert_new_row(service, SHEET_ID, SEARCH_LOGS_SHEET_NAME, LOGS_SHEET_ID)
+        range_logs = f"{SEARCH_LOGS_SHEET_NAME}!A2:AW2"
         if existing_vacancy is not None:
             row_index = existing_vacancy['Row in Spreadsheets']
-            range_logs = f"{SEARCH_LOGS_SHEET_NAME}!A{row_index}:AW{row_index}"
             range_cache = f"{SEARCH_CACHE_SHEET_NAME}!A{row_index}:D{row_index}"
         else:
-            range_logs = insert_new_row(service, SHEET_ID, SEARCH_LOGS_SHEET_NAME, LOGS_SHEET_ID)
-            range_cache = insert_new_row(service, SHEET_ID, SEARCH_CACHE_SHEET_NAME, CACHE_SHEET_ID)
+            insert_new_row(service, SHEET_ID, SEARCH_CACHE_SHEET_NAME, CACHE_SHEET_ID)
+            range_cache =  f"{SEARCH_CACHE_SHEET_NAME}!A2:D2"
 
-        logs_data = prepare_logs_data(vacancy_description, vacancy_dict, user, current_date)
+        logs_data =  prepare_logs_data(vacancy_description, vacancy_dict, user, current_date)
         cache_data = prepare_cache_data(vacancy_description, vacancy_dict, current_date)
 
         save_to_sheet(service, SHEET_ID, SEARCH_LOGS_SHEET_NAME, range_logs, logs_data)

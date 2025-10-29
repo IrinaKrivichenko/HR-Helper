@@ -1,9 +1,15 @@
+from datetime import datetime
+
+from tzlocal import get_localzone
+
+from src.bot.tg_external_bots.RDNKLeadBot import find_lead_pattern, parse_lead_text
 from src.bot.utils import send_message
 from src.candidate_matching.matcher import match_candidats
 from src.cv_parsing.cv_parser import parse_cv
 from src.cv_parsing.save_cv import save_cv_info
 from src.google_services.drive import extract_text_from_google_file, extract_text_from_docx, extract_text_from_pdf
 from src.google_services.drive_authorization import start_google_drive_auth, handle_oauth_callback
+from src.google_services.sheets import write_dict_to_sheet
 from src.logger import logger
 from src.data_processing.nlp.llm_handler import LLMHandler
 from src.bot.authorization import auth_manager
@@ -17,7 +23,18 @@ from telegram.ext import filters, MessageHandler, ApplicationBuilder, ContextTyp
 
 import os
 import traceback
+import re
 
+
+
+async def process_lead(update: Update, text: str,   user_name: str):
+    lead_dict = parse_lead_text(text)
+    lead_dict["#"] = "=A3+1"
+    local_timezone = get_localzone()
+    lead_dict["Datetime"] = datetime.now(local_timezone).strftime('%Y-%m-%d %H:%M:%S %Z')
+    lead_dict["TG user"] = f"t.me/{user_name}"
+    write_dict_to_sheet(data_dict=lead_dict, sheet_name="Leads2", spreadsheet_env_name='ΛV_LINKEDIN_LEADGEN_SHEET_ID')
+    await send_message(update, f"Lead {lead_dict['Company']} is parsed")
 
 async def process_cv(update: Update, text: str,  file_path: str,   user_name: str, llm_handler):
     await send_message(update, f"Parsing CV")
@@ -61,6 +78,9 @@ async def process_user_request(update: Update, context: ContextTypes.DEFAULT_TYP
     file_path = None
     try:
         if text is not None:
+            if find_lead_pattern(text):
+                await process_lead(update, text, user_name)
+                return
             # Check if the user is @AndrusKr or @irina_199
             if user_name in ["AndrusKr", "irina_199"]:
                 if text == "disk":
@@ -81,6 +101,9 @@ async def process_user_request(update: Update, context: ContextTypes.DEFAULT_TYP
             if (text is None) and (update.message.document is not None):
                 text, file_path = await extract_text_from_document(update.message.document)
                 input_type = "CV"
+            elif "#available" in text:
+                await update.message.reply_text("The message contains '#available'.")
+                return
             elif "/folders/" in text :
                 await send_message(update, "You have sent a link to a folder.")
                 return
@@ -89,14 +112,12 @@ async def process_user_request(update: Update, context: ContextTypes.DEFAULT_TYP
                 input_type = "CV"
             else:
                 input_type = "vacancy"
-            if "#available" in text:
-                await update.message.reply_text("The message contains '#available'.")
-            else:
-                llm_handler = LLMHandler()
-                if input_type == "vacancy":
-                    await process_vacancy(update, text, user_name, llm_handler)
-                elif input_type == "CV":
-                    await process_cv(update, text,  file_path, user_name, llm_handler)
+
+            llm_handler = LLMHandler()
+            if input_type == "vacancy":
+                await process_vacancy(update, text, user_name, llm_handler)
+            elif input_type == "CV":
+                await process_cv(update, text,  file_path, user_name, llm_handler)
     except Exception as e:
         logger.error(f"{str(e)}\n{traceback.format_exc()}")
         await update.message.reply_text(f"Please forward this message to @irina_199: {str(e)}")

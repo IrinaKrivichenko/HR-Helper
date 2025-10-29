@@ -146,7 +146,8 @@ def filter_candidates_by_technologies(df, vacancy_info):
         else:
             if len(partial_tech_coverage_df) < MIN_CANDIDATES_THRESHOLD:
                 partial_tech_coverage_df = partial_pl_coverage_df
-                filter_history.append(f"After Technologies filtration less then {MIN_CANDIDATES_THRESHOLD} candidates left going back to Programming languages filtration list")
+                candidates_count = len(partial_tech_coverage_df)
+                filter_history.append(f"After Technologies filtration less then {MIN_CANDIDATES_THRESHOLD} candidates left going back to Programming languages filtration list with {candidates_count} candidates")
     else:
         partial_tech_coverage_df = partial_pl_coverage_df
         filter_history.append(f"It is less then {MIN_CANDIDATES_THRESHOLD} candidates or NO technologies specified in vacancy.")

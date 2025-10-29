@@ -15,7 +15,6 @@ load_dotenv()
 
 
 SERVICE_ACCOUNT_JSON_PATH = os.getenv('SERVICE_ACCOUNT_JSON_PATH')
-SHEET_ID = os.getenv('SHEET_ID')
 CANDIDATES_SHEET_NAME = os.getenv('CANDIDATES_SHEET_NAME')
 CANDIDATES_SHEET_ID = os.getenv('CANDIDATES_SHEET_ID')
 VACANCIES_SHEET_NAME = os.getenv('VACANCIES_SHEET_NAME')
@@ -66,7 +65,7 @@ sheets_columns_dict = {
     }
 }
 
-def get_sheet_dict(sheet_name, sheet=None):
+def get_sheet_dict(sheet_name, sheet=None, spreadsheet_env_name='SHEET_ID'):
     """
     Returns a dictionary mapping column names to their letter designations for the specified sheet.
     If the sheet is not found in the cache, loads the headers from Google Sheets.
@@ -78,6 +77,7 @@ def get_sheet_dict(sheet_name, sheet=None):
     """
     if sheet_name in sheets_columns_dict:
         return sheets_columns_dict[sheet_name]
+    sheet_id = os.getenv(spreadsheet_env_name)
 
     logger.info(f"Лист '{sheet_name}' не найден в кэше, загружаем заголовки из Google Sheets...")
     if sheet is None:
@@ -85,7 +85,7 @@ def get_sheet_dict(sheet_name, sheet=None):
         sheet = service.spreadsheets()
 
     range_name = f"{sheet_name}!1:1"
-    response = sheet.values().get(spreadsheetId=SHEET_ID, range=range_name).execute()
+    response = sheet.values().get(spreadsheetId=sheet_id, range=range_name).execute()
     header_row = response.get('values', [])[0]
     sheet_dict = {col.strip(): index_to_letter(i) for i, col in enumerate(header_row)}
     sheets_columns_dict[sheet_name] = sheet_dict
@@ -139,15 +139,18 @@ def initialize_google_sheets_api():
                 )
     return build('sheets', 'v4', credentials=credentials)
 
-def remove_extra_spaces_from_headers(service=None):
+def remove_extra_spaces_from_headers(service=None, spreadsheet_env_name='SHEET_ID'):
     # Initialize Google Sheets API if service is not provided
     if service is None:
         service = initialize_google_sheets_api()
+
+    sheet_id = os.getenv(spreadsheet_env_name)
+
     sheet = service.spreadsheets()
 
     # get first row from the sheet (headers)
     range_name = f"{CANDIDATES_SHEET_NAME}!1:1"
-    response = sheet.values().get(spreadsheetId=SHEET_ID, range=range_name).execute()
+    response = sheet.values().get(spreadsheetId=sheet_id, range=range_name).execute()
     header_row = response.get('values', [])[0]
 
     # remove extra spaces from headers
@@ -158,7 +161,7 @@ def remove_extra_spaces_from_headers(service=None):
         'values': [stripped_header_row]
     }
     sheet.values().update(
-        spreadsheetId=SHEET_ID,
+        spreadsheetId=sheet_id,
         range=range_name,
         valueInputOption='RAW',
         body=update_body
@@ -186,7 +189,7 @@ def remove_invisible_chars(text, remove_emonji=False):
     visible_text = re.sub(pattern, '', text)
     return visible_text.strip()
 
-def read_specific_columns(columns_to_extract, sheet_name=CANDIDATES_SHEET_NAME, service=None, remove_emonji=False):
+def read_specific_columns(columns_to_extract, sheet_name=CANDIDATES_SHEET_NAME, service=None, remove_emonji=False, spreadsheet_env_name='SHEET_ID'):
     """
     Fetches specific columns from the Google Sheet, handling hyperlinks.
     Creates missing columns and fills them with empty strings.
@@ -196,12 +199,15 @@ def read_specific_columns(columns_to_extract, sheet_name=CANDIDATES_SHEET_NAME, 
     # Initialize Google Sheets API if service is not provided
     if service is None:
         service = initialize_google_sheets_api()
+
+    sheet_id = os.getenv(spreadsheet_env_name)
+
     sheet = service.spreadsheets()
     # Convert column names to letters
     columns_letters = get_column_letters(columns_to_extract, sheet_name, sheet=sheet)
 
     # Get the full sheet data with includeGridData
-    spreadsheet = sheet.get(spreadsheetId=SHEET_ID, ranges=[sheet_name], includeGridData=True).execute()
+    spreadsheet = sheet.get(spreadsheetId=sheet_id, ranges=[sheet_name], includeGridData=True).execute()
     sheet_data = spreadsheet['sheets'][0]['data'][0]
 
     # Extract headers from the sheet
@@ -255,7 +261,8 @@ def write_specific_columns(
     sheet_name=CANDIDATES_SHEET_NAME,
     service=None,
     rows_to_highlight=None,
-    highlight_color=None
+    highlight_color=None,
+        spreadsheet_env_name='SHEET_ID'
 ):
     """
     Writes each column from a DataFrame back to the Google Sheet according to the specified column letters.
@@ -268,6 +275,9 @@ def write_specific_columns(
     """
     if service is None:
         service = initialize_google_sheets_api()
+
+    sheet_id = os.getenv(spreadsheet_env_name)
+
     sheet = service.spreadsheets()
 
     # Set default highlight color if not provided
@@ -284,7 +294,7 @@ def write_specific_columns(
         header_range = f"{sheet_name}!{column_letter}1"
         header_update_body = {'values': [[column_name]]}
         sheet.values().update(
-            spreadsheetId=SHEET_ID,
+            spreadsheetId=sheet_id,
             range=header_range,
             valueInputOption='RAW',
             body=header_update_body
@@ -295,7 +305,7 @@ def write_specific_columns(
         range_to_update = f"{sheet_name}!{column_letter}2:{column_letter}{len(df) + 1}"
         update_body = {'values': [[value] for value in values]}
         sheet.values().update(
-            spreadsheetId=SHEET_ID,
+            spreadsheetId=sheet_id,
             range=range_to_update,
             valueInputOption='RAW',
             body=update_body
@@ -329,11 +339,11 @@ def write_specific_columns(
         # Apply formatting
         body = {'requests': requests}
         sheet.batchUpdate(
-            spreadsheetId=SHEET_ID,
+            spreadsheetId=sheet_id,
             body=body
         ).execute()
 
-def get_sheet_id(sheet_name, sheet=None):
+def get_sheet_id(sheet_name, sheet=None, spreadsheet_env_name='SHEET_ID'):
     """
     Returns the sheetId for a given sheet name in the spreadsheet.
     Args:
@@ -345,11 +355,13 @@ def get_sheet_id(sheet_name, sheet=None):
         ValueError: If sheet_name not found in the spreadsheet
     """
     try:
+        sheet_id = os.getenv(spreadsheet_env_name)
+            
         if sheet is None:
             service = initialize_google_sheets_api()
             sheet = service.spreadsheets()
         spreadsheet_metadata = sheet.get(
-            spreadsheetId=SHEET_ID,
+            spreadsheetId=sheet_id,
             fields="sheets(properties(sheetId,title))"
         ).execute()
         sheets = spreadsheet_metadata.get('sheets', [])
@@ -362,7 +374,7 @@ def get_sheet_id(sheet_name, sheet=None):
         raise e
 
 
-def write_dict_to_sheet(data_dict, sheet_name, service=None, row_number=None):
+def write_dict_to_sheet(data_dict, sheet_name, service=None, row_number=None, spreadsheet_env_name='SHEET_ID'):
     """
     Writes dictionary data to a Google Sheet row, matching keys to column names.
 
@@ -382,10 +394,13 @@ def write_dict_to_sheet(data_dict, sheet_name, service=None, row_number=None):
         # Initialize Google Sheets API if service is not provided
         if service is None:
             service = initialize_google_sheets_api()
+
+        sheet_id = os.getenv(spreadsheet_env_name)
+
         sheet = service.spreadsheets()
 
         # Get the sheet columns dictionary
-        sheet_dict = get_sheet_dict(sheet_name, sheet)
+        sheet_dict = get_sheet_dict(sheet_name, sheet, spreadsheet_env_name)
 
         # Filter data_dict to only include keys that exist as columns
         filtered_data = {key: value for key, value in data_dict.items() if key in sheet_dict}
@@ -393,7 +408,7 @@ def write_dict_to_sheet(data_dict, sheet_name, service=None, row_number=None):
             logger.warning(f"No matching columns found for provided data keys: {list(data_dict.keys())}")
             return None
 
-        gid = get_sheet_id(sheet_name, sheet)
+        gid = get_sheet_id(sheet_name, sheet, spreadsheet_env_name)
         # If no row_number specified, insert new row at position 2
         if row_number is None:
             # Insert a new row at position 2 (after headers)
@@ -414,7 +429,7 @@ def write_dict_to_sheet(data_dict, sheet_name, service=None, row_number=None):
             }
 
             service.spreadsheets().batchUpdate(
-                spreadsheetId=SHEET_ID,
+                spreadsheetId=sheet_id,
                 body=batch_update_request
             ).execute()
 
@@ -439,7 +454,7 @@ def write_dict_to_sheet(data_dict, sheet_name, service=None, row_number=None):
             }
 
             response = sheet.values().batchUpdate(
-                spreadsheetId=SHEET_ID,
+                spreadsheetId=sheet_id,
                 body=batch_update_data
             ).execute()
 

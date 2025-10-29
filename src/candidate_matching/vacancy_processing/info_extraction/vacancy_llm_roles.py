@@ -26,6 +26,7 @@ def create_vacancy_role_extraction_model(roles_list: List[str]) -> Type[BaseMode
 
     class VacancyExtraction(BaseModel):
         """ Main model for vacancy extraction."""
+        main_task_reasoning: str = Field(..., description="Short reasoning about the main task or objective of the vacancy.")
         reasoning: str = Field(description="General reasoning about the vacancy analysis")
         extracted_programming_languages: List[str] = Field(default_factory=list, description="List of programming languages mentioned in the vacancy")
         extracted_technologies: List[str] = Field(default_factory=list, description="List of technologies mentioned in the vacancy")
@@ -38,7 +39,7 @@ def create_vacancy_role_extraction_model(roles_list: List[str]) -> Type[BaseMode
             )
         )
         reasoning_about_roles: str = Field(description="Reasoning about which roles from the predefined list match the vacancy")
-        matched_roles: Annotated[List[VacancyRoleMatch], MinLen(5)] = Field(
+        matched_roles: Annotated[List[VacancyRoleMatch], MinLen(7)] = Field(
             default_factory=list,
             description="List of nearest matched roles from the predefined list (at least one)"
         )
@@ -55,8 +56,11 @@ def create_few_shot_example(roles_list: List[str]) -> Dict[str, Any]:
         Dict[str, Any]: Dictionary with user and assistant examples.
     """
     # Randomly select a role for the example
-    example_role = choice(["ML Engineer", "Data Scientist", "ML Scientist"])
+    all_possible_roles = ["Machine Learning Engineer", "Data Scientist", "AI Engineer"]
+    example_role = choice(all_possible_roles)
+    other_roles = [role for role in all_possible_roles if role != example_role]
     roles_str = ', '.join(f'"{role}"' for role in roles_list)
+
     # Create a user example
     few_shot_example = {
         "role": "user",
@@ -67,6 +71,7 @@ def create_few_shot_example(roles_list: List[str]) -> Dict[str, Any]:
             f"Американская компания в поиске опытного {example_role} на группу проектов, представляющих собой различные AI решения (проекты в разных сферах, от Computer Vision до NLP). Со знанием библиотек PyTorch, TensorFlow, pandas. Уровень английского: C1. Зарплата - до 8000-10000$ gross."
         )
     }
+
     # Create an assistant response example
     few_shot_response = {
         "role": "assistant",
@@ -88,60 +93,67 @@ def create_few_shot_example(roles_list: List[str]) -> Dict[str, Any]:
                 "matched_roles": [
                     {{
                         "reasoning_about_matching": [
-                            "The role requires experience with PyTorch, TensorFlow, and Pandas, which are commonly used in machine learning and data analysis tasks."
+                            "The vacancy explicitly states the role as '{example_role}', which corresponds to '{example_role}' in the predefined list.",
+                            "The required skills with PyTorch, TensorFlow, and pandas are typical for a {example_role}.",
+                            "The projects involve AI solutions in Computer Vision and NLP, which are common domains for {example_role}."
                         ],
-                        "confidence": "high",
-                        "name": "AI Engineer"
+                        "name": "{example_role}",
+                        "match_percentage": 100
                     }},
                     {{
                         "reasoning_about_matching": [
-                            "The role involves working on projects related to Computer Vision (CV) and Natural Language Processing (NLP)."
+                            "The role involves AI solutions and machine learning libraries, which also relate to the '{other_roles[0]}' role.",
+                            "The vacancy mentions AI projects in Computer Vision and NLP, which are relevant to {other_roles[0]}."
                         ],
-                        "confidence": "high",
-                        "name": "Computer Vision Engineer"
+                        "name": "{other_roles[0]}",
+                        "match_percentage": 85
                     }},
                     {{
                         "reasoning_about_matching": [
-                            "The role requires a strong background in machine learning and data analysis."
+                            "The role involves AI solutions and machine learning libraries, which also relate to the '{other_roles[1]}' role.",
+                            "The vacancy mentions AI projects in Computer Vision and NLP, which are relevant to {other_roles[1]}."
                         ],
-                        "confidence": "high",
-                        "name": "Data Scientist"
+                        "name": "{other_roles[1]}",
+                        "match_percentage": 85
                     }},
                     {{
                         "reasoning_about_matching": [
-                            "The role involves developing and implementing deep learning models."
+                            "The role involves working with deep learning libraries like PyTorch and TensorFlow, which are relevant for 'Deep Learning Engineer'.",
+                            "The projects include Computer Vision and NLP, common areas for Deep Learning Engineers."
                         ],
-                        "confidence": "high",
-                        "name": "Deep Learning Engineer"
+                        "name": "Deep Learning Engineer",
+                        "match_percentage": 80
                     }},
                     {{
                         "reasoning_about_matching": [
-                            "The role requires experience with machine learning algorithms and techniques."
+                            "The role involves working on NLP projects, which is relevant for 'NLP Engineer'.",
+                            "The vacancy mentions NLP as one of the project domains."
                         ],
-                        "confidence": "high",
-                        "name": "Machine Learning Engineer"
+                        "name": "NLP Engineer",
+                        "match_percentage": 75
                     }},
                     {{
                         "reasoning_about_matching": [
-                            "The role involves working on Natural Language Processing tasks."
+                            "The role involves working on Computer Vision projects, which is relevant for 'Computer Vision Engineer'.",
+                            "The vacancy mentions Computer Vision as one of the project domains."
                         ],
-                        "confidence": "high",
-                        "name": "NLP Engineer"
+                        "name": "Computer Vision Engineer",
+                        "match_percentage": 75
                     }},
                     {{
                         "reasoning_about_matching": [
-                            "The role requires a deep understanding of machine learning algorithms and techniques."
+                            "The role involves working with machine learning models and research, which is relevant for 'Machine Learning Researcher'.",
+                            "The vacancy mentions AI projects and machine learning libraries."
                         ],
-                        "confidence": "high",
-                        "name": "Machine Learning Researcher"
+                        "name": "Machine Learning Researcher",
+                        "match_percentage": 70
                     }}
                 ]
             }}"""
         )
     }
+
     return few_shot_example, few_shot_response
-
-
 
 def extract_vacancy_role(
     vacancy: str,
@@ -189,10 +201,11 @@ def extract_vacancy_role(
             "content": (
                 f"Analyze the following vacancy and extract the required information:\n\n"
                 f"**Predefined roles:** {roles_str}\n\n"
-                f"**Rules:**\n"
-                f"1. Extract all programming languages and technologies mentioned.\n"
-                f"2. Identify the role directly from the vacancy. If no role is specified, return 'No Role is specified'.\n"
-                f"3. Identify the seniority level described in the job description. "
+                f"**Rules:**\n"                
+                f"1. Identify and describe the main task or objective of the vacancy in few sentence.\n"
+                f"2. Extract all programming languages and technologies mentioned.\n"
+                f"3. Identify the role directly from the vacancy. If no role is specified, return 'No Role is specified'.\n"
+                f"4. Identify the seniority level described in the job description. "
                 f"Seniority level should be one of the following: 'Any', 'Junior', 'Middle', 'Senior', 'Principal'. "
                 f"A 'Senior' should be a specialist with at least three years of experience. "
                 f"Only 'Senior' can be a Lead or develop system-level architecture. "
@@ -200,8 +213,8 @@ def extract_vacancy_role(
                 f"If no seniority level is explicitly mentioned, infer it from the context. "
                 f"If multiple seniority levels are mentioned, return the **highest** level.\n"
                 f"If no seniority level is explicitly mentioned and cannot be inferred from context (e.g., years of experience, responsibilities), return 'Any'.\n"
-                f"4. Match the extracted role with the predefined roles and provide a match percentage (0-100) for each.\n"
-                f"5. Provide reasoning for each step.\n\n"
+                f"5. Match the extracted role with the predefined roles and provide a match percentage (0-100) for each.\n"
+                f"6. Provide reasoning for each step.\n\n"
             )
         },
         {
@@ -224,7 +237,7 @@ def extract_vacancy_role(
     ]
 
     # Calculate max tokens
-    max_tokens = max(len(vacancy) * 3, 900)
+    max_tokens = max(len(vacancy) * 4, 900)
 
     # Get the structured response from the LLM
     response = llm_handler.get_answer(
@@ -257,6 +270,7 @@ def extract_vacancy_role(
         "Extracted Seniority": role_extraction.seniority,
         "Matched Roles": [role.name for role in filtered_roles],
         "Vacancy Roles Reasoning": (
+            f"Main Task Reasoning:\n{role_extraction.main_task_reasoning}\n\n"
             f"{role_extraction.reasoning}\n\n"
             f"{role_extraction.reasoning_about_roles}\n\n"
             + "\n\n".join(

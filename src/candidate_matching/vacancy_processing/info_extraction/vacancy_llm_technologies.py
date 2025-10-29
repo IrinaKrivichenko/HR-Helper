@@ -1,3 +1,5 @@
+import re
+
 from src.data_processing.nlp.llm_handler import LLMHandler
 
 from typing import List, Literal, Optional, Dict, Any, Annotated
@@ -15,10 +17,17 @@ class ExtractedTechnology(BaseModel):
     mention_type: Literal["explicit", "implicit"] = Field(..., description="Explicit or implicit mention in the vacancy.")
     confidence: Annotated[int, Ge(0), Le(100)]  = Field(..., description="Confidence level (0-100%).", ge=0, le=100)
 
+    @validator('full_name', pre=True, always=True)
+    def clean_full_name(cls, value):
+        # Remove anything in parentheses and extra spaces
+        value = re.sub(r'\([^)]*\)', '', value).strip()
+        return value
 
 # Define the overall response structure
 class VacancyExtraction(BaseModel):
     """ Represents the full extraction result for a vacancy. """
+    main_task_reasoning: str = Field(..., description="Short reasoning about the main task or objective of the vacancy.")
+    main_task_technologies_reasoning: str = Field(..., description="Reasoning about the main technologies required for the main task.")
     explicit_tech_reasoning: str = Field(..., description="Reasoning about explicitly mentioned technologies.")
     implicit_tech_reasoning: str = Field(..., description="Reasoning about implicitly mentioned technologies.")
     technologies: List[ExtractedTechnology] = Field(..., description="List of extracted technologies.")
@@ -89,15 +98,17 @@ def extract_vacancy_technologies(
             "role": "user",
             "content": (
                 "## Task Guidelines:"
-                f"1. **Explicit Technologies**: Directly mentioned in the vacancy.\n"
-                f"2. **Implicit Technologies**: \n"
+                f"1. **Main Task or Objective**: Identify and describe the main task or objective of the vacancy in few sentence.\n"
+                f"2. **Main Task Technologies**: Identify and describe the main technologies required for the main task. Provide reasoning for each technology.\n"
+                f"3. **Explicit Technologies**: Directly mentioned in the vacancy.\n"
+                f"4. **Implicit Technologies**: \n"
                 f"  - Inferred from context, synonyms, or task descriptions. \n"
                 f"  - If none are explicitly mentioned, infer them from related technologies.\n"
                 f"  - If the vacancy mentions any specific technology, analyze what additional technologies are necessary to work with it. If these technologies are not explicitly mentioned in the vacancy, include them as implicit technologies."
-                f"3. **Confidence Score**: "
+                f"5. **Confidence Score**: "
                 f"  - Assign a confidence score (0-100%) for each technology indicates how certain you are that the technology is either explicitly mentioned in the vacancy or can be logically inferred from the context.\n"
                 f"  - Be honest. If unsure, assign a lower score.\n"
-                "4. **Mandatory vs. Nice-to-Have Technologies**:\n"
+                "6. **Mandatory vs. Nice-to-Have Technologies**:\n"
                 "  - **Mandatory Technologies**: Use the following criteria to identify mandatory technologies:\n"
                 "    - Phrases like 'required', 'must have', 'necessary', 'obligatory', 'essential', 'mandatory', 'need to know'.\n"
                 "    - Technologies listed in the main requirements section.\n"
@@ -130,6 +141,8 @@ def extract_vacancy_technologies(
     # Initialize the result dictionary
     result = {
         "Vacancy Technologies Reasoning": (
+                f"Main Task Reasoning:\n{extraction.main_task_reasoning}\n\n"
+                f"Main Task Technologies Reasoning:\n{extraction.main_task_technologies_reasoning}\n\n"
                 f"Explicit Technologies Reasoning:\n{extraction.explicit_tech_reasoning}\n\n"
                 f"Implicit Technologies Reasoning:\n{extraction.implicit_tech_reasoning}\n\n"
                 f"Individual Technologies Reasoning:\n" +

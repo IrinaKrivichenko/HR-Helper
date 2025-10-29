@@ -15,6 +15,7 @@ class ExtractedRate(BaseModel):
 class VacancyRateResponse(BaseModel):
     """Structured response for vacancy rate extraction."""
     reasoning: str = Field(description="Brief explanation of how the rate was extracted from the vacancy text.")
+    false_positives_analysis: str = Field(description="Analysis of any numbers that could be mistaken for a rate ")
     rate: Optional[ExtractedRate] = Field(default=None, description="May be None if rate is not specified.")
 
 def parse_extracted_rate(extracted_rate: ExtractedRate) -> Optional[ExtractedRate]:
@@ -52,7 +53,7 @@ def parse_llm_vacancy_rate(response, add_tokens_info) -> VacancyRateResponse:
     cost_info = response['cost']
     model = response['model']
 
-    reasoning = extraction.reasoning
+    reasoning = f"{extraction.reasoning}\n\n{extraction.false_positives_analysis}"
     rate_data = extraction.rate
     rate = parse_extracted_rate(rate_data)
 
@@ -99,8 +100,11 @@ def extract_vacancy_rate(vacancy: str, llm_handler: LLMHandler, model, add_token
             "content": (
                 "Your task is to process the provided job description and extract the rate information:\n\n"
                 "1. Reasoning: Provide a brief reasoning on how you extracted the rate from the job description. \n"
+                "   - If no rate is found, explain why."
+                "2. False Positives Analysis: "
+                "   - Double-check: Make sure you don't confuse the rate with other parameters like duration, budget, team size and etc."
                 "2. Identify the rate or salary mentioned in the job description."
-                f"If a range is provided, such as '{exml-5}-{exml}$ per hour', return the highest value ({exml}). "
+                f"  - If a range is provided, such as '{exml-5}-{exml}$ per hour', return the highest value ({exml}). "
                 "3.  Determine the payment period using these rules:\n"
                 "   - If the rate value is less than 100, most likely the period indicated 'per hour'.\n"
                 "   - If the rate value is greater than 1000, most likely 'per month'.\n"
