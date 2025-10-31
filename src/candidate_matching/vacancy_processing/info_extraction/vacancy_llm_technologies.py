@@ -99,7 +99,7 @@ def extract_vacancy_technologies(
             "content": (
                 "## Task Guidelines:"
                 f"1. **Main Task or Objective**: Identify and describe the main task or objective of the vacancy in few sentence.\n"
-                f"2. **Main Task Technologies**: Identify and describe the main technologies required for the main task. Provide reasoning for each technology.\n"
+                f"2. **Main Task Technologies**: Identify and describe the main technologies required to do the main task most effectively. Provide reasoning for each technology.\n"
                 f"3. **Explicit Technologies**: Directly mentioned in the vacancy.\n"
                 f"4. **Implicit Technologies**: \n"
                 f"  - Inferred from context, synonyms, or task descriptions. \n"

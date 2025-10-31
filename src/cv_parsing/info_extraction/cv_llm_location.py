@@ -61,7 +61,7 @@ def extract_cv_location(
         response = llm_handler.get_answer(
             prompt,
             model=model,
-            max_tokens=400,
+            max_tokens=900,
             response_format=LocationExtraction
         )
 

@@ -91,7 +91,7 @@ def prepare_logs_data(vacancy_description, vacancy_dict, user, current_date):
         vacancy_dict.get("Vacancy Roles Reasoning", ""),
         vacancy_dict.get("Extracted Seniority", ""), # F
         vacancy_dict.get("Extracted Role", ""), # G
-        "\n ".join(vacancy_dict.get("Matched Roles", "")),
+        "\n ".join(vacancy_dict.get("Matched Roles", [])),
         vacancy_dict.get("Vacancy Technologies Reasoning", ""),
         extracted_programming_languages, # J
         extracted_technologies, # K
@@ -102,7 +102,7 @@ def prepare_logs_data(vacancy_description, vacancy_dict, user, current_date):
         vacancy_dict.get("Vacancy Industries Reasoning", ""), # P
         vacancy_dict.get("Extracted Industries", ""),
         vacancy_dict.get("Vacancy Location Reasoning", ""), #
-        vacancy_dict.get("Extracted Location", ""),
+        "\n ".join(vacancy_dict.get("Extracted Location", [])),
         vacancy_dict.get("Selected Candidates", ""),
         vacancy_dict.get("Reasoning", ""),
         vacancy_dict.get("step1_candidates_number", ""),

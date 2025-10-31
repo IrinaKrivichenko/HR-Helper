@@ -161,7 +161,7 @@ def generate_final_response(better_fit_df, lesser_fit_df, llm_extracted_data):
     # Combine programming languages and technologies
     extracted_role = llm_extracted_data.get('Extracted Role', '')
     # Extract location
-    extracted_location = llm_extracted_data.get('Extracted Location', 'Any location')
+    extracted_location = ", ".join(llm_extracted_data.get("Extracted Location", []))
     extracted_rate = llm_extracted_data.get("Extracted Rate", "No rate specified")
 
     # Get the minimum candidates threshold from environment variables
