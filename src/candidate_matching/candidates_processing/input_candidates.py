@@ -88,7 +88,7 @@ def get_df_for_vacancy_search():
     columns_to_extract = [
         'First Name', 'Last Name', 'LVL of engagement', 'Seniority', 'Role',
         'From', 'LinkedIn', 'Telegram', 'Phone', 'Email',
-        'Stack', 'Industries', 'Expertise', 'Belarusian', 'English',
+        'Stack', 'Industries', 'Expertise', 'Languages',
         'Work hrs/mnth', 'Location', 'CV (original)', 'CV White Label',
         'Entry wage rate (EWR)', 'Sell rate'
     ]

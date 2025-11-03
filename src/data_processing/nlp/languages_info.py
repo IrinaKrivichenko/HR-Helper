@@ -51,5 +51,5 @@ CEFRLevel = Literal["A1", "A2", "B1", "B2", "C1", "C2"]
 
 class LanguageItem(BaseModel):
     """Structured representation of a language and its CEFR proficiency level."""
-    language: LanguageName = Field(description="Name of the language (from the supported list)")
+    language: LanguageName = Field(description="Name of the language")
     level: CEFRLevel = Field(description="CEFR level (A1, A2, B1, B2, C1, C2)")

@@ -31,10 +31,10 @@ async def find_candidates_for_vacancy(vacancy, llm_handler, user):
     prev_call = check_existing_vacancy(vacancy)
     vacancy_dict['step0_time'] = time.time() - step0_start_time
 
-    if (prev_call is not None) and \
-       ('tg_answer' in prev_call) and \
-       int(prev_call['step1 num number of initial candidates']) == len(get_df_for_vacancy_search()):
-        return prev_call['tg_answer']
+    # if (prev_call is not None) and \
+    #    ('tg_answer' in prev_call) and \
+    #    int(prev_call['step1 num number of initial candidates']) == len(get_df_for_vacancy_search()):
+    #     return prev_call['tg_answer']
 
     # Step 1: Initialize list of candidates
     step1_start_time = time.time()

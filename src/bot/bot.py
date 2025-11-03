@@ -43,7 +43,7 @@ async def process_cv(update: Update, text: str,  file_path: str,   user_name: st
     await send_message(update, message_to_user)
 
 async def process_vacancy(update: Update, text: str,  user_name: str, llm_handler):
-    await send_message(update, "Please wait.")
+    await send_message(update, "Searching for candidates....")
     await match_candidats(update, text, user_name, llm_handler)
 
 async def extract_text_from_document(document):

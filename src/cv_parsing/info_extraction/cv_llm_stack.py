@@ -15,7 +15,14 @@ class TechnologyItem(BaseModel):
     reasoning_about_technology: str = Field(default="", description="One sentence reasoning about the technology proficiency")
     full_name: str = Field(..., description="Full name of the technology.")
     short_name: str = Field(..., description="Shortened name of the technology. If none, repeat the full name.")
-    score: int = Field(ge=1, le=5, description="Proficiency score from 1-5")
+    score: int = Field(ge=1, le=5, description="Proficiency score from 1-5"
+                f"**Scoring Criteria:**\n"
+                f"- **5 - Expert:** 3+ projects OR Advanced certification + 2+ projects\n"
+                f"- **4 - Proficient:** 2 projects OR Skills section + 1 project\n"
+                f"- **3 - Competent:** Intermediate certification OR Skills section only\n"
+                f"- **2 - Foundational:** 1 project OR Foundational certification\n"
+                f"- **1 - Mentioned:** Peripheral mention only\n"
+                       )
 
     @field_validator('full_name', mode='before')
     def clean_full_name(cls, value):
@@ -52,7 +59,7 @@ def extract_cv_stack(
                 f"- **3 - Competent:** Intermediate certification OR Skills section only\n"
                 f"- **2 - Foundational:** 1 project OR Foundational certification\n"
                 f"- **1 - Mentioned:** Peripheral mention only\n\n"
-                f"Use format 'Full Name (Abbreviation)' where applicable.\n\n"
+                f"Make sure you include all the technologies from this CV in your answer.\n\n"
                 f"**Resume:**\n{cv}"
             )
         }

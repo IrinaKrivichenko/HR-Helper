@@ -1,4 +1,4 @@
-from src.candidate_matching.vacancy_processing.info_extraction.vacancy_llm_details import extract_vacancy_details
+from src.candidate_matching.vacancy_processing.info_extraction.vacancy_llm_languages import extract_vacancy_languages
 from src.candidate_matching.vacancy_processing.info_extraction.vacancy_llm_industries import extract_vacancy_industries
 from src.candidate_matching.vacancy_processing.info_extraction.vacancy_llm_location import extract_vacancy_location
 from src.candidate_matching.vacancy_processing.info_extraction.vacancy_llm_rate import extract_vacancy_rate
@@ -20,7 +20,7 @@ def extract_vacancy_info(vacancy: str, llm_handler: LLMHandler):
         future3 = executor.submit(extract_vacancy_industries, vacancy, llm_handler, model="gpt-4.1-nano")
         future4 = executor.submit(extract_vacancy_location, vacancy, llm_handler, model="gpt-4.1-nano")
         future5 = executor.submit(extract_vacancy_rate, vacancy, llm_handler, model="gpt-4.1-nano") # SGR
-        future6 = executor.submit(extract_vacancy_details, vacancy,  llm_handler, model="gpt-4.1-nano")
+        future6 = executor.submit(extract_vacancy_languages, vacancy,  llm_handler, model="gpt-4.1-nano")
 
         # Retrieve the results
         extracted_data1 = future1.result()

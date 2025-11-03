@@ -88,7 +88,7 @@ def process_candidates_with_llm(
     expertise = format_vacancy_parameter_string(vacancy_info, 'Expertise')
     location = format_vacancy_parameter_string(vacancy_info, 'Location')
     rate = format_vacancy_parameter_string(vacancy_info, 'Rate')
-    english = format_vacancy_parameter_string(vacancy_info, 'English Level')
+    languages = format_vacancy_parameter_string(vacancy_info, 'Languages')
 
     try_time = 1
 
@@ -104,7 +104,7 @@ def process_candidates_with_llm(
             columns_to_json = [
                 'Full Name', 'Seniority', 'Role',
                 'Stack', 'Industries', 'Expertise', 'Work hrs/mnth',
-                'English', 'Location', 'Sell rate', 'Row in Spreadsheets'
+                'Languages', 'Location', 'Sell rate', 'Row in Spreadsheets'
             ]
             logger.info(filtered_df.columns)
             candidates_json = df_to_json(filtered_df[columns_to_json])
@@ -137,7 +137,7 @@ def process_candidates_with_llm(
                     f"      \"Stack\": \"Deep Learning, Computer Vision, Python\",\n"
                     f"      \"Industries\": \"medicine\",\n"
                     f"      \"Expertise\": \"Healthcare\",\n"
-                    f"      \"English\": \"C1\",\n"
+                    f"      \"Languages\": \"English C1\",\n"
                     f"      \"Location\": \"Poland\",\n"
                     f"      \"Sell rate\": \"\\\$37\",\n"
                     f"      \"Row in Spreadsheets\": 16\n"
@@ -149,7 +149,7 @@ def process_candidates_with_llm(
                     f"      \"Stack\": \"Computer Vision, Python\",\n"
                     f"      \"Industries\": \"medicine\",\n"
                     f"      \"Expertise\": \"Healthcare\",\n"
-                    f"      \"English\": \"C1\",\n"
+                    f"      \"Languages\": \"English C1\",\n"
                     f"      \"Location\": \"Belarus\",\n"
                     f"      \"Sell rate\": \"\\\$30\",\n"
                     f"      \"Row in Spreadsheets\": 34\n"
@@ -161,7 +161,7 @@ def process_candidates_with_llm(
                     f"      \"Stack\": \"Deep Learning, NLP, Python\",\n"
                     f"      \"Industries\": \"Finance\",\n"
                     f"      \"Expertise\": \"Data Analysis\",\n"
-                    f"      \"English\": \"B2\",\n"
+                    f"      \"Languages\": \"English B2\",\n"
                     f"      \"Location\": \"Serbia\",\n"
                     f"      \"Sell rate\": \"\\\$26\",\n"
                     f"      \"Row in Spreadsheets\": 28\n"
@@ -192,7 +192,7 @@ def process_candidates_with_llm(
                     f"{expertise}"
                     f"{location}"
                     f"{rate}"
-                    f"{english}"
+                    f"{languages}"
                     f"```\n\n"
                     f"## Candidates:\n"
                     f"```json\n"

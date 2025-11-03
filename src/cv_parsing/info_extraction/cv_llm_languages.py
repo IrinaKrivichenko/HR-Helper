@@ -7,16 +7,18 @@ import concurrent.futures
 
 import json
 from pydantic import BaseModel, Field
-from typing import List
+from typing import List, Annotated, Optional
+from annotated_types import MinLen
 from src.data_processing.nlp.llm_handler import LLMHandler
 from src.logger import logger  # Added logger import
 
 
 class CVLanguagesAnalysis(BaseModel):
     reasoning_steps: List[str] = Field(description="Step-by-step analysis in bullet points")
-    resume_language: str = Field(description="Primary language of the resume (English, Russian, Belarusian, etc.)")
-    languages: List[LanguageItem] = Field(description="List of languages with CEFR levels")
-
+    resume_language: str = Field(description="Primary language of the resume")
+    languages: Annotated[List[LanguageItem], MinLen(1)] = Field(description="List of languages with CEFR levels")
+    location_reasoning: str = Field(description="Reasoning about the candidate's location and its impact on language levels")
+    location_language: Optional[LanguageItem] = Field(description="Language of the candidate's location (if applicable)", default=None)
 
 def extract_cv_languages(
         cv: str,
@@ -34,7 +36,7 @@ def extract_cv_languages(
         {
             "role": "user",
             "content": (
-                f"Analyze this resume to identify languages and their proficiency levels mapped to CEFR standard  (A1, A2, B1, B2, C1, C2).\n\n"
+                f"Analyze this resume to identify languages and their proficiency levels mapped to CEFR standard (A1, A2, B1, B2, C1, C2).\n\n"
                 f"**IMPORTANT: First determine the primary language of the resume itself.**\n\n"
                 f"**CEFR Mapping Rules:**\n"
                 f"- Native/Родной → C2\n"
@@ -48,7 +50,9 @@ def extract_cv_languages(
                 f"- If the resume is in English but other languages are clearly indicated: use this information.\n"
                 f"- If the CV is in English but other languages are not clearly indicated: Infer from the quality of the CV and the candidate's location whether it is B1 or B2.\n"
                 f"- If a language is listed but the proficiency level is unclear, default to B1.\n"
+                f"- If the CV is in English but the English level is NOT explicitly stated: the English level is B1 or B2, but NEVER higher than B2.\n"
                 f"- Consider the candidate's location when assigning B1 level (e.g., if the candidate is in a country where the language is widely spoken, B1 is a reasonable default).\n"
+                f"- If the candidate's location is mentioned, include the language of that location and assign B1 level to it if not explicitly stated.\n"
                 f"\n"
                 f"**Rules:**\n"
                 f"- Only include languages with identifiable proficiency levels\n"
@@ -75,7 +79,7 @@ def extract_cv_languages(
     cost_info = response['cost']
 
     # Apply validation
-    languages_analysis = _validate_english_level(languages_analysis)
+    languages_analysis = _validate_english_level(languages_analysis, cv)
 
     # Get cached tokens if available
     cached_tokens = 0
@@ -84,10 +88,12 @@ def extract_cv_languages(
 
     # Build result dictionary with all fields
     result = {
-        "Belarusian": "",
-        "English": "",
-        "Other languages": "",
-        "Reasoning about Languages": "\n".join(f"• {step}" for step in languages_analysis.reasoning_steps),
+        "Languages": ", ".join([f"{lang.language} {lang.level}" for lang in languages_analysis.languages]),
+        "Reasoning about Languages": (
+                        "\n".join(f"• {step}" for step in languages_analysis.reasoning_steps) +
+                        (f"\n\n• Location Reasoning:\n{languages_analysis.location_reasoning}"
+                         if languages_analysis.location_reasoning else "")
+                    ),
         "Model of_Languages_CV_extraction": model,
         "Completion Tokens of_Languages_CV_extraction": str(usage.completion_tokens),
         "Prompt Tokens _of_Languages_CV_extraction": str(usage.prompt_tokens),
@@ -95,73 +101,39 @@ def extract_cv_languages(
         "Cost_of_Languages_CV_extraction": cost_info['total_cost'],
         "Resume Language": languages_analysis.resume_language,
     }
-
-    # Check for English resume with no explicit languages
-    resume_lang = languages_analysis.resume_language.lower()
-    if resume_lang == "english" and not languages_analysis.languages:
-        # Clean up "Other languages" field before logging
-        del result["Other languages"]
-        logger.info(
-            f"Field extraction completed - Fields: 'Belarusian', 'English', 'Languages' | Response: {json.dumps(result, ensure_ascii=False)}")
-        return result
-
-    # Process languages and categorize them
-    other_languages = []
-    for lang_item in languages_analysis.languages:
-        language = lang_item.language.strip()
-        level = lang_item.level.strip()
-
-        if language.lower() == "belarusian":
-            result["Belarusian"] = level
-        elif language.lower() == "english":
-            result["English"] = level
-        else:
-            other_languages.append(f"{language} {level}")
-
-    # Join other languages into a string
-    if other_languages:
-        result["Other languages"] = ", ".join(other_languages)
-
-    # Combine English and Other languages as per original logic
-    if result["English"] and result["Other languages"]:
-        result["English"] = ", ".join([result["English"], result["Other languages"]])
-    elif result["Other languages"]:
-        result["English"] = ", ".join(["A1", result["Other languages"]])
-
-    # Clean up "Other languages" field as it's merged into English
-    del result["Other languages"]
-
-    # Log the complete response in a single entry
-    logger.info(
-        f"Field extraction completed - Fields: 'Belarusian', 'English', 'Languages' | Response: {json.dumps(result, ensure_ascii=False)}")
-
     return result
 
 
-def _validate_english_level(analysis: CVLanguagesAnalysis) -> CVLanguagesAnalysis:
+def _validate_english_level(languages_analysis: CVLanguagesAnalysis, cv: str) -> CVLanguagesAnalysis:
     """
-    Validate and adjust English level based on resume language.
+    Validates the English level in the languages list.
+    If the English level is C1 or C2 but the word "English" is not explicitly mentioned in the CV,
+    the level is downgraded to B2.
+    Args:
+        languages_analysis (CVLanguagesAnalysis): Structured analysis of languages and their levels.
+        cv (str): Raw text of the resume.
+    Returns:
+        CVLanguagesAnalysis: Updated analysis with validated English level.
     """
-    resume_lang = analysis.resume_language.lower()
+    # Check if "English" is explicitly mentioned in the CV (case-insensitive)
+    has_explicit_english = "english" in cv.lower()
+    # Iterate through all languages
+    for lang in languages_analysis.languages:
+        if lang.language.lower() == "english":
+            # If the level is C1 or C2 but "English" is not explicitly mentioned in the CV
+            if lang.level in ["C1", "C2"] and not has_explicit_english:
+                lang.level = "B2"
+            break  # Assume English is listed only once
 
-    # If resume is not in English, apply restrictions
-    if resume_lang not in ["english"]:
-        for i, lang_item in enumerate(analysis.languages):
-            if lang_item.language.lower() == "english":
-                current_level = lang_item.level.upper()
+    # Check if location_language is specified and not already in languages
+    if languages_analysis.location_language:
+        location_lang_name = languages_analysis.location_language.language
+        is_location_lang_present = any(lang.language == location_lang_name for lang in languages_analysis.languages)
+        if not is_location_lang_present:
+            languages_analysis.languages.append(languages_analysis.location_language)
 
-                # If no explicit level was found, default to A1
-                if not current_level or current_level == "":
-                    analysis.languages[i].level = "A1"
-                    analysis.reasoning_steps.append("English level defaulted to A1 (non-English resume)")
+    return languages_analysis
 
-                # Cap English level at B1 for non-English resumes
-                elif current_level in ["B2", "C1", "C2"]:
-                    analysis.languages[i].level = "B1"
-                    analysis.reasoning_steps.append(
-                        f"English level capped at B1 (was {current_level}, non-English resume)")
-
-    return analysis
 
 
 def cv_languages_processing(cv_text: str, llm_handler: LLMHandler):

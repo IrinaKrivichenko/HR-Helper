@@ -68,9 +68,8 @@ def format_candidate_string(row, stack, index,  show_reasoning=False):
     location = row.get('Location', '_')
     tech_coverage = ""# row.get('Tech Coverage', '')
     stack = row.get('_Stack', '_').replace("\n", ", ").replace(" ,", ",").replace(",,", ",")
-    languages = row.get('English', '_')
+    languages = row.get('Languages', '_')
     if len(languages) > 2:
-        languages = f" English {languages}"
         languages = convert_language_levels(languages)
 
     original = row.get('CV (original)', '_')
