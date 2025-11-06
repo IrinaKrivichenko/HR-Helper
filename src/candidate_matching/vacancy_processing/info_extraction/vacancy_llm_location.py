@@ -19,15 +19,41 @@ class VacancyLocationExtraction(BaseModel):
     reasoning_about_eu: Annotated[List[str], MaxLen(3)] = Field(description="Reasoning about whether the European Union is explicitly mentioned. Provide no more than a couple of sentences.")
     european_union: bool = Field(description="Boolean indicating if the European Union is explicitly mentioned.")
     reasoning_about_timezone: Annotated[List[str], MaxLen(6)] = Field(description="Reasoning about time zone requirements. Provide no more than a couple of sentences.")
-    timezone_countries: List[str] = Field(default=[], description="List of countries from the specified time zone.")
+    timezone_countries: List[COUNTRIES_NAMES] = Field(default=[], description="List of countries from the specified time zone.")
     reasoning_about_preferred: Annotated[List[str], MaxLen(3)] = Field(description="Reasoning about explicitly mentioned preferred countries. Provide no more than a couple of sentences.")
     preferred_countries: List[COUNTRIES_NAMES] = Field(default=[],description="List of explicitly mentioned preferred countries.")
     reasoning_about_excluded: Annotated[List[str], MaxLen(3)] = Field(description="Reasoning about countries that need to be excluded. Provide no more than a couple of sentences.")
     excluded_countries: List[COUNTRIES_NAMES_WITH_NOT] = Field(default=[], description="List of countries with NOT prefix.")
     reasoning_about_remote: Annotated[List[str], MaxLen(3)] = Field(description="Reasoning about whether remote work is possible. Provide no more than a couple of sentences.")
     remote: bool = Field(description="Boolean indicating if remote work is possible.")
-    city: Optional[str] = Field(default=None, description="City if mentioned in the vacancy."
-                                )
+    reasoning_about_cities: Annotated[List[str], MaxLen(3)] = Field(description="Reasoning about explicitly mentioned cities. Provide no more than a couple of sentences.")
+    cities: List[str] = Field(default=[], description="List of cities if mentioned in the vacancy.")
+
+def parse_locations(extraction):
+    # Combine preferred_countries and timezone_countries using a set to avoid duplicates
+    preferred_locations = set(extraction.preferred_countries) | set(extraction.timezone_countries)
+    # Convert back to a sorted list
+    preferred_locations_list = sorted(preferred_locations)
+    # Prepare the "Extracted Location" list
+    extracted_location = []
+    # Add excluded countries (sorted alphabetically)
+    if extraction.excluded_countries:
+        extracted_location.extend(sorted(extraction.excluded_countries))
+    # Add "Remote" if remote is True
+    if extraction.remote:
+        extracted_location.append("Remote")
+    # Add "European Union" if european_union is True
+    if extraction.european_union:
+        extracted_location.append("European Union")
+    # Add the combined list of preferred countries and timezone countries (sorted alphabetically)
+    if preferred_locations_list and len(preferred_locations_list)<10 and not extraction.european_union:
+        extracted_location.extend(preferred_locations_list)
+    # Add cities if specified (sorted alphabetically)
+    if extraction.cities:
+        extracted_location.extend(sorted(extraction.cities))
+    return extracted_location
+
+
 def extract_vacancy_location(
     vacancy: str,
     llm_handler: 'LLMHandler',
@@ -96,8 +122,11 @@ def extract_vacancy_location(
                 "10. **remote**:\n"
                 "    - Boolean indicating if remote work is possible.\n"
                 "    - Set to true if the vacancy suggests flexibility in terms of location.\n"
-                "11. **city**:\n"
-                "    - If a specific city is mentioned, write the city name.\n"
+                "11. **reasoning_about_cities**:\n"
+                "    - Provide reasoning about explicitly mentioned cities.\n"
+                "12. **cities**:\n"
+                "    - If specific cities are mentioned, list them.\n"
+
             )
         },
         {
@@ -124,41 +153,27 @@ def extract_vacancy_location(
     cost_info = response['cost']
 
     # Prepare the "Extracted Location" list
-    extracted_location = []
-
-    # Add excluded countries (sorted alphabetically)
-    if extraction.excluded_countries:
-        extracted_location.extend(sorted(extraction.excluded_countries))
-
-    # Add "Remote" if remote is True
-    if extraction.remote:
-        extracted_location.append("Remote")
-
-    # Add "European Union" if european_union is True
-    if extraction.european_union:
-        extracted_location.append("European Union")
-
-    # Add preferred countries (sorted alphabetically)
-    if extraction.preferred_countries:
-        extracted_location.extend(sorted(extraction.preferred_countries))
-
-    # Add city if specified
-    if extraction.city:
-        extracted_location.append(extraction.city)
+    extracted_location = parse_locations(extraction)
 
     # Prepare the "Vacancy Location Reasoning" text
     reasoning_text = (
         f"Reasoning about European Union:\n{' '.join(extraction.reasoning_about_eu)}\n"
         f"European Union mentioned: {extraction.european_union}\n\n"
+
         f"Reasoning about timezone:\n{' '.join(extraction.reasoning_about_timezone)}\n"
-        f"Countries from specified timezone: {extraction.timezone_countries}\n\n"
+        f"Countries from specified timezone: {', '.join(extraction.timezone_countries) if extraction.timezone_countries else 'None'}\n\n"
+
         f"Reasoning about preferred countries:\n{' '.join(extraction.reasoning_about_preferred)}\n"
-        f"Preferred countries: {extraction.preferred_countries}\n\n"
+        f"Preferred countries: {', '.join(extraction.preferred_countries) if extraction.preferred_countries else 'None'}\n\n"
+
         f"Reasoning about excluded countries:\n{' '.join(extraction.reasoning_about_excluded)}\n"
-        f"Excluded countries: {extraction.excluded_countries}\n\n"
+        f"Excluded countries: {', '.join(extraction.excluded_countries) if extraction.excluded_countries else 'None'}\n\n"
+
         f"Reasoning about remote work:\n{' '.join(extraction.reasoning_about_remote)}\n"
         f"Remote work possible: {extraction.remote}\n\n"
-        f"City: {extraction.city if extraction.city else 'Not mentioned'}\n"
+
+        f"Reasoning about cities:\n{' '.join(extraction.reasoning_about_cities) if hasattr(extraction, 'reasoning_about_cities') and extraction.reasoning_about_cities else 'None'}\n"
+        f"Cities: {', '.join(extraction.cities) if extraction.cities else 'Not mentioned'}\n"
     )
 
     if add_tokens_info:

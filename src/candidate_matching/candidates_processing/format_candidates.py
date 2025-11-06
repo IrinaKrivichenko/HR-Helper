@@ -2,23 +2,12 @@ import re
 from typing import List
 
 from src.data_processing.emoji_processing import extract_emoji
-from src.data_processing.nlp.languages_info import language_codes
 from src.data_processing.nlp.tokenization import create_tokens_set
 from dotenv import load_dotenv
 load_dotenv()
 import os
 
-def convert_language_levels(language_string):
-    # Regular expression to search for language and level
-    pattern = re.compile(r'(\w+)\s+([A-Za-z0-9]+)')
-    def replace_match(match):
-        language = match.group(1)
-        level = match.group(2)
-        code = language_codes.get(language, language)
-        return f"{code}-{level}"
-    # Apply the replacement to the entire string
-    result = pattern.sub(replace_match, language_string)
-    return result
+
 
 
 def format_candidate_string(row, stack, index,  show_reasoning=False):
@@ -69,8 +58,6 @@ def format_candidate_string(row, stack, index,  show_reasoning=False):
     tech_coverage = ""# row.get('Tech Coverage', '')
     stack = row.get('_Stack', '_').replace("\n", ", ").replace(" ,", ",").replace(",,", ",")
     languages = row.get('Languages', '_')
-    if len(languages) > 2:
-        languages = convert_language_levels(languages)
 
     original = row.get('CV (original)', '_')
     cv = f"<a href='{original}'>CV</a>" if len(original)>2  else original
@@ -161,6 +148,7 @@ def generate_final_response(better_fit_df, lesser_fit_df, llm_extracted_data):
     extracted_role = llm_extracted_data.get('Extracted Role', '')
     # Extract location
     extracted_location = ", ".join(llm_extracted_data.get("Extracted Location", []))
+    extracted_languages = ", ".join(llm_extracted_data.get("Extracted Languages", []))
     extracted_rate = llm_extracted_data.get("Extracted Rate", "No rate specified")
 
     # Get the minimum candidates threshold from environment variables
@@ -173,6 +161,7 @@ def generate_final_response(better_fit_df, lesser_fit_df, llm_extracted_data):
     else:
         telegram_response = (
             f"<b>📍 Location: </b>{extracted_location}\n"
+            f"<b>🗣️ Languages: </b>{extracted_languages}\n"            
             f"<b>🧑‍💼 Role: </b>{extracted_role}\n"
             f"<b>🔣 ProgLang: </b>{extracted_programming_languages}\n"
             f"<b>🧰 Techs: </b>{extracted_technologies}\n"

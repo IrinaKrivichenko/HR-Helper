@@ -96,7 +96,7 @@ def prepare_logs_data(vacancy_description, vacancy_dict, user, current_date):
         extracted_programming_languages, # J
         extracted_technologies, # K
         vacancy_dict.get("Vacancy Language Reasoning", ""), # L
-        vacancy_dict.get("Extracted English Level", ""),
+        "\n ".join(vacancy_dict.get("Extracted Languages", [])),
         vacancy_dict.get("Vacancy Rate Reasoning", ""), # N
         vacancy_dict.get("Extracted Rate", ""),
         vacancy_dict.get("Vacancy Industries Reasoning", ""), # P

@@ -2,6 +2,7 @@
 import pandas as pd
 from lxml.doctestcompare import strip
 
+from src.candidate_matching.candidates_processing.filtering_by_languages import filter_candidates_by_languages
 from src.candidate_matching.candidates_processing.filtering_by_location import filter_candidates_by_location
 from src.candidate_matching.candidates_processing.filtering_by_rate import filter_candidates_by_rate
 from src.candidate_matching.candidates_processing.filtering_by_technologies import filter_candidates_by_technologies
@@ -112,15 +113,29 @@ def primary_filtering_by_vacancy(vacancy_info, df):
     filter_history.append(f"Location: {location} -> {candidates_count} candidates ({candidates_names})")
     logger.info(filter_history[-1])
 
-    # Step 2: Filter by seniority
+    # Step 2: Filter by languages
+    vacancy_languages = vacancy_info.get("Extracted Languages", [])
+    if vacancy_languages:
+        languages_filtered_df, updated_vacancy_languages = filter_candidates_by_languages(location_filtered_df, vacancy_languages)
+        vacancy_info["Extracted Languages"] = updated_vacancy_languages
+        candidates_count = len(languages_filtered_df)
+        candidates_names = get_names(languages_filtered_df)
+        filter_history.append(f"Languages: {', '.join(vacancy_languages)} -> {candidates_count} candidates ({candidates_names})")
+        logger.info(filter_history[-1])
+    else:
+        languages_filtered_df = location_filtered_df
+        filter_history.append("Languages: No language requirements -> All candidates passed")
+        logger.info(filter_history[-1])
+
+    # Step 3: Filter by seniority
     seniority = vacancy_info.get("Extracted Seniority", "Any")
-    seniority_filtered_df = filter_candidates_by_seniority(location_filtered_df, seniority)
+    seniority_filtered_df = filter_candidates_by_seniority(languages_filtered_df, seniority)
     candidates_count = len(seniority_filtered_df)
     candidates_names = get_names(seniority_filtered_df)
     filter_history.append(f"Seniority: {seniority} -> {candidates_count} candidates ({candidates_names})")
     logger.info(filter_history[-1])
 
-    # Step 3: Filter by roles if roles are specified and the number of candidates exceeds the number of candidates LLM is capable to process in one time
+    # Step 4: Filter by roles if roles are specified and the number of candidates exceeds the number of candidates LLM is capable to process in one time
     required_roles = vacancy_info.get("Matched Roles", "")
     roles_filtered_df = filter_candidates_by_roles(seniority_filtered_df, required_roles)
     candidates_count = len(roles_filtered_df)
@@ -128,7 +143,7 @@ def primary_filtering_by_vacancy(vacancy_info, df):
     filter_history.append(f"Matched Roles: {', '.join(required_roles)} -> {candidates_count} candidates ({candidates_names})")
     logger.info(filter_history[-1])
 
-    # Step 4
+    # Step 5
     rate = vacancy_info.get("Extracted Rate", "")
     rate_filtered_df = filter_candidates_by_rate(roles_filtered_df, rate)
     candidates_count = len(rate_filtered_df)
@@ -138,7 +153,7 @@ def primary_filtering_by_vacancy(vacancy_info, df):
     # if len(rate_filtered_df) < MIN_CANDIDATES_THRESHOLD:
     #         rate_filtered_df = tech_filtered_df
 
-    # Step 5: Filter by technologies
+    # Step 6: Filter by technologies
     tech_filtered_df, tech_filter_history_str = filter_candidates_by_technologies(rate_filtered_df, vacancy_info)
     filter_history.append(tech_filter_history_str)
 

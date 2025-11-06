@@ -37,12 +37,12 @@ def extract_cv_expertise(
                 "Senior Sales Executive, Principal AI Engineer, and Veteran Technical Recruiter."
             )
         },
-        {
+        { ## куски резюме
             "role": "user",
             "content": (
                 f"Analyze this resume and extract the candidate's core 'Expertise'.\n\n"
                 f"**Definition of 'Expertise':** Summary of HOW skills were applied to solve business problems "
-                f"and deliver results. Focus on processes, achievements, methodologies, and business outcomes.\n\n"
+                f"and deliver results. Focus on processes, achievements, methodologies, and business outcomes.\n\n" ##percentage and numbers
                 f"**Process:**\n"
                 f"1. Scan for certifications and their links\n"
                 f"2. Identify key achievements and responsibilities\n"
