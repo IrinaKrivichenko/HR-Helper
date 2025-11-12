@@ -254,7 +254,7 @@ def extract_cv_roles(
             [r for response in additional_roles_responses for r in response['parsed'].proposed_roles]
     )
     if proposed_roles:
-        reasoning_about_roles.append("\n=== Proposed Roles ===")
+        reasoning_about_roles.append("\nPROPOSED ROLES:")
         for role in proposed_roles:
             reasoning_about_roles.append(
                 f"Proposed Role: {role.name}\n"
