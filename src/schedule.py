@@ -12,7 +12,7 @@ def prepare_google_sheets():
     service = initialize_google_sheets_api()
     # Define the columns to extract by name
     columns_to_extract = [
-        'First Name', 'Last Name', 'LVL of engagement', 'Seniority', 'Role',
+        'First Name', 'Last Name', 'LVL of engagement', 'Seniority', 'Main Roles', 'Additional Roles',
         'Stack', 'Industries', 'Expertise', 'Location'
     ]
     # Get specific columns with hyperlinks

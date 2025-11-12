@@ -47,7 +47,11 @@ def extract_cv_stack(
     prompt = [
         {
             "role": "system",
-            "content": "You are an expert technical analyst specializing in IT resume analysis."
+            "content":(
+                "You are an expert technical analyst specializing in IT resume analysis. "
+                "**Your task is to extract ALL technologies mentioned in the resume, even if they are only mentioned once.** "
+                "Do not miss any technology."
+            )
         },
         {
             "role": "user",

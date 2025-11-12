@@ -174,7 +174,7 @@ def extract_full_sections(cv_text: str, llm_handler: Any, model: str) -> Dict[st
     sections = {}
     for section_name in ["header", "summary", "skills", "experience", "education"]:
         section_fragments = [frag for frag, sec in fragment_list if sec == section_name]
-        sections[section_name.capitalize()] = " ".join(section_fragments)
+        sections[section_name.capitalize()] = "\n ".join(section_fragments)
 
     # Step 7: Validate required sections
     missing_sections = [s for s in MANDATORY_SECTIONS if not sections.get(s)]

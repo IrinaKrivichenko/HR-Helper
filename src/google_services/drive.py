@@ -88,16 +88,43 @@ def _extract_pdf_content(doc_id: str, service) -> str:
     return extract_text_from_pdf(pdf_file)
 
 def _extract_google_doc_with_links(doc_id: str, drive_service) -> str:
-    """Extract text from Google Doc with hyperlinks as separate paragraphs."""
+    """Extract text and tables from Google Doc with hyperlinks as separate paragraphs."""
     docs_service = build('docs', 'v1', credentials=drive_service._http.credentials)
     document = docs_service.documents().get(documentId=doc_id).execute()
     paragraphs = []
     doc_content = document.get('body', {}).get('content', [])
+
     for element in doc_content:
         if 'paragraph' in element:
             paragraph_parts = _process_paragraph(element['paragraph'])
             paragraphs.extend(paragraph_parts)
+        elif 'table' in element:
+            table_content = _process_table(element['table'])
+            paragraphs.append(table_content)
+        elif 'sectionBreak' in element:
+            continue
+        else:
+            print(f"Unknown element type: {list(element.keys())}")
     return '\n\n'.join(filter(None, paragraphs))
+
+def _process_table(table: dict) -> str:
+    """Extract text from a Google Docs table."""
+    rows = table.get('tableRows', [])
+    table_text = []
+    for row in rows:
+        cells = row.get('tableCells', [])
+        row_text = []
+        for cell in cells:
+            cell_content = cell.get('content', [])
+            cell_text = []
+            for element in cell_content:
+                if 'paragraph' in element:
+                    paragraph_parts = _process_paragraph(element['paragraph'])
+                    cell_text.extend(paragraph_parts)
+            row_text.append(' '.join(cell_text))
+        table_text.append(' | '.join(row_text))
+    return '\n'.join(table_text)
+
 
 def _extract_plain_text_from_google_doc(doc_id, drive_service):
     try:

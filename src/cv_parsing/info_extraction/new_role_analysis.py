@@ -2,6 +2,7 @@ import pandas as pd
 from pydantic import BaseModel, Field
 from typing import List, Optional, Literal, Tuple, Dict
 
+from src.data_processing.allowed_values_matcher import match_values
 from src.google_services.sheets import write_specific_columns
 from src.logger import logger
 from src.data_processing.nlp.llm_handler import LLMHandler
@@ -140,4 +141,22 @@ def process_proposed_roles(
     combined_list = to_add + overlaps
     return combined_list, total_cost
 
-
+def process_roles_list(
+    roles_list: List[str],
+    roles_to_check: List[str],
+    llm_handler: LLMHandler,
+    model: str
+) -> Tuple[List[str], float]:
+    """
+    Processes a list of roles to match with predefined list and analyze new roles.
+    Returns matched roles and total cost.
+    """
+    matched_roles_set, proposed_roles_set = match_values(roles_list, roles_to_check)
+    approved_roles, total_new_analysis_cost = process_proposed_roles(
+        llm_handler=llm_handler,
+        roles_list=roles_list,
+        proposed_roles=list(proposed_roles_set),
+        model=model,
+    )
+    final_roles = list(set(matched_roles_set).union(approved_roles))
+    return final_roles, total_new_analysis_cost

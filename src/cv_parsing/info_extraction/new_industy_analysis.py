@@ -102,7 +102,7 @@ def process_proposed_industries(
     """
 
     if len(proposed_industries) == 0:
-        return [], 0.0
+        return [], "", 0.0
 
     print("!!!!!!! proposed_industries:", str(proposed_industries))
 
@@ -112,6 +112,7 @@ def process_proposed_industries(
     to_add = []
     overlaps = []
     total_cost = 0.0
+    reasoning_lines = []
 
     for proposed in proposed_industries:
         # Analyze single industry with structured output
@@ -120,6 +121,15 @@ def process_proposed_industries(
         )
 
         total_cost += cost
+
+        reasoning_lines.append(
+            f"\n"
+            f"Proposed Industry: {proposed}\n"
+            f"Recommendation: {analysis_result['recommendation']}\n"
+            f"Justification: {analysis_result['justification']}\n"
+            f"Pros: {', '.join(analysis_result['pros'])}\n"
+            f"Cons: {', '.join(analysis_result['cons'])}\n"
+        )
 
         if analysis_result["recommendation"] == "Add":
             to_add.append(proposed)
@@ -131,6 +141,9 @@ def process_proposed_industries(
                 else:
                     logger.error(f"Overlap industry '{overlap_industry}' not found in master list")
 
+    # Combine reasoning into a single string
+    new_industries_reasoning = "\n".join(reasoning_lines)
+
     # Update Google Sheets with new industries (как в оригинале!)
     if to_add:
         updated_industries = sorted(list(set(existing_industries_list + to_add)))
@@ -141,5 +154,5 @@ def process_proposed_industries(
     to_add = [f"NEW {industry}" for industry in to_add]
     # Return combined list and total cost
     combined_list = to_add + overlaps
-    return combined_list, total_cost
+    return combined_list, new_industries_reasoning, total_cost
 

@@ -37,12 +37,12 @@ def extract_cv_info(cv: Dict, llm_handler: LLMHandler):
 
     # Define the extraction tasks as a list of tuples: (function, model, field_name)
     extraction_tasks = [
-        (extract_cv_name, "gpt-4o-mini", "Name"),
+        (extract_cv_name, "gpt-4.1-nano", "Name"),
         (extract_cv_seniority, "gpt-4.1-nano", "Seniority"),
-        (extract_cv_roles, "gpt-4o-mini", "Roles"),
+        (extract_cv_roles, "gpt-4.1-nano", "Roles"),
         (extract_cv_expertise, "gpt-4.1-nano", "Expertise"),
         (extract_cv_stack, "gpt-4.1", "Stack"),
-        (extract_cv_industries, "gpt-4o-mini", "Industries"),
+        (extract_cv_industries, "gpt-4.1-nano", "Industries"),
         (extract_cv_linkedin, "gpt-4.1-nano", "LinkedIn"),
         (extract_cv_telegram, "gpt-4.1-nano", "Telegram"),
         (extract_cv_phone, "gpt-4.1-nano", "Phone"),
