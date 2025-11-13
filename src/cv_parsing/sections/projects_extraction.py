@@ -96,8 +96,11 @@ def iterative_project_extraction(llm_handler: Any, model: str, experience_text: 
     path_steps = []
     all_project_starts = []
     projects_text = experience_text
+    max_iterations = 5
+    iteration = 0
 
-    while True:
+    while iteration < max_iterations:
+        iteration += 1
         project_starts_result = get_project_starts(llm_handler, model, projects_text)
         project_starts_info = project_starts_result["projects_starts"]
         project_count = project_starts_info.project_count
@@ -122,13 +125,13 @@ def iterative_project_extraction(llm_handler: Any, model: str, experience_text: 
         projects = extract_projects(experience_text, all_project_starts)
         unique_project_starts = list(set(project_starts))
         if len(unique_project_starts) <= 3 and project_count == len(project_starts):
-            path_steps.append(f"Final extraction: {project_count} projects extracted.")
+            path_steps.append(f"Last iteration {iteration}: {project_count} projects extracted.")
             break
         else:
             # Select the three largest projects
             projects_sorted = sorted(projects, key=len, reverse=True)[:3]
             projects_text = "\n\n".join(projects_sorted)
-            path_steps.append(f"Iteration: Selected top 3 largest projects for re-evaluation.")
+            path_steps.append(f"Iteration {iteration}: Selected top 3 largest projects for re-evaluation.")
 
     return {
         "projects": projects,
