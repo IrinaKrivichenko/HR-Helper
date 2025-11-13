@@ -139,11 +139,3 @@ auth_manager.set_application(application)
 
 
 
-
-
-
-
-
-
-
-

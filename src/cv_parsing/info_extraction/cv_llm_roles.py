@@ -26,9 +26,9 @@ def create_role_match_model(roles_list: List[str]) -> Type[BaseModel]:
         'RoleMatch',
         supporting_evidence=(List[str], Field(default_factory=list, max_length=9, description="Job titles or responsibilities that support this role (provide evidence first)")),
         primary_language=(Optional[str], Field(default=None, description="Primary programming language IF role involves coding. Leave empty for non-technical roles.")),
-        confidence=(Literal["high", "medium", "low"], Field(description="Confidence based on evidence strength: high=direct match, medium=inferred, low=partial")),
         name=(RoleType, Field(description="Final decision: exact role name from predefined list based on above analysis")),
-    )
+        confidence=(Literal["high", "medium", "low"], Field(description="Confidence based on evidence strength: high=direct match, medium=inferred, low=partial")),
+        )
 
 class ProposedRole(BaseModel):
     """Model for proposed new roles not in the predefined list."""
@@ -149,7 +149,7 @@ def extract_additional_roles_for_project(
 def extract_cv_roles(
     cv_sections: Dict,
     llm_handler: LLMHandler,
-    model: str = "gpt-4.1-nano"
+    model: str = "gpt-4.1-mini"
 ) -> Dict[str, Any]:
     """
     Extract and analyze IT roles from a CV, separating main and additional roles.
@@ -234,8 +234,8 @@ def extract_cv_roles(
     reasoning_about_roles.append("MAIN ROLES:")
     for role in main_roles_data.matched_roles:
         reasoning_about_roles.append(
-            f"Main Role: {role.name} (confidence: {role.confidence})\n"
-            f"Supporting evidence: {', '.join(role.supporting_evidence)}"
+            f"Supporting evidence: {', '.join(role.supporting_evidence)}\n"
+            f"Role Name: {role.name} (confidence: {role.confidence})"
         )
 
     # Add additional roles reasoning
@@ -244,8 +244,8 @@ def extract_cv_roles(
         for role in response['parsed'].matched_roles:
             if role.name in filtered_additional_roles_names:
                 reasoning_about_roles.append(
-                    f"Additional Role: {role.name} (confidence: {role.confidence})\n"
-                    f"Supporting evidence: {', '.join(role.supporting_evidence)}"
+                    f"Supporting evidence: {', '.join(role.supporting_evidence)}\n"
+                    f"Role Name: {role.name} (confidence: {role.confidence})"
                 )
 
     # Add proposed roles reasoning
@@ -257,9 +257,9 @@ def extract_cv_roles(
         reasoning_about_roles.append("\nPROPOSED ROLES:")
         for role in proposed_roles:
             reasoning_about_roles.append(
-                f"Proposed Role: {role.name}\n"
                 f"Supporting evidence: {', '.join(role.supporting_evidence)}\n"
-                f"Justification: {role.justification}"
+                f"Justification: {role.justification}\n"
+                f"Proposed Role: {role.name}"
             )
 
     # Build result

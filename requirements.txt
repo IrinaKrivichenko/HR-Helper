@@ -28,7 +28,7 @@ boto3>=1.37.23
 watchtower==3.4.0
 
 python-docx
-pdfminer.six
+pdfplumber==0.11.7
 
 phonenumbers
 langdetect

@@ -39,7 +39,7 @@ def extract_cv_info(cv: Dict, llm_handler: LLMHandler):
     extraction_tasks = [
         (extract_cv_name, "gpt-4.1-nano", "Name"),
         (extract_cv_seniority, "gpt-4.1-nano", "Seniority"),
-        (extract_cv_roles, "gpt-4.1-nano", "Roles"),
+        (extract_cv_roles, "gpt-4.1-mini", "Roles"),
         (extract_cv_expertise, "gpt-4.1-nano", "Expertise"),
         (extract_cv_stack, "gpt-4.1", "Stack"),
         (extract_cv_industries, "gpt-4.1-nano", "Industries"),

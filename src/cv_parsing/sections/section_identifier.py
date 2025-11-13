@@ -117,7 +117,7 @@ def identify_resume_sections(
         if fallback_result:
             total_prompt_tokens += fallback_result.get("token_usage", {}).get("prompt_tokens", 0)
             total_prompt_tokens += fallback_result.get("token_usage", {}).get("completion_tokens", 0)
-            total_cost += fallback_result.get("cost", {}).get("total_cost", 0)
+            total_cost += fallback_result.get("cost", 0)
 
         final_result["Total Section Extraction tokens"] = total_prompt_tokens
         final_result["Total Section Extraction cost"] = total_cost

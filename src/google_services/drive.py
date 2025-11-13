@@ -1,4 +1,5 @@
 
+import pdfplumber
 import io
 import re
 
@@ -6,7 +7,6 @@ from docx import Document
 from googleapiclient.errors import HttpError
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
-from pdfminer.high_level import extract_text
 
 from src.google_services.drive_authorization import load_credentials
 from src.logger import logger
@@ -33,18 +33,40 @@ def extract_text_from_docx(file_path):
         print(f"Error extracting text from DOCX: {e}")
         return None
 
+
+
 def extract_text_from_pdf(pdf_source):
-    """Extracts text from PDF (file path or BytesIO)."""
+    """
+    Extracts text from PDF (file path or BytesIO) using pdfplumber.
+    Returns a tuple: (text, char_count, paragraphs_count)
+    """
     try:
-        if isinstance(pdf_source, str):
-            return extract_text(pdf_source)
-        elif isinstance(pdf_source, io.BytesIO):
-            return extract_text(pdf_source)
+        if isinstance(pdf_source, io.BytesIO):
+            pdf_source.seek(0)
+        if isinstance(pdf_source, str) or isinstance(pdf_source, io.BytesIO):
+            with pdfplumber.open(pdf_source) as pdf:
+                text = "".join([page.extract_text() for page in pdf.pages])
+                return text
         else:
-            raise ValueError("Unsupported PDF source type.")
+            raise ValueError("Unsupported PDF source type. Expected str (file path) or BytesIO.")
     except Exception as e:
         print(f"Error extracting text from PDF: {e}")
-        return None
+        return None, 0, 0
+
+
+
+def compare_extraction(pdf_bytes_io):
+
+    # Перемотаем указатель на начало для pdfplumber
+    pdf_bytes_io.seek(0)
+    with pdfplumber.open(pdf_bytes_io) as pdf:
+        text_plumber = "".join([page.extract_text() for page in pdf.pages])
+    char_count_plumber = len(text_plumber)
+    paragraphs_plumber = len(text_plumber.split('\n')) if text_plumber else 0
+    print(f"pdfplumber result: {text_plumber[:100]}...")
+    print(f"pdfplumber chars: {char_count_plumber}, paragraphs: {paragraphs_plumber}")
+
+
 
 
 def extract_text_from_google_file(url: str, service=None):

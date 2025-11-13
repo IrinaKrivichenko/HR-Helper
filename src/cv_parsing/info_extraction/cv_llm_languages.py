@@ -16,6 +16,7 @@ from src.logger import logger  # Added logger import
 class CVLanguagesAnalysis(BaseModel):
     reasoning_steps: List[str] = Field(description="Step-by-step analysis in bullet points")
     resume_language: str = Field(description="Primary language of the resume")
+    certificates_reasoning: str = Field(description="Reasoning about language certificates and their CEFR equivalence")
     languages: Annotated[List[LanguageItem], MinLen(1)] = Field(description="List of languages with CEFR levels")
     location_reasoning: str = Field(description="Reasoning about the candidate's location and its impact on language levels")
     location_language: Optional[LanguageItem] = Field(description="Language of the candidate's location (if applicable)", default=None)
@@ -38,9 +39,14 @@ def extract_cv_languages(
             "content": (
                 f"Analyze this resume to identify languages and their proficiency levels mapped to CEFR standard (A1, A2, B1, B2, C1, C2).\n\n"
                 f"**IMPORTANT: First determine the primary language of the resume itself.**\n\n"
+                f"\n"
+                f"**Certificates Analysis:**\n"
+                f"- If the CV mentions any language certificates (e.g., Pearson, TOEFL, IELTS, Cambridge, etc.), explicitly state their CEFR equivalence.\n"
+                f"- If no certificates are mentioned, state this explicitly.\n"
+                f"\n"
                 f"**CEFR Mapping Rules:**\n"
                 f"- Native/Родной → C2\n"
-                f"- Advanced/Proficient/Fluent → C1\n"
+                f"- Advanced/Proficient/Professional → C1\n"
                 f"- Upper-Intermediate/Conversational/Fluent/Confident → B2\n"
                 f"- Intermediate/Средний → B1\n"
                 f"- Pre-Intermediate/Ниже среднего → A2\n"
@@ -91,6 +97,8 @@ def extract_cv_languages(
         "Languages": ", ".join([f"{lang.language} {lang.level}" for lang in languages_analysis.languages]),
         "Reasoning about Languages": (
                         "\n".join(f"• {step}" for step in languages_analysis.reasoning_steps) +
+                        (f"\n\n• Certificates Reasoning:\n{languages_analysis.certificates_reasoning}"
+                         if languages_analysis.certificates_reasoning else "") +
                         (f"\n\n• Location Reasoning:\n{languages_analysis.location_reasoning}"
                          if languages_analysis.location_reasoning else "")
                     ),
