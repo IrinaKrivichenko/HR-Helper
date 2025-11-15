@@ -56,7 +56,7 @@ def extract_cv_certificates(
     cost = response["cost"]["total_cost"]
 
     combined_text = "\n".join(
-        f"- {cert.name} ({cert.issuer}, {cert.date or 'No date'})"
+        f"- {cert.name}"
         for cert in certificates
     )
 

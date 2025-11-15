@@ -177,7 +177,7 @@ def extract_vacancy_role(
     """
     # Load predefined roles
     roles_list: List[str] = list(
-        read_specific_columns(['Role Values'], 'values', remove_emonji=True)['Role Values']
+        read_specific_columns(['Role Values'], 'values')['Role Values']
     )
     roles_str = ', '.join(f'"{role}"' for role in roles_list)
     few_shot_example, few_shot_response = create_few_shot_example(roles_list)

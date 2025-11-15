@@ -12,7 +12,7 @@ from src.data_processing.nlp.llm_handler import LLMHandler
 def extract_cv_expertise(
     cv_sections: Dict,
     llm_handler: LLMHandler,
-    model: str = "gpt-4.1-mini"
+    model: str = "gpt-4.1-nano"
 ) -> Dict[str, Any]:
     """
     Extracts expertise (projects achievements and certificates) from a resume in parallel.

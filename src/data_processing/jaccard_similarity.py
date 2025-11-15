@@ -22,7 +22,7 @@ def calculate_jaccard_similarity(set1, set2):
     union = set1.union(set2)
     diff = union-intersection
     #  logger.info(diff)
-    return len(intersection) / len(union) if union != 0 else 0
+    return len(intersection) / len(union) if union else 0
 
 
 def find_most_similar_row(column: pd.Series, target_string: str,

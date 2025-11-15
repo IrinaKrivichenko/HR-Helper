@@ -13,6 +13,7 @@ from src.logger import logger  # Added logger import
 class Project(BaseModel):
     name: str = Field(description="Project name (exact from resume)")
     description: str = Field(description="Project description (exact from resume)")
+    activities: Optional[List[str]] = Field(description="List of responsibilities and activities (exact from resume)", default=None)
     achievements: Optional[List[str]] = Field(description="List of achievements (exact from resume)", default=None)
 
 def extract_achievements_for_project(
@@ -31,8 +32,8 @@ def extract_achievements_for_project(
                 "Extract the following details from the project text:\n"
                 "1. Project name (exact from resume).\n"
                 "2. Project description (exact from resume).\n"
-                "3. List of achievements (exact from resume).\n"
-                "Return only the extracted data in JSON format."
+                "3. List of responsibilities and activities (exact from resume).\n"
+                "4. List of achievements (exact from resume).\n"
             )
         },
         {
@@ -59,10 +60,21 @@ def extract_achievements_for_project(
         "cost": cost,
     }
 
+def format_project(project: Dict[str, Any]) -> str:
+    lines = [
+        f"Project: {project['name']}",
+        f"Description: {project['description']}"
+    ]
+    if project.get("activities"):
+        lines.append(f"Activities: {', '.join(project['activities'])}")
+    if project.get("achievements"):
+        lines.append(f"Achievements: {', '.join(project['achievements'])}")
+    return "\n".join(lines)
+
 def extract_cv_projects_achievements(
     cv_sections: Dict,
     llm_handler: LLMHandler,
-    model: str = "gpt-4.1-mini"
+    model: str = "gpt-4.1-nano"
 ) -> Dict[str, Any]:
     """
     Extracts achievements for each project in parallel.
@@ -93,12 +105,7 @@ def extract_cv_projects_achievements(
             total_prompt_tokens += result["prompt_tokens"]
             total_cost += result["cost"]
 
-    combined_text = "\n\n".join(
-        f"Project: {project['name']}\n"
-        f"Description: {project['description']}\n"
-        f"Achievements: {', '.join(project['achievements']) if project['achievements'] else 'None'}"
-        for project in projects
-    )
+    combined_text = "\n\n".join(format_project(project) for project in projects)
 
     return {
         "combined_text": combined_text,

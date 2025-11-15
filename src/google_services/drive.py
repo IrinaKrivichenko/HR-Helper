@@ -43,15 +43,16 @@ def extract_text_from_pdf(pdf_source):
     try:
         if isinstance(pdf_source, io.BytesIO):
             pdf_source.seek(0)
-        if isinstance(pdf_source, str) or isinstance(pdf_source, io.BytesIO):
-            with pdfplumber.open(pdf_source) as pdf:
-                text = "".join([page.extract_text() for page in pdf.pages])
-                return text
-        else:
+        elif not isinstance(pdf_source, str):
             raise ValueError("Unsupported PDF source type. Expected str (file path) or BytesIO.")
+
+        with pdfplumber.open(pdf_source) as pdf:
+            text = "".join([page.extract_text() for page in pdf.pages])
+        return text
+
     except Exception as e:
         print(f"Error extracting text from PDF: {e}")
-        return None, 0, 0
+        return None
 
 
 

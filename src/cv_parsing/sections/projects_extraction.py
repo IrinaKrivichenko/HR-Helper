@@ -67,6 +67,10 @@ def extract_projects(experience_text: str, project_starts: List[str]) -> List[st
 
     # Sort indices to process lines in order of appearance
     sorted_indices = sorted(index_to_start.keys())
+    first_start_index = sorted_indices[0]
+    # Extract information before the first project start
+    pre_project_lines = lines[:first_start_index]
+    pre_project_text = '\n'.join(pre_project_lines).strip()
 
     # Extract projects
     for i in range(len(sorted_indices)):
@@ -87,6 +91,12 @@ def extract_projects(experience_text: str, project_starts: List[str]) -> List[st
     for start in project_starts:
         if start in start_to_text:
             ordered_projects.append(start_to_text[start])
+
+    # Add pre-project information as the first project if it's larger than the smallest project
+    if pre_project_text and ordered_projects:
+        smallest_project_size = min(len(project) for project in ordered_projects)
+        if len(pre_project_text) > smallest_project_size:
+            ordered_projects.insert(0, pre_project_text)
 
     return ordered_projects
 

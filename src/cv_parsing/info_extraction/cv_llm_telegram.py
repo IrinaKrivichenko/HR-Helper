@@ -21,6 +21,9 @@ class TelegramExtraction(BaseModel):
         contact = contact.strip().strip('/')
         # If it's a mention like @username
         if contact.startswith('@'):
+            username = contact[1:]
+            if re.match(r'^[a-zA-Z0-9_.]+$', username):
+                return f"https://t.me/{username}"
             return contact
         # If it's a short link like t.me/username
         if contact.startswith('t.me/'):
