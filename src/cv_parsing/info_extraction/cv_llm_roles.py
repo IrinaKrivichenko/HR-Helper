@@ -69,6 +69,7 @@ def extract_main_roles(
     """
     cv_text = get_section_for_field(cv_sections, "Role")
     roles_str = ', '.join(f'"{role}"' for role in roles_list)
+    print(roles_str)
 
     prompt = [
         {

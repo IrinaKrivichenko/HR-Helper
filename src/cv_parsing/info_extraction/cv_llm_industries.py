@@ -167,6 +167,7 @@ def extract_cv_industries(
             if new_industry not in all_industries:
                 all_industries.append(new_industry)
     industries_str = ", ".join(all_industries)
+    print(industries_str)
 
     # Build the reasoning text
     reasoning_lines = []
@@ -180,7 +181,7 @@ def extract_cv_industries(
 
     # Build the result dictionary
     result = {
-        "Industries": ", ".join(industries_str),
+        "Industries": industries_str,
         "Reasoning about Industries": reasoning_text,
         "Model of_Industries_CV_extraction": model,
         "Completion Tokens of_Industries_CV_extraction": str(total_completion_tokens),
@@ -191,63 +192,3 @@ def extract_cv_industries(
     }
 
     return result
-
-    #     for future in as_completed(futures):
-    #         result = future.result()
-    #         projects_analysis.append(result)
-    #         total_completion_tokens += result["usage"].completion_tokens
-    #         total_prompt_tokens += result["usage"].prompt_tokens
-    #         total_cost += result["cost"]["total_cost"]
-    #
-    # # Extract all unique industries
-    # all_industries = [project["selected_industry"] for project in projects_analysis]
-    # unique_industries = list(set(all_industries))
-    #
-    # # Separate predefined and new industries
-    # predefined_set = set(predefined_industries)
-    # new_industries = [industry for industry in unique_industries if industry not in predefined_set]
-    # found_industries = [industry for industry in unique_industries if industry in predefined_set]
-    #
-    # # Process new industries
-    # approved_industries, new_industries_reasoning, new_analysis_cost = process_proposed_industries(
-    #     llm_handler=llm_handler,
-    #     existing_industries_list=predefined_industries,
-    #     proposed_industries=new_industries,
-    #     model=model
-    # )
-    #
-    # # Combine all industries
-    # approved_industries_clean = [industry.replace("NEW ", "") for industry in approved_industries]
-    # final_industries = list(set(found_industries).union(set(approved_industries_clean)))
-    #
-    # # Build the reasoning text
-    # reasoning_lines = []
-    # for project in projects_analysis:
-    #     reasoning_lines.append(
-    #         f"Project: {project['project_name']}\n"
-    #         f"Potential industries: {', '.join(project['potential_industries'])}\n"
-    #         f"Reasoning: {project['reasoning']}\n"
-    #         f"Selected industry: {project['selected_industry']}\n"
-    #         f"Supporting evidence: {', '.join(project['supporting_evidence'])}\n"
-    #     )
-    #     reasoning_lines.append("-" * 50)  # Separator
-    #
-    # if new_industries_reasoning:
-    #     reasoning_lines.append("\nNew Industries Analysis:\n")
-    #     reasoning_lines.append(new_industries_reasoning)
-    #
-    # reasoning_text = "\n".join(reasoning_lines)
-    #
-    # # Build the result dictionary
-    # result = {
-    #     "Industries": ", ".join(final_industries),
-    #     "Reasoning about Industries": reasoning_text,
-    #     "Model of_Industries_CV_extraction": model,
-    #     "Completion Tokens of_Industries_CV_extraction": str(total_completion_tokens),
-    #     "Prompt Tokens of_Industries_CV_extraction": str(total_prompt_tokens),
-    #     "Cost_of_industries_CV_extraction": total_cost,
-    #     "Cost_of_new_industries_analysis": new_analysis_cost,
-    #     "Time": time.time() - start_time,
-    # }
-    #
-    # return result

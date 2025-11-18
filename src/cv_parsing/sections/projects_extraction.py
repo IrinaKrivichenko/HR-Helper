@@ -65,6 +65,9 @@ def extract_projects(experience_text: str, project_starts: List[str]) -> List[st
         for index, similarity in similar_lines:
             index_to_start[index] = start
 
+    if not index_to_start:
+        return [experience_text]
+
     # Sort indices to process lines in order of appearance
     sorted_indices = sorted(index_to_start.keys())
     first_start_index = sorted_indices[0]

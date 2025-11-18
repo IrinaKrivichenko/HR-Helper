@@ -7,7 +7,7 @@ import traceback
 from typing import List, Optional, Annotated
 
 from annotated_types import MaxLen
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 
 from src.data_processing.nlp.countries_info import get_random_vacancy_locations, \
     COUNTRIES_NAMES_WITH_NOT, COUNTRIES_NAMES
@@ -15,11 +15,13 @@ from src.data_processing.nlp.llm_handler import LLMHandler
 from src.logger import logger
 
 
+
 class VacancyLocationExtraction(BaseModel):
     reasoning_about_eu: Annotated[List[str], MaxLen(3)] = Field(description="Reasoning about whether the European Union is explicitly mentioned. Provide no more than a couple of sentences.")
-    european_union: bool = Field(description="Boolean indicating if the European Union is explicitly mentioned.")
+    eu_term: Optional[str] = Field(default=None, description="The exact word or phrase used to refer to the EU in the vacancy text.")
+    european_union: bool = Field(description="Boolean indicating if the European Union is explicitly mentioned. Must be True only if `eu_term` is found in the vacancy text.")
     reasoning_about_timezone: Annotated[List[str], MaxLen(6)] = Field(description="Reasoning about time zone requirements. Provide no more than a couple of sentences.")
-    timezone_countries: List[COUNTRIES_NAMES] = Field(default=[], description="List of countries from the specified time zone.")
+    timezone_countries: List[COUNTRIES_NAMES] = Field(default=[], description="List of countries from the specified time zone. If no time zone is mentioned, leave the list empty.")
     reasoning_about_preferred: Annotated[List[str], MaxLen(3)] = Field(description="Reasoning about explicitly mentioned preferred countries. Provide no more than a couple of sentences.")
     preferred_countries: List[COUNTRIES_NAMES] = Field(default=[],description="List of explicitly mentioned preferred countries.")
     reasoning_about_excluded: Annotated[List[str], MaxLen(3)] = Field(description="Reasoning about countries that need to be excluded. Provide no more than a couple of sentences.")
@@ -29,7 +31,13 @@ class VacancyLocationExtraction(BaseModel):
     reasoning_about_cities: Annotated[List[str], MaxLen(3)] = Field(description="Reasoning about explicitly mentioned cities. Provide no more than a couple of sentences.")
     cities: List[str] = Field(default=[], description="List of cities if mentioned in the vacancy.")
 
-def parse_locations(extraction):
+    @validator("european_union")
+    def validate_eu_mention(cls, v, values):
+        if v and not values.get("eu_term"):
+            raise ValueError("If european_union is True, eu_term must be provided.")
+        return v
+
+def parse_locations(extraction: VacancyLocationExtraction, vacancy_text: str):
     # Combine preferred_countries and timezone_countries using a set to avoid duplicates
     preferred_locations = set(extraction.preferred_countries) | set(extraction.timezone_countries)
     # Convert back to a sorted list
@@ -44,9 +52,10 @@ def parse_locations(extraction):
         extracted_location.append("Remote")
     # Add "European Union" if european_union is True
     if extraction.european_union:
-        extracted_location.append("European Union")
+        if extraction.eu_term and extraction.eu_term.lower() not in vacancy_text.lower():
+            extracted_location.append("European Union")
     # Add the combined list of preferred countries and timezone countries (sorted alphabetically)
-    if preferred_locations_list and len(preferred_locations_list)<10 and not extraction.european_union:
+    if preferred_locations_list and len(preferred_locations_list)<15:
         extracted_location.extend(preferred_locations_list)
     # Add cities if specified (sorted alphabetically)
     if extraction.cities:
@@ -90,41 +99,46 @@ def extract_vacancy_location(
                 "Follow these rules strictly to fill in the fields of the VacancyLocationExtraction model:\n\n"
                 "1. **reasoning_about_eu**:\n"
                 "   - Provide reasoning about whether the European Union is explicitly mentioned.\n"
-                "   - Examples of EU mentions include: 'Europe', 'EU', 'European Union', 'ЕС', etc.\n"
-                "2. **european_union**:\n"
+                "   - Examples of EU mentions include: 'Europe', 'EU', 'European Union', 'ЕС', 'Євросоюз' etc.\n"
+                "2. **eu_term**:\n"
+                "   - The exact word or phrase used to refer to the European Union in the vacancy text.\n"
+                "   - If the EU is mentioned, this field must contain the exact term used.\n"
+                "3. **european_union**:\n"
                 "   - Boolean indicating if the European Union is explicitly mentioned.\n"
-                "3. **reasoning_about_timezone**:\n"
+                "   - Must be True only if `eu_term` is found in the vacancy text.\n"
+                "4. **reasoning_about_timezone**:\n"
                 "   - Provide reasoning about time zone requirements.\n"
-                "   - If the vacancy clearly specifies the time zone requirements, then select countries from that time zone.\n"
-                "   - Try to cover as many countries as possible.\n"
-                "4. **timezone_countries**:\n"
+                "   - If the vacancy explicitly mentions a time zone ('CET', 'UTC', 'GMT'), list ONLY the countries that strictly match this time zone or range.\n"
+                "   - If no time zone is mentioned, leave this field empty.\n"
+                "5. **timezone_countries**:\n"
                 "   - List of countries from the specified time zone.\n"
-                "5. **reasoning_about_preferred**:\n"
+                "   - If no time zone is mentioned, leave the list empty.\n"
+                "6. **reasoning_about_preferred**:\n"
                 "   - Provide reasoning about explicitly mentioned preferred countries.\n"
                 "   - Including those countries that were defined using time zones.\n"
                 f"  - Example: If the location in the vacancy is described like 'EU, but preferred {eu_countries[0]} or {eu_countries[1]}', the result should be '{eu_countries[0]}, {eu_countries[1]}'.\n"
-                "6. **preferred_countries**:\n"
+                "7. **preferred_countries**:\n"
                 "    - List explicitly mentioned preferred countries.\n"
-                "7. **reasoning_about_excluded**:\n"
+                "9. **reasoning_about_excluded**:\n"
                 "   - Provide reasoning about countries that need to be excluded.\n"
                 "   - Only include countries in the excluded list if they are explicitly mentioned as excluded.\n"
                 "   - An indication of a specific location does not imply that all other locations should be excluded unless explicitly stated.\n"
                 "   - Look for phrases like 'not', 'except', 'excluding', or emojis like ❌, 🚫, 🙅, ⛔, 💢.\n"
                 "   - If there are no explicit mentions of excluded countries, leave this field empty.\n"
                 f"  - Example: If the location in the vacancy is described like '{emoji_example}{non_eu_countries[0]}/{non_eu_countries[1]}', the result of excluded_countries should be 'NOT {non_eu_countries[0]}, NOT {non_eu_countries[1]}'.\n"
-                "8. **excluded_countries**:\n"
+                "9. **excluded_countries**:\n"
                 "   - List countries that need to be excluded, prefixed with 'NOT '.\n"
-                "9. **reasoning_about_remote**:\n"
+                "10. **reasoning_about_remote**:\n"
                 "   - Provide reasoning about whether remote work is possible.\n"
                 "   - If no location is found or if only the client's location is mentioned without implying the candidate's location, set 'remote' to true.\n"
                 "   - If the nature of the project suggests flexibility in terms of location, set 'remote' to true.\n"
                 "   - If the location is mentioned in the context of the project description without implying the candidate's location, set 'remote' to true.\n"
-                "10. **remote**:\n"
+                "11. **remote**:\n"
                 "    - Boolean indicating if remote work is possible.\n"
                 "    - Set to true if the vacancy suggests flexibility in terms of location.\n"
-                "11. **reasoning_about_cities**:\n"
+                "12. **reasoning_about_cities**:\n"
                 "    - Provide reasoning about explicitly mentioned cities.\n"
-                "12. **cities**:\n"
+                "13. **cities**:\n"
                 "    - If specific cities are mentioned, list them.\n"
 
             )
@@ -153,11 +167,12 @@ def extract_vacancy_location(
     cost_info = response['cost']
 
     # Prepare the "Extracted Location" list
-    extracted_location = parse_locations(extraction)
+    extracted_location = parse_locations(extraction, vacancy)
 
     # Prepare the "Vacancy Location Reasoning" text
     reasoning_text = (
         f"Reasoning about European Union:\n{' '.join(extraction.reasoning_about_eu)}\n"
+        f"Term used for EU: {extraction.eu_term if extraction.eu_term else 'Not mentioned'}\n"
         f"European Union mentioned: {extraction.european_union}\n\n"
 
         f"Reasoning about timezone:\n{' '.join(extraction.reasoning_about_timezone)}\n"

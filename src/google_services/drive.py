@@ -33,7 +33,22 @@ def extract_text_from_docx(file_path):
         print(f"Error extracting text from DOCX: {e}")
         return None
 
-
+def extract_links_from_pdf(pdf_source):
+    try:
+        with pdfplumber.open(pdf_source) as pdf:
+            links_dict = {}
+            for page in pdf.pages:
+                if hasattr(page, "annots"):
+                    for annot in page.annots:
+                        if annot.get("uri"):
+                            x0, y0, x1, y1 = annot["rect"]
+                            link_text = page.crop((x0, y0, x1, y1)).extract_text().strip()
+                            if link_text:  # Проверяем, что текст не пустой
+                                links_dict[link_text] = f" {link_text}: {annot.get('uri')} "
+            return links_dict
+    except Exception as e:
+        print(f"Error extracting links: {e}")
+        return {}
 
 def extract_text_from_pdf(pdf_source):
     """
@@ -45,11 +60,12 @@ def extract_text_from_pdf(pdf_source):
             pdf_source.seek(0)
         elif not isinstance(pdf_source, str):
             raise ValueError("Unsupported PDF source type. Expected str (file path) or BytesIO.")
-
         with pdfplumber.open(pdf_source) as pdf:
             text = "".join([page.extract_text() for page in pdf.pages])
+        links_dict = extract_links_from_pdf(pdf_source)
+        for link_text, replacement in links_dict.items():
+            text = text.replace(link_text, replacement)
         return text
-
     except Exception as e:
         print(f"Error extracting text from PDF: {e}")
         return None

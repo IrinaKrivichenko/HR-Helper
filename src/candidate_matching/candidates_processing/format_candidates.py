@@ -19,10 +19,23 @@ def format_candidate_string(row, stack, index,  show_reasoning=False):
     Returns:
     - str: A formatted string for the candidate.
     """
+
+    def is_whatsapp_link(text: str) -> bool:
+        # Регулярное выражение для проверки ссылки на WhatsApp
+        pattern1 = r'^http:\/\/wa\.me\/[1-9]\d{8,14}$'
+        pattern2 = r'^wa\.me\/[1-9]\d{8,14}$'
+        is_whatsapp = bool(re.fullmatch(pattern1, text)) or bool(re.fullmatch(pattern2, text))
+        return is_whatsapp
+
     contacts_list = []
     if len(row['Telegram'])>2:
         contacts_list.append(f"<a href='{row['Telegram']}'>Telegram</a>")
-    if len(row['LinkedIn'])>2:
+    if len(row['WhatsApp'])>2:
+        if is_whatsapp_link(row['WhatsApp']):
+            contacts_list.append(f"<a href='{row['WhatsApp']}'>WhatsApp</a>")
+        else:
+            contacts_list.append(row['WhatsApp'])
+    if len(row['LinkedIn'])>2 and len(contacts_list) < 2:
         contacts_list.append(f"<a href='{row['LinkedIn']}'>LinkedIn</a>")
     if len(row['Phone'])>2 and len(contacts_list) < 2:
         phone = row['Phone']

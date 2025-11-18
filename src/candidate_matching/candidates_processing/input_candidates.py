@@ -56,7 +56,9 @@ def filter_candidates_by_engagement(df: pd.DataFrame) -> pd.DataFrame:
         "💔 Refused Further Work",
         "🚧On hold",
         "📵 Candidate unreachable",
-        "❌ Checked: fake detected"
+        "❌ Checked: fake detected",
+        "🚨 Suspected fake",
+        "💸Too expensive"
     }
     forbidden_emojis = set()
     for level in not_valid_engagement_levels:
@@ -87,7 +89,7 @@ def get_df_for_vacancy_search():
     # Define the columns to extract to find candidates for vacancy
     columns_to_extract = [
         'First Name', 'Last Name', 'LVL of engagement', 'Seniority',  'Main Roles', 'Additional Roles',
-        'From', 'LinkedIn', 'Telegram', 'Phone', 'Email',
+        'From', 'LinkedIn', 'Telegram', 'Phone', 'Email', 'WhatsApp',
         'Stack', 'Industries', 'Expertise', 'Languages',
         'Work hrs/mnth', 'Location', 'CV (original)', 'CV White Label',
         'Entry wage rate (EWR)', 'Sell rate'
