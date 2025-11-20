@@ -47,7 +47,7 @@ def create_vacancy_role_extraction_model(roles_list: List[str]) -> Type[BaseMode
     return VacancyExtraction
 
 
-def create_few_shot_example(roles_list: List[str]) -> Dict[str, Any]:
+def create_few_shot_example() -> Dict[str, Any]:
     """
     Creates a few-shot example for the prompt.
     Args:
@@ -59,14 +59,12 @@ def create_few_shot_example(roles_list: List[str]) -> Dict[str, Any]:
     all_possible_roles = ["Machine Learning Engineer", "Data Scientist", "AI Engineer"]
     example_role = choice(all_possible_roles)
     other_roles = [role for role in all_possible_roles if role != example_role]
-    roles_str = ', '.join(f'"{role}"' for role in roles_list)
 
     # Create a user example
     few_shot_example = {
         "role": "user",
         "content": (
             f"Analyze the following vacancy and extract the required information:\n\n"
-            f"**Predefined roles:** {roles_str}\n\n"
             f"**Vacancy:**\n"
             f"Американская компания в поиске опытного {example_role} на группу проектов, представляющих собой различные AI решения (проекты в разных сферах, от Computer Vision до NLP). Со знанием библиотек PyTorch, TensorFlow, pandas. Уровень английского: C1. Зарплата - до 8000-10000$ gross."
         )
@@ -158,7 +156,7 @@ def create_few_shot_example(roles_list: List[str]) -> Dict[str, Any]:
 def extract_vacancy_role(
     vacancy: str,
     llm_handler: LLMHandler,
-    model: str = "gpt-4.1-mini",
+    model: str = "gpt-4.1-nano",
     add_tokens_info: bool = False,
     match_threshold: int = 55
 ) -> Dict[str, Any]:
@@ -180,7 +178,7 @@ def extract_vacancy_role(
         read_specific_columns(['Role Values'], 'values')['Role Values']
     )
     roles_str = ', '.join(f'"{role}"' for role in roles_list)
-    few_shot_example, few_shot_response = create_few_shot_example(roles_list)
+    few_shot_example, few_shot_response = create_few_shot_example()
 
     # Create the dynamic Pydantic model
     VacancyExtraction = create_vacancy_role_extraction_model(roles_list)
@@ -237,7 +235,7 @@ def extract_vacancy_role(
     ]
 
     # Calculate max tokens
-    max_tokens = max(len(vacancy) * 4, 900)
+    max_tokens = max(len(vacancy) * 9, 3000)
 
     # Get the structured response from the LLM
     response = llm_handler.get_answer(

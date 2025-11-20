@@ -102,7 +102,7 @@ def primary_filtering_by_vacancy(vacancy_info, df):
     Returns:
     - tuple: Filtered DataFrame with candidates meeting the criteria and coverage percentage.
     """
-    MIN_CANDIDATES_THRESHOLD = int(os.getenv("MIN_CANDIDATES_THRESHOLD"))
+    min_candidates_threshold_to_analize = 9
     filter_history = []
 
     # Step 1: Filter by location
@@ -150,11 +150,11 @@ def primary_filtering_by_vacancy(vacancy_info, df):
     candidates_names = get_names(rate_filtered_df)
     filter_history.append(f"Rate: {rate} -> {candidates_count} candidates ({candidates_names})")
     logger.info(filter_history[-1])
-    # if len(rate_filtered_df) < MIN_CANDIDATES_THRESHOLD:
+    # if len(rate_filtered_df) < min_candidates_threshold_to_analize:
     #         rate_filtered_df = tech_filtered_df
 
     # Step 6: Filter by technologies
-    tech_filtered_df, tech_filter_history_str = filter_candidates_by_technologies(rate_filtered_df, vacancy_info)
+    tech_filtered_df, tech_filter_history_str = filter_candidates_by_technologies(rate_filtered_df, vacancy_info, min_candidates_threshold_to_analize)
     filter_history.append(tech_filter_history_str)
 
     # Step 7: Filter by industries if industries are specified and the number of candidates exceeds the number of candidates LLM is capable to process in one time
@@ -165,9 +165,9 @@ def primary_filtering_by_vacancy(vacancy_info, df):
         candidates_names = get_names(industries_filtered_df)
         filter_history.append(f"Industries: {', '.join(required_industries)} -> {candidates_count} candidates ({candidates_names})")
         logger.info(filter_history[-1])
-        if len(industries_filtered_df) < MIN_CANDIDATES_THRESHOLD:
+        if len(industries_filtered_df) < min_candidates_threshold_to_analize:
             industries_filtered_df = tech_filtered_df
-            filter_history.append(f"After Industries filtration less then {MIN_CANDIDATES_THRESHOLD} candidates left going back to Rate filtration list")
+            filter_history.append(f"After Industries filtration less then {min_candidates_threshold_to_analize} candidates left going back to Rate filtration list")
             logger.info(filter_history[-1])
     else:
         industries_filtered_df = tech_filtered_df

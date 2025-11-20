@@ -68,14 +68,14 @@ def filter_candidates_by_rate(df, vacancy_rate_str: str, rate_tolerance:int=5):
     # Calculate maximum allowed rate
     max_allowed_rate = vacancy_value_usd + rate_tolerance
     # Apply conversion to candidate rates
-    df['Sell rate USD'] = df['Sell rate'].apply(convert_to_usd)
+    df['Rate USD'] = df['Entry wage rate (EWR)'].apply(convert_to_usd)
     # Filter candidates:
     # 1. Keep candidates with no rate specified
     # 2. Keep candidates with rate <= max_allowed_rate
     filtered_df = df[
-        (df['Sell rate'].isna()) |
-        (df['Sell rate USD'] <= max_allowed_rate)
+        (df['Entry wage rate (EWR)'].isna()) |
+        (df['Rate USD'] <= max_allowed_rate)
     ]
     # Drop temporary column
-    filtered_df = filtered_df.drop(columns=['Sell rate USD'])
+    filtered_df = filtered_df.drop(columns=['Rate USD'])
     return filtered_df

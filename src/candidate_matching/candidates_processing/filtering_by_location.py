@@ -1,7 +1,7 @@
 import pandas as pd
-from typing import List, Callable
+from typing import List
 from src.data_processing.nlp.countries_info import EU_COUNTRIES
-from src.data_processing.emoji_processing import remove_emojis
+from src.data_processing.nlp.emoji_processing import remove_emojis
 
 def has_only_excluded_locations(locations_str: str, excluded_countries: List[str]) -> bool:
     """

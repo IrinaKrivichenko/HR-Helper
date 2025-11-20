@@ -3,7 +3,7 @@ import traceback
 from typing import Dict
 import pandas as pd
 
-from src.data_processing.jaccard_similarity import calculate_jaccard_similarity, find_most_similar_row
+from src.data_processing.nlp.jaccard_similarity import calculate_jaccard_similarity, find_most_similar_row
 from src.data_processing.json_conversion import df_to_json
 from src.logger import logger
 from src.data_processing.nlp.llm_handler import LLMHandler, extract_and_parse_token_section

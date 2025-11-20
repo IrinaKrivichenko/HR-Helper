@@ -1,8 +1,6 @@
 import random
 from typing import Literal, get_args, List
 
-from src.data_processing.emoji_processing import remove_emojis
-
 # List of EU countries (without flags)
 EU_COUNTRIES = [
     "Austria", "Belgium", "Bulgaria", "Croatia", "Cyprus",

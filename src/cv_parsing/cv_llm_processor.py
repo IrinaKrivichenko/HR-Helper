@@ -1,9 +1,10 @@
+import re
 from typing import Dict
 
 from src.cv_parsing.info_extraction.cv_llm_email import extract_cv_email
 from src.cv_parsing.info_extraction.cv_llm_expertise import extract_cv_expertise
 from src.cv_parsing.info_extraction.cv_llm_github import extract_cv_github
-from src.cv_parsing.info_extraction.cv_llm_industries import extract_cv_industries
+from src.cv_parsing.info_extraction.cv_llm_industries import extract_cv_domains_and_industries
 from src.cv_parsing.info_extraction.cv_llm_linkedin import extract_cv_linkedin
 from src.cv_parsing.info_extraction.cv_llm_location import extract_cv_location
 from src.cv_parsing.info_extraction.cv_llm_name import extract_cv_name
@@ -12,11 +13,33 @@ from src.cv_parsing.info_extraction.cv_llm_roles import extract_cv_roles
 from src.cv_parsing.info_extraction.cv_llm_seniority import extract_cv_seniority
 from src.cv_parsing.info_extraction.cv_llm_stack import extract_cv_stack
 from src.cv_parsing.info_extraction.cv_llm_telegram import extract_cv_telegram
+from src.cv_parsing.info_extraction.cv_llm_whatsapp import extract_cv_whatsapp
 from src.data_processing.nlp.llm_handler import LLMHandler
 
 import time
 import traceback
 from concurrent.futures import ThreadPoolExecutor
+
+def turn_phones_to_whatsapp_links(phone_numbers_str: str) -> str:
+    """
+    Converts a comma-separated string of international phone numbers into a comma-separated string of WhatsApp links.
+    Args:
+        phone_numbers_str: Comma-separated string of phone numbers (e.g., "+375291234567,+375298765432").
+    Returns:
+        Comma-separated string of WhatsApp links (e.g., "https://wa.me/375291234567, https://wa.me/375298765432").
+    """
+    if not phone_numbers_str:
+        return ""
+    # Split by comma, strip whitespace, and filter out empty strings
+    phone_numbers = [num.strip() for num in phone_numbers_str.split(",") if num.strip()]
+    # Generate WhatsApp links for each valid international number
+    whatsapp_links = []
+    for num in phone_numbers:
+        # Remove all non-digit characters except '+'
+        cleaned_num = re.sub(r'[^\d+]', '', num)
+        if re.match(r'^\+\d{10,15}$', cleaned_num):
+            whatsapp_links.append(f"https://wa.me/{cleaned_num.lstrip('+')}")
+    return ", ".join(whatsapp_links)
 
 
 def extract_cv_info(cv: Dict, llm_handler: LLMHandler):
@@ -42,9 +65,10 @@ def extract_cv_info(cv: Dict, llm_handler: LLMHandler):
         (extract_cv_roles, "gpt-4.1-mini", "Roles"),
         (extract_cv_expertise, "gpt-4.1-nano", "Expertise"),
         (extract_cv_stack, "gpt-4.1", "Stack"),
-        (extract_cv_industries, "gpt-4.1-nano", "Industries"),
+        (extract_cv_domains_and_industries, "gpt-4.1-nano", "IT Domains and Industries"),
         (extract_cv_linkedin, "gpt-4.1-nano", "LinkedIn"),
         (extract_cv_telegram, "gpt-4.1-nano", "Telegram"),
+        (extract_cv_whatsapp, "gpt-4.1-nano", "WhatsApp"),
         (extract_cv_phone, "gpt-4.1-nano", "Phone"),
         (extract_cv_email, "gpt-4.1-nano", "Email"),
         (extract_cv_github, "gpt-4.1-nano", "GitHub"),
@@ -121,6 +145,12 @@ def extract_cv_info(cv: Dict, llm_handler: LLMHandler):
 
     # Join all lines with newline character
     timing_summary = "\n".join(timing_lines)
+
+    if not results.get("WhatsApp"):
+        phone_field = results.get("Phone", "")
+        whatsapp_links = turn_phones_to_whatsapp_links(phone_field)
+        if whatsapp_links:
+            results["WhatsApp"] = whatsapp_links
 
     # Add timing summary to results
     results["Parsing Step3 Time (extract fields)"] = timing_summary

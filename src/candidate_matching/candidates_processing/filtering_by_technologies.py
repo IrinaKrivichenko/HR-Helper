@@ -89,7 +89,7 @@ def get_names(df):
     return names_string
 
 
-def filter_candidates_by_technologies(df, vacancy_info):
+def filter_candidates_by_technologies(df, vacancy_info, min_candidates_threshold_to_analize):
     """
     Filters candidates based on programming languages and technologies mentioned in the vacancy information.
 
@@ -100,7 +100,6 @@ def filter_candidates_by_technologies(df, vacancy_info):
     Returns:
     - tuple: Filtered DataFrame and coverage percentage.
     """
-    MIN_CANDIDATES_THRESHOLD = int(os.getenv("MIN_CANDIDATES_THRESHOLD"))
     coverage_percentage = "0%"
     vacancy_programming_languages = vacancy_info.get("Extracted Programming Languages", [])
     vacancy_programming_set = create_tokens_set(vacancy_programming_languages)
@@ -123,14 +122,14 @@ def filter_candidates_by_technologies(df, vacancy_info):
             candidates_names = get_names(partial_pl_coverage_df)
             filter_history.append(f"Programming languages coverage >= {threshold}%: {candidates_count} candidates ({candidates_names})")
             logger.info(filter_history[-1])
-            if candidates_count >= MIN_CANDIDATES_THRESHOLD:
+            if candidates_count >= min_candidates_threshold_to_analize:
                 break
     else:
         partial_pl_coverage_df = df
         filter_history.append("No programming languages specified in vacancy.")
 
     # Step 6: Get candidates with coverage of other technologies
-    if vacancy_technologies_set and len(partial_pl_coverage_df) > MIN_CANDIDATES_THRESHOLD:
+    if vacancy_technologies_set and len(partial_pl_coverage_df) > min_candidates_threshold_to_analize:
         partial_pl_coverage_df['Coverage'] = partial_pl_coverage_df['Stack'].apply(
             lambda x: covered_percentage(vacancy_technologies_set, get_tokens(x))
         )
@@ -141,16 +140,16 @@ def filter_candidates_by_technologies(df, vacancy_info):
             candidates_names = get_names(partial_tech_coverage_df)
             filter_history.append(f"Technologies coverage >= {threshold}%: {candidates_count} candidates ({candidates_names})")
             logger.info(filter_history[-1])
-            if candidates_count >= MIN_CANDIDATES_THRESHOLD:
+            if candidates_count >= min_candidates_threshold_to_analize:
                 break
         else:
-            if len(partial_tech_coverage_df) < MIN_CANDIDATES_THRESHOLD:
+            if len(partial_tech_coverage_df) < min_candidates_threshold_to_analize:
                 partial_tech_coverage_df = partial_pl_coverage_df
                 candidates_count = len(partial_tech_coverage_df)
-                filter_history.append(f"After Technologies filtration less then {MIN_CANDIDATES_THRESHOLD} candidates left going back to Programming languages filtration list with {candidates_count} candidates")
+                filter_history.append(f"After Technologies filtration less then {min_candidates_threshold_to_analize} candidates left going back to Programming languages filtration list with {candidates_count} candidates")
     else:
         partial_tech_coverage_df = partial_pl_coverage_df
-        filter_history.append(f"It is less then {MIN_CANDIDATES_THRESHOLD} candidates or NO technologies specified in vacancy.")
+        filter_history.append(f"It is less then {min_candidates_threshold_to_analize} candidates or NO technologies specified in vacancy.")
 
     filter_history_str = "\n".join(filter_history)
 

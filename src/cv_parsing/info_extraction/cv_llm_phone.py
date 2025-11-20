@@ -51,7 +51,7 @@ def extract_cv_phone(
 
     # Extract context with potential phones
     cv_text = get_section_for_field(cv_sections, "Phone")
-    phone_context = extract_context_by_patterns(cv_text, phone_patterns)
+    phone_context = cv_text # extract_context_by_patterns(cv_text, phone_patterns)
 
     prompt = [
         {

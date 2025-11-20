@@ -1,3 +1,4 @@
+import traceback
 
 import pdfplumber
 import io
@@ -35,20 +36,32 @@ def extract_text_from_docx(file_path):
 
 def extract_links_from_pdf(pdf_source):
     try:
+        if isinstance(pdf_source, io.BytesIO):
+            pdf_source.seek(0)
         with pdfplumber.open(pdf_source) as pdf:
             links_dict = {}
+            counter = 0
             for page in pdf.pages:
-                if hasattr(page, "annots"):
-                    for annot in page.annots:
-                        if annot.get("uri"):
-                            x0, y0, x1, y1 = annot["rect"]
-                            link_text = page.crop((x0, y0, x1, y1)).extract_text().strip()
-                            if link_text:  # Проверяем, что текст не пустой
-                                links_dict[link_text] = f" {link_text}: {annot.get('uri')} "
+                for link in page.hyperlinks:
+                    link_url = link.get("uri") or link.get("url")
+                    if link_url:
+                        if "bbox" in link:
+                            x0, y0, x1, y1 = link["bbox"]
+                        else:
+                            x0, y0, x1, y1 = link["x0"], link["y0"], link["x1"], link["y1"]
+                        link_text = page.crop((x0, y0, x1, y1)).extract_text().strip()
+                        page.crop((x0, y0, x1, y1)).to_image().save("link_area.png")
+                        if link_text:
+                            links_dict[link_text] = f"{link_text}: {link_url}"
+                        else:
+                            links_dict[f"{counter}????????"] = link_url
+                            counter += 1
             return links_dict
     except Exception as e:
-        print(f"Error extracting links: {e}")
-        return {}
+            print(f"Error extracting links: {e}")
+            print("Traceback:")
+            print(traceback.format_exc())  # Выводим трассировку стека
+            return {}
 
 def extract_text_from_pdf(pdf_source):
     """
@@ -63,8 +76,25 @@ def extract_text_from_pdf(pdf_source):
         with pdfplumber.open(pdf_source) as pdf:
             text = "".join([page.extract_text() for page in pdf.pages])
         links_dict = extract_links_from_pdf(pdf_source)
+        found_links = {}
+        not_found_links = {}
+
         for link_text, replacement in links_dict.items():
+            if link_text.endswith("????????"):
+                not_found_links[link_text] = replacement
+            else:
+                found_links[link_text] = replacement
+
+        # Replace found links in the text
+        for link_text, replacement in found_links.items():
             text = text.replace(link_text, replacement)
+
+        # Add unfound links to the beginning of the text
+        if not_found_links:
+            not_found_links_text = "Somewhere in the document were found hyperlinks:\n"
+            for link_text, replacement in not_found_links.items():
+                not_found_links_text += f"- {replacement}\n"
+            text = not_found_links_text + "\n" + text
         return text
     except Exception as e:
         print(f"Error extracting text from PDF: {e}")

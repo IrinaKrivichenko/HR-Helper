@@ -2,8 +2,7 @@ import re
 import numpy as np
 import pandas as pd
 
-from src.data_processing.emoji_processing import extract_emoji
-from src.data_processing.jaccard_similarity import calculate_jaccard_similarity
+from src.data_processing.nlp.emoji_processing import extract_emoji
 from src.google_services.sheets import read_specific_columns
 from src.logger import logger
 

@@ -22,42 +22,7 @@ VACANCIES_SHEET_ID = os.getenv('VACANCIES_SHEET_ID')
 
 # Dictionary mapping sheet names to column names and their letter indices
 sheets_columns_dict = {
-    # 'staff': {
-    #     'First Name': 'A', 'Last Name': 'B',
-    #     'From': 'C',
-    #     'LVL of engagement': 'D',
-    #     'Seniority': 'E', 'Role': 'F',
-    #     'LinkedIn': 'G', 'Telegram': 'H', 'Phone': 'I', 'Email': 'J',
-    #     'Stack': 'K', 'Industries': 'L', 'Expertise': 'M',
-    #     'Belarusian': 'N', 'English': 'O',
-    #     'Work hrs/mnth': 'P',
-    #     'Location': 'Q',
-    #     'CV (original)': 'R', 'CV White Label': 'S',
-    #     'Folder': 'T',
-    #     'Entry wage rate (EWR)': 'U', 'EWR 168hr/mnth': 'V',
-    #     'Preferred wage rate (PWR)': 'W', 'PWR 168hr/mnth': 'X',
-    #     'Sell rate': 'Y',
-    #     "Legal entity we'll pay to": 'Z',
-    #     'NDA': 'AA',
-    #     'Comment': 'AB',
-    #     '№': 'AC',
-    #     'Date of CV': 'AD',
-    #     'Date of CV parsing': 'AE',
-    #     'GitHub': 'AF',
-    #     'Embedding': 'BA',
-    #     'Role_Embedding': 'BB',
-    #     'Industries_Embedding': 'BC',
-    # },
-
-    'values': {
-        'From Values': 'A',
-        'LVL of engagement Values': 'B',
-        'Seniority Values': 'C',
-        'Role Values': 'D',
-        'Industries Values': 'E',
-    },
-
-    'Cash Search': {
+   'Cash Search': {
         'Date': 'A',
         'vacancy description': 'B',
         'tg_answer': 'C',

@@ -8,6 +8,7 @@ FIELD_MAPPING = {
     "Linkedin": ["Header"],
     "Github": ["Header"],
     "Telegram": ["Header"],
+    "WhatsApp": ["Header"],
     "Location": ["Header"],
     "Stack": ["Skills", "Experience", "Education"],
     "Languages": ["Header", "Skills", "Education"],

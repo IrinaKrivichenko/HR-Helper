@@ -7,7 +7,7 @@ from googleapiclient.errors import HttpError
 from dotenv import load_dotenv
 from tzlocal import get_localzone
 
-from src.data_processing.jaccard_similarity import calculate_jaccard_similarity
+from src.data_processing.nlp.jaccard_similarity import calculate_jaccard_similarity
 from src.google_services.sheets import read_specific_columns, initialize_google_sheets_api
 from src.logger import logger
 from src.data_processing.nlp.tokenization import get_tokens

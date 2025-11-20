@@ -144,6 +144,8 @@ def extract_full_sections(cv_text: str, llm_handler: Any, model: str) -> Dict[st
     fragment_positions.sort(key=lambda x: x[0])
     fragment_list = [(frag, section) for pos, frag, section in fragment_positions]
 
+    first_header_pos = next((pos for pos, frag, section in fragment_positions if section == "header"), None)
+
     # Step 3: Find gaps
     gaps = []
     current_pos = 0
@@ -153,7 +155,6 @@ def extract_full_sections(cv_text: str, llm_handler: Any, model: str) -> Dict[st
             if gap_text:
                 gaps.append((len(gaps) + 1, gap_text, section))
         current_pos = pos + len(frag)
-
     if current_pos < len(cv_text):
         gap_text = cv_text[current_pos:].strip()
         if gap_text:
@@ -175,6 +176,19 @@ def extract_full_sections(cv_text: str, llm_handler: Any, model: str) -> Dict[st
     for section_name in ["header", "summary", "skills", "experience", "education"]:
         section_fragments = [frag for frag, sec in fragment_list if sec == section_name]
         sections[section_name.capitalize()] = "\n ".join(section_fragments)
+
+    if first_header_pos is not None:
+        # Находим все пробелы, которые находятся перед первым фрагментом Header
+        header_gaps = [
+            gap_text
+            for gap_num, gap_text, gap_section in gaps
+            if gap_section == "header" and (
+                # Проверяем, что позиция пробела меньше позиции первого фрагмента Header
+                    cv_text.find(gap_text) < first_header_pos
+            )
+        ]
+        # Добавляем найденные пробелы в начало секции Header
+        sections["Header"] = "\n ".join(header_gaps) + "\n " + sections.get("Header", "")
 
     # Step 7: Validate required sections
     missing_sections = [s for s in MANDATORY_SECTIONS if not sections.get(s)]

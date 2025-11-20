@@ -1,7 +1,7 @@
 import re
 from typing import List
 
-from src.data_processing.emoji_processing import extract_emoji
+from src.data_processing.nlp.emoji_processing import extract_emoji
 from src.data_processing.nlp.tokenization import create_tokens_set
 from dotenv import load_dotenv
 load_dotenv()
@@ -21,11 +21,10 @@ def format_candidate_string(row, stack, index,  show_reasoning=False):
     """
 
     def is_whatsapp_link(text: str) -> bool:
-        # Регулярное выражение для проверки ссылки на WhatsApp
-        pattern1 = r'^http:\/\/wa\.me\/[1-9]\d{8,14}$'
-        pattern2 = r'^wa\.me\/[1-9]\d{8,14}$'
-        is_whatsapp = bool(re.fullmatch(pattern1, text)) or bool(re.fullmatch(pattern2, text))
-        return is_whatsapp
+        # WhatsApp link format check
+        # should start with “wa.me/”, “http://wa.me/”, “https://wa.me/” + phone number
+        pattern = r'^(?:https?:\/\/)?wa\.me\/[1-9]\d{7,14}$'
+        return bool(re.fullmatch(pattern, text))
 
     contacts_list = []
     if len(row['Telegram'])>2:
@@ -111,19 +110,12 @@ def generate_candidates_summary(better_fit_df, lesser_fit_df, extracted_technolo
     """
     Generates a summary for each candidate indicating which required technologies they possess.
     """
-    # if len(better_fit_df) > int(os.getenv("MIN_CANDIDATES_THRESHOLD")):
-    #     show_reasoning = False
-    # else:
-    #     show_reasoning = True
     show_reasoning = True
-
     # Process better_fit_df
     better_fit_df = generate_candidates_summary_for_df(better_fit_df, 1, extracted_technologies, show_reasoning)
-
     # Process lesser_fit_df with index starting after the last index of better_fit_df
     start_index = len(better_fit_df) + 1
     lesser_fit_df = generate_candidates_summary_for_df(lesser_fit_df, start_index, extracted_technologies, show_reasoning)
-
     return better_fit_df, lesser_fit_df
 
 
@@ -165,7 +157,7 @@ def generate_final_response(better_fit_df, lesser_fit_df, llm_extracted_data):
     extracted_rate = llm_extracted_data.get("Extracted Rate", "No rate specified")
 
     # Get the minimum candidates threshold from environment variables
-    min_candidates_threshold = int(os.getenv("MIN_CANDIDATES_THRESHOLD", 5))  # Default value is 5 if not set
+    min_candidates_threshold = 6  # Default value is 5 if not set
 
     # Form the final response
     if better_fit_summaries == "_" and lesser_fit_summaries == "_" and extracted_programming_languages == "_" and extracted_technologies == "_":

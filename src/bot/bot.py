@@ -1,5 +1,6 @@
 from datetime import datetime
 
+
 from tzlocal import get_localzone
 
 from src.bot.tg_external_bots.RDNKLeadBot import find_lead_pattern, parse_lead_text
@@ -24,7 +25,9 @@ from telegram.ext import filters, MessageHandler, ApplicationBuilder, ContextTyp
 import os
 import traceback
 import re
+import logging
 
+logging.getLogger("pdfminer.pdffont").setLevel(logging.ERROR)
 
 
 async def process_lead(update: Update, text: str,   user_name: str):

@@ -1,7 +1,7 @@
 from typing import List, Any, Dict
 from pydantic import BaseModel, Field
 
-from src.data_processing.jaccard_similarity import find_similar_lines
+from src.data_processing.nlp.jaccard_similarity import find_similar_lines
 
 
 class ProjectsStarts(BaseModel):
