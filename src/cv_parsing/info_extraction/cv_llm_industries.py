@@ -292,13 +292,14 @@ def extract_cv_domains_and_industries(
     all_it_domains = []
     for project in projects_analysis:
         for domain in project["it_domains"]["analysis"]:
-            if domain.get("selected_it_domain") is not None:
-                if domain["selected_it_domain"] not in all_it_domains:
-                    all_it_domains.append(domain["selected_it_domain"])
-            elif domain.get("new_it_domain") is not None:
-                new_it_domain = f"NEW {domain['new_it_domain']}"
-                if new_it_domain not in all_it_domains:
-                    all_it_domains.append(new_it_domain)
+            if float(domain.get("confidence")) >= 0.6:
+                if domain.get("selected_it_domain") is not None:
+                    if domain["selected_it_domain"] not in all_it_domains:
+                        all_it_domains.append(domain["selected_it_domain"])
+                elif domain.get("new_it_domain") is not None:
+                    new_it_domain = f"NEW {domain['new_it_domain']}"
+                    if new_it_domain not in all_it_domains:
+                        all_it_domains.append(new_it_domain)
 
     it_domains_str = ", ".join(all_it_domains)
 

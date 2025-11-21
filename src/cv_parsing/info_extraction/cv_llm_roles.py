@@ -2,6 +2,8 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Literal, Dict, Any, Set, Optional, Type, Union
 from pydantic import BaseModel, Field, create_model
+from annotated_types import MinLen
+from typing_extensions import Annotated
 from src.cv_parsing.info_extraction.new_role_analysis import process_proposed_roles, process_roles_list
 from src.cv_parsing.info_extraction.prepare_cv_sections import get_section_for_field
 from src.data_processing.allowed_values_matcher import match_values
@@ -53,7 +55,7 @@ def create_cv_role_extraction_model(roles_list: List[str]) -> Type[BaseModel]:
     CVRoleExtraction = create_model(
         'CVRoleExtraction',
         reasoning_steps=(List[str], Field(default_factory=list, description="Step-by-step analysis in bullet points")),
-        matched_roles=(List[RoleMatch], Field(default_factory=list, description="Roles matched from predefined list, with primary language if applicable")),
+        matched_roles=(Annotated[List[RoleMatch], MinLen(5)], Field(default_factory=list, description="Roles matched from predefined list, with primary language if applicable")),
         proposed_roles=(List[ProposedRole_model], Field(default_factory=list, description="New roles not in predefined list, with primary language if applicable")),
     )
     return CVRoleExtraction
@@ -100,6 +102,7 @@ def extract_main_roles(
     response = llm_handler.get_answer(
         prompt=prompt,
         model=model,
+        max_tokens=3000,
         response_format=CVRoleExtraction,
     )
     return response
@@ -204,7 +207,8 @@ def extract_cv_roles(
     # Extract all role names
     main_roles_names = []
     for role in main_roles_data.matched_roles:
-        main_roles_names.append(role.name)
+        if role.confidence == "high":
+            main_roles_names.append(role.name)
     for proposed_role in main_roles_data.proposed_roles:
         main_roles_names.append(f"NEW {proposed_role.name}")
 
@@ -212,8 +216,9 @@ def extract_cv_roles(
     for response in additional_roles_responses:
         parsed_data = response['parsed']
         for role in parsed_data.matched_roles:
-            if role.name not in main_roles_names and role.name not in additional_roles_names:
-                additional_roles_names.append(role.name)
+            if role.confidence == "high":
+                if role.name not in main_roles_names and role.name not in additional_roles_names:
+                    additional_roles_names.append(role.name)
         for proposed_role in parsed_data.proposed_roles:
             new_role_name = f"NEW {proposed_role.name}"
             if new_role_name not in main_roles_names  and new_role_name not in additional_roles_names:

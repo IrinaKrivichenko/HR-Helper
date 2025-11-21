@@ -119,7 +119,7 @@ def extract_vacancy_location(
                 f"  - Example: If the location in the vacancy is described like 'EU, but preferred {eu_countries[0]} or {eu_countries[1]}', the result should be '{eu_countries[0]}, {eu_countries[1]}'.\n"
                 "7. **preferred_countries**:\n"
                 "    - List explicitly mentioned preferred countries.\n"
-                "9. **reasoning_about_excluded**:\n"
+                "8. **reasoning_about_excluded**:\n"
                 "   - Provide reasoning about countries that need to be excluded.\n"
                 "   - Only include countries in the excluded list if they are explicitly mentioned as excluded.\n"
                 "   - An indication of a specific location does not imply that all other locations should be excluded unless explicitly stated.\n"

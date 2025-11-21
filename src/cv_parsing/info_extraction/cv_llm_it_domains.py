@@ -2,6 +2,8 @@
 
 from typing import List, Optional, Literal, Dict, Any
 from pydantic import BaseModel, Field
+from annotated_types import MinLen
+from typing_extensions import Annotated
 
 def create_project_it_domains_model(predefined_it_domains: List[str]) -> type[BaseModel]:
     """
@@ -27,7 +29,7 @@ def create_project_it_domains_model(predefined_it_domains: List[str]) -> type[Ba
         project_name: str = Field(description="Name or description of the project.")
         reasoning: str = Field(description="Overall reasoning for IT domain selection.")
         has_enough_info: bool = Field(description="Whether there is enough information to determine IT domains.")
-        it_domains: List[ITDomainAnalysis] = Field(description="List of IT domain analyses for the project.")
+        it_domains: Annotated[List[ITDomainAnalysis], MinLen(5)] = Field(description="List of IT domain analyses for the project.")
 
     return ProjectITDomainsAnalysis
 
@@ -103,7 +105,7 @@ def format_it_domains_reasoning(project_analysis: Dict[str, Any]) -> str:
         lines.append(
             f"- {domain_name} (confidence: {domain['confidence']:.2f})\n"
             f"  Reasoning: {domain['reasoning']}\n"
-            f"  Supporting evidence: {', '.join(domain['supporting_evidence'])}"
+            f"  Supporting evidence: {', '.join(domain['supporting_evidence'])}\n"
         )
     return "\n".join(lines)
 
@@ -134,6 +136,7 @@ def analyze_single_project_it_domains(
     response = llm_handler.get_answer(
         prompt=prompt,
         model=model,
+        max_tokens=3000,
         response_format=ProjectITDomainsModel,
     )
     # Format the result

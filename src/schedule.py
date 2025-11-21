@@ -17,19 +17,6 @@ def prepare_google_sheets():
     ]
     # Get specific columns with hyperlinks
     df = read_specific_columns(columns_to_extract, service=service)
-    values_df = read_specific_columns(['Industries Values', 'IT Domains Values'], 'values')
-    predefined_industries = list(values_df['Industries Values'])
-    predefined_it_domains = list(values_df['IT Domains Values'])
-    print("predefined_industries ", len(predefined_industries))
-    print("predefined_it_domains ", len(predefined_it_domains))
-    import pandas as pd
-    industries_values = [val.strip() for val in values_df['Industries Values'].tolist() if val and pd.notna(val)]
-    it_domains_values = [val.strip() for val in values_df['IT Domains Values'].tolist() if val and pd.notna(val)]
-    print("industries_values", len(industries_values))
-    print("it_domains_values", len(it_domains_values))
-    list_of_existing_roles = list(read_specific_columns(['Role Values'], 'values')['Role Values'])
-    print("list_of_existing_roles", len(list_of_existing_roles))
-    print()
     # add_embeddings_column(df, write_columns=True)
 
 
