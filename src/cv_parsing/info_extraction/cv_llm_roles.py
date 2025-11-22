@@ -102,7 +102,7 @@ def extract_main_roles(
     response = llm_handler.get_answer(
         prompt=prompt,
         model=model,
-        max_tokens=3000,
+        max_tokens=3022,
         response_format=CVRoleExtraction,
     )
     return response

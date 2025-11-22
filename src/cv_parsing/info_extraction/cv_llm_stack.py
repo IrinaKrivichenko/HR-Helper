@@ -69,7 +69,7 @@ def extract_cv_stack(
         }
     ]
 
-    max_tokens = max(len(cv)*9, 3000)
+    max_tokens = max(len(cv)*9, 3023)
 
     # Get structured response from LLM
     structured_response = llm_handler.get_answer(

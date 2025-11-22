@@ -235,7 +235,7 @@ def extract_vacancy_role(
     ]
 
     # Calculate max tokens
-    max_tokens = max(len(vacancy) * 9, 3000)
+    max_tokens = max(len(vacancy) * 9, 3012)
 
     # Get the structured response from the LLM
     response = llm_handler.get_answer(
