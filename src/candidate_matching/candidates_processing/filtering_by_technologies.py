@@ -111,7 +111,7 @@ def filter_candidates_by_technologies(df, vacancy_info, min_candidates_threshold
     filter_history = []
 
     # Step 5: Get candidates with fully covered programming languages
-    if vacancy_programming_set:
+    if vacancy_programming_set and len(df) > min_candidates_threshold_to_analize:
         df['Coverage'] = df['Stack'].apply(
             lambda x: covered_percentage(vacancy_programming_set, get_tokens(x))
         )
@@ -126,7 +126,7 @@ def filter_candidates_by_technologies(df, vacancy_info, min_candidates_threshold
                 break
     else:
         partial_pl_coverage_df = df
-        filter_history.append("No programming languages specified in vacancy.")
+        filter_history.append(f"It is less then {min_candidates_threshold_to_analize} candidates or NO  programming languages specified in vacancy.")
 
     # Step 6: Get candidates with coverage of other technologies
     if vacancy_technologies_set and len(partial_pl_coverage_df) > min_candidates_threshold_to_analize:

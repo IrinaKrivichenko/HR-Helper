@@ -1,11 +1,14 @@
 import asyncio
-import os
+from datetime import datetime
+
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.executors.pool import ThreadPoolExecutor
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from src.google_services.sheets import read_specific_columns, initialize_google_sheets_api
 from src.bot.authorization import  auth_manager
+from src.leadgen.leadgen_reminder import remind_to_send_message
 
 
 def prepare_google_sheets():
@@ -44,15 +47,54 @@ def clear_downloads_folder():
             print(f"Not able to remove {item}: {e}")
 clear_downloads_folder()
 
+_asyncio_loop = None
+
+def get_event_loop():
+    global _asyncio_loop
+    if _asyncio_loop is None or _asyncio_loop.is_closed():
+        _asyncio_loop = asyncio.new_event_loop()
+    return _asyncio_loop
+
+def run_async_job(async_func, *args, **kwargs):
+    loop = get_event_loop()
+    try:
+        print(f"Running async job: {async_func.__name__}")
+        if loop.is_running():
+            future = asyncio.run_coroutine_threadsafe(async_func(*args, **kwargs), loop)
+            future.result()
+            print(f"Completed async job: {async_func.__name__}")
+        else:
+            loop.run_until_complete(async_func(*args, **kwargs))
+    except Exception as e:
+        print(f"Error in run_async_job for {async_func.__name__}: {e}")
+
+def run_async_reset_authorized_users():
+    run_async_job(auth_manager.reset_authorized_users)
+
+def run_async_remind_to_send_message():
+    run_async_job(remind_to_send_message)
+
 
 def setup_scheduler():
-    """Setup and start the task scheduler."""
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(auth_manager.reset_authorized_users, 'cron', hour=0, minute=59)
-    scheduler.add_job(clear_downloads_folder, 'cron', hour=1, minute=1)
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[Scheduler] Current time: {current_time}")
 
+    executors = {'default': ThreadPoolExecutor(max_workers=1)}
+    scheduler = BackgroundScheduler(executors=executors)
+    scheduler.add_job(
+        clear_downloads_folder,
+        'cron', hour=1, minute=1
+    )
+    scheduler.add_job(
+        run_async_reset_authorized_users,
+        'cron', hour=16, minute=11
+    )
+    scheduler.add_job(
+        run_async_remind_to_send_message,
+        'cron', hour=11, minute=1
+    )
     scheduler.start()
-
-
+    print("Scheduler started!")
+    return scheduler
 
 prepare_google_sheets()

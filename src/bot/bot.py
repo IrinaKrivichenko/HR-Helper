@@ -3,7 +3,7 @@ from datetime import datetime
 
 from tzlocal import get_localzone
 
-from src.bot.tg_external_bots.RDNKLeadBot import find_lead_pattern, parse_lead_text
+from src.leadgen.tg_external_bots.RDNKLeadBot import find_lead_pattern, parse_lead_text
 from src.bot.utils import send_message
 from src.candidate_matching.matcher import match_candidats
 from src.cv_parsing.cv_parser import parse_cv
@@ -24,7 +24,6 @@ from telegram.ext import filters, MessageHandler, ApplicationBuilder, ContextTyp
 
 import os
 import traceback
-import re
 import logging
 
 logging.getLogger("pdfminer.pdffont").setLevel(logging.ERROR)
@@ -36,7 +35,7 @@ async def process_lead(update: Update, text: str,   user_name: str):
     local_timezone = get_localzone()
     lead_dict["Datetime"] = datetime.now(local_timezone).strftime('%Y-%m-%d %H:%M:%S %Z')
     lead_dict["TG user"] = f"t.me/{user_name}"
-    write_dict_to_sheet(data_dict=lead_dict, sheet_name="Leads2", spreadsheet_env_name='ΛV_LINKEDIN_LEADGEN_SHEET_ID')
+    write_dict_to_sheet(data_dict=lead_dict, sheet_name="Leads2", spreadsheet_env_name='ΛV_LINKEDIN_LEADGEN_SPREADSHEET_ID')
     await send_message(update, f"Lead {lead_dict['Company']} is parsed")
 
 async def process_cv(update: Update, text: str,  file_path: str,   user_name: str, llm_handler):
@@ -96,11 +95,7 @@ async def process_user_request(update: Update, context: ContextTypes.DEFAULT_TYP
                     # await check_google_token(update, context)
                     return
 
-        if not await auth_manager.is_user_authorized(user_name, text, update):
-            print(f"NOT authorized {user_name} have send: ({text})")
-        else:
-            print(f"authorized {user_name} have send: ({text})")
-
+        if await auth_manager.is_user_authorized(user_name, text, update):
             if (text is None) and (update.message.document is not None):
                 text, file_path = await extract_text_from_document(update.message.document)
                 input_type = "CV"

@@ -52,7 +52,7 @@ class UserAuthorizationManager:
 
     async def send_logout_message(self, user, chat_id):
         message = f"You @{user} have been logged out🙃\nBye bye! See you soon!"
-        await self.application.send_message(chat_id=chat_id, text=message)
+        await self.application.bot.send_message(chat_id=chat_id, text=message)
 
     async def add_user(self, user, password, update):
         if password and password.lower() in self.passwords:
@@ -76,25 +76,26 @@ class UserAuthorizationManager:
     async def is_user_authorized(self, user, text, update):
         with self.lock:
             if user in self.authorized_users:
+                print(f"authorized {user} have send: ({text})")
                 if text and text.lower() in self.passwords:
                     await update.message.reply_text("You are already authorized")
                     return False
                 return True
             else:
+                print(f"NOT authorized {user} have send: ({text})")
                 if text and text.lower() in self.passwords:
                     return await self.add_user(user, text, update)
                 return False
 
-    def reset_authorized_users(self):
+
+    async def reset_authorized_users(self):
         with self.lock:
             users_to_notify = self.authorized_users.copy()
             for user in users_to_notify:
-                if user != 'irina_199':
+                if True: # user != 'irina_199':
                     chat_id = self.authorized_users.pop(user)
-                    # asyncio.run_coroutine_threadsafe(
-                    #     self.send_logout_message(user, chat_id),
-                    #     asyncio.get_event_loop()
-                    # )
+                    await self.send_logout_message(user, chat_id)
+
 
 
 auth_manager = UserAuthorizationManager()
