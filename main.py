@@ -28,6 +28,4 @@ def main():
         asyncio.run(shutdown(application, auth_manager, scheduler))
 
 if __name__ == '__main__':
-    from src.leadgen.leadgen_reminder import remind_to_send_message
-    remind_to_send_message()
     main()

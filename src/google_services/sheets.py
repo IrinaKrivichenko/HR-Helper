@@ -436,3 +436,99 @@ def write_dict_to_sheet(data_dict, sheet_name, service=None, row_number=None, sp
     except Exception as e:
         logger.error(f"Error writing to sheet {sheet_name}: {str(e)}")
         raise e
+
+
+def write_value_to_cell(
+    value,
+    sheet_name,
+    cell_range,
+    service=None,
+    spreadsheet_env_name='STAFF_SPREADSHEET_ID'
+):
+    """
+    Записывает значение в указанную ячейку Google Sheets.
+
+    Args:
+        value: Значение для записи (строка, число, формула и т.д.).
+        sheet_name (str): Название листа.
+        cell_range (str): Адрес ячейки (например, "A1", "B2", "C3").
+        service: Объект Google Sheets API (если не передан, будет инициализирован).
+        spreadsheet_env_name (str): Название переменной окружения с идентификатором документа.
+
+    Returns:
+        dict: Ответ от Google Sheets API.
+    """
+    try:
+        if service is None:
+            service = initialize_google_sheets_api()
+
+        spreadsheet_id = os.getenv(spreadsheet_env_name)
+        sheet = service.spreadsheets()
+
+        # Формируем диапазон для обновления (например, "Cash Search!A1")
+        full_range = f"{sheet_name}!{cell_range}"
+
+        # Подготавливаем тело запроса
+        update_body = {
+            'values': [[value]]
+        }
+
+        # Обновляем значение в ячейке
+        response = sheet.values().update(
+            spreadsheetId=spreadsheet_id,
+            range=full_range,
+            valueInputOption='USER_ENTERED',  # Позволяет записывать формулы и форматированные значения
+            body=update_body
+        ).execute()
+
+        logger.info(f"Successfully wrote value '{value}' to cell {full_range}")
+        return response
+
+    except Exception as e:
+        logger.error(f"Error writing to cell {full_range}: {str(e)}")
+        raise e
+
+def write_value_to_cell(
+    value,
+    sheet_name: str,
+    cell_range: str,
+    service=None,
+    spreadsheet_env_name: str = 'STAFF_SPREADSHEET_ID'
+) -> dict:
+    """
+    Writes a single value to a specific cell in a Google Sheet.
+    Args:
+        value: The value to write (string, number, formula, etc.).
+        sheet_name: Name of the sheet (e.g., "Cash Search").
+        cell_range: Cell address (e.g., "A1", "B2").
+        service: Google Sheets API service object (initialized if None).
+        spreadsheet_env_name: Environment variable name for the spreadsheet ID.
+    Returns:
+        dict: Response from the Google Sheets API.
+    Raises:
+        Exception: If an error occurs during the API call.
+    """
+    try:
+        # Initialize Google Sheets API if service is not provided
+        if service is None:
+            service = initialize_google_sheets_api()
+        # Get the spreadsheet ID from environment variables
+        spreadsheet_id = os.getenv(spreadsheet_env_name)
+        sheet = service.spreadsheets()
+        # Format the full range (e.g., "Cash Search!A1")
+        full_range = f"{sheet_name}!{cell_range}"
+        # Prepare the request body
+        update_body = {'values': [[value]]}
+        # Update the cell value
+        response = sheet.values().update(
+            spreadsheetId=spreadsheet_id,
+            range=full_range,
+            valueInputOption='USER_ENTERED',  # Allows formulas and formatted values
+            body=update_body
+        ).execute()
+        logger.info(f"Successfully wrote value '{value}' to cell {full_range}")
+        return response
+    except Exception as e:
+        logger.error(f"Error writing to cell {full_range}: {str(e)}")
+        raise e
+

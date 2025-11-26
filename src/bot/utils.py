@@ -6,7 +6,7 @@ from src.bot.locks import send_lock
 from src.logger import logger
 
 
-async def send_message(update: Update, message: str):
+async def send_answer_message(update: Update, message: str):
     """
     Sends a long message by splitting it into chunks of 4096 characters,
     ensuring that each chunk ends at the last newline before the limit.

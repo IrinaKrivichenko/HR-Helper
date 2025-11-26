@@ -2,7 +2,7 @@ import time
 
 from telegram import Update
 
-from src.bot.utils import send_message
+from src.bot.utils import send_answer_message
 from src.candidate_matching.candidates_processing.candidate_llm_processor import process_candidates_with_llm
 from src.candidate_matching.candidates_processing.filtering import primary_filtering_by_vacancy
 from src.candidate_matching.candidates_processing.format_candidates import generate_candidates_summary, \
@@ -84,7 +84,10 @@ async def match_candidats(update: Update,  text, user_name, llm_handler=None) ->
         llm_handler = LLMHandler()
     vacancies = split_vacancies(text, llm_handler)
 
-    logger.info(f"number of vacancies in the request: {len(vacancies)}")
+    message = f"Found {len(vacancies)} vacancies"
+    logger.info(message)
+    if len(vacancies)>1:
+        await send_answer_message(update, message)
 
     if len(vacancies) == 0:
       pass
@@ -95,13 +98,13 @@ async def match_candidats(update: Update,  text, user_name, llm_handler=None) ->
               vacancy = text
           result = await find_candidates_for_vacancy(vacancy, llm_handler, user_name)
           logger.info("ready_to_send_message")
-          await send_message(update, result)
+          await send_answer_message(update, result)
       else:
           results = []
           for vacancy in vacancies:
               candidates = await find_candidates_for_vacancy(vacancy, llm_handler, user_name)
               result = f"{vacancy}\n{candidates}\n"
-              await send_message(update, result)
+              await send_answer_message(update, result)
               # update.message.reply_text(result)
 
 

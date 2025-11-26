@@ -147,7 +147,7 @@ def prepare_cache_data(vacancy_description, vacancy_dict, current_date):
 
     return cache_results
 
-def save_to_sheet(service, sheet_id, sheet_name, range_name, data):
+def save_to_sheet(service, spreadsheet_id, sheet_name, range_name, data):
     value_input_option = "RAW"
     value_range_body = {
         "majorDimension": "ROWS",
@@ -155,13 +155,13 @@ def save_to_sheet(service, sheet_id, sheet_name, range_name, data):
     }
 
     service.spreadsheets().values().update(
-        spreadsheetId=sheet_id,
+        spreadsheetId=spreadsheet_id,
         range=range_name,
         valueInputOption=value_input_option,
         body=value_range_body
     ).execute()
 
-def insert_new_row(service, sheet_id, sheet_name, sheet_index):
+def insert_new_row(service, spreadsheet_id, sheet_name, sheet_index):
     insert_request = {
         "requests": [
             {
@@ -176,14 +176,14 @@ def insert_new_row(service, sheet_id, sheet_name, sheet_index):
             }
         ]
     }
-    service.spreadsheets().batchUpdate(spreadsheetId=sheet_id, body=insert_request).execute()
+    service.spreadsheets().batchUpdate(spreadsheetId=spreadsheet_id, body=insert_request).execute()
 
 def save_vacancy_description(vacancy_description, existing_vacancy, vacancy_dict, user, service=None):
     if service is None:
         service = initialize_google_sheets_api()
 
     try:
-        SHEET_ID = os.getenv("SHEET_ID")
+        STAFF_SPREADSHEET_ID = os.getenv("STAFF_SPREADSHEET_ID")
         SEARCH_LOGS_SHEET_NAME = os.getenv("SEARCH_LOGS_SHEET_NAME")
         SEARCH_CACHE_SHEET_NAME = os.getenv("SEARCH_CACHE_SHEET_NAME")
         LOGS_SHEET_ID = os.getenv("LOGS_SHEET_ID")
@@ -192,20 +192,20 @@ def save_vacancy_description(vacancy_description, existing_vacancy, vacancy_dict
         local_timezone = get_localzone()
         current_date = datetime.now(local_timezone).strftime('%Y-%m-%d %H:%M:%S %Z')
 
-        insert_new_row(service, SHEET_ID, SEARCH_LOGS_SHEET_NAME, LOGS_SHEET_ID)
+        insert_new_row(service, STAFF_SPREADSHEET_ID, SEARCH_LOGS_SHEET_NAME, LOGS_SHEET_ID)
         range_logs = f"{SEARCH_LOGS_SHEET_NAME}!A2:AW2"
         if existing_vacancy is not None:
             row_index = existing_vacancy['Row in Spreadsheets']
             range_cache = f"{SEARCH_CACHE_SHEET_NAME}!A{row_index}:D{row_index}"
         else:
-            insert_new_row(service, SHEET_ID, SEARCH_CACHE_SHEET_NAME, CACHE_SHEET_ID)
+            insert_new_row(service, STAFF_SPREADSHEET_ID, SEARCH_CACHE_SHEET_NAME, CACHE_SHEET_ID)
             range_cache =  f"{SEARCH_CACHE_SHEET_NAME}!A2:D2"
 
         logs_data =  prepare_logs_data(vacancy_description, vacancy_dict, user, current_date)
         cache_data = prepare_cache_data(vacancy_description, vacancy_dict, current_date)
 
-        save_to_sheet(service, SHEET_ID, SEARCH_LOGS_SHEET_NAME, range_logs, logs_data)
-        save_to_sheet(service, SHEET_ID, SEARCH_CACHE_SHEET_NAME, range_cache, cache_data)
+        save_to_sheet(service, STAFF_SPREADSHEET_ID, SEARCH_LOGS_SHEET_NAME, range_logs, logs_data)
+        save_to_sheet(service, STAFF_SPREADSHEET_ID, SEARCH_CACHE_SHEET_NAME, range_cache, cache_data)
 
         logger.info("Results saved to Google Sheets.")
 

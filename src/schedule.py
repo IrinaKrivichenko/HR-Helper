@@ -8,7 +8,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 from src.google_services.sheets import read_specific_columns, initialize_google_sheets_api
 from src.bot.authorization import  auth_manager
-from src.leadgen.leadgen_reminder import remind_to_send_message
+from src.leadgen.leadgen_reminder import leadgen_reminder
 
 
 def prepare_google_sheets():
@@ -72,7 +72,7 @@ def run_async_reset_authorized_users():
     run_async_job(auth_manager.reset_authorized_users)
 
 def run_async_remind_to_send_message():
-    run_async_job(remind_to_send_message)
+    run_async_job(leadgen_reminder.remind_to_send_message)
 
 
 def setup_scheduler():
@@ -87,7 +87,7 @@ def setup_scheduler():
     )
     scheduler.add_job(
         run_async_reset_authorized_users,
-        'cron', hour=16, minute=11
+        'cron', hour=2, minute=0
     )
     scheduler.add_job(
         run_async_remind_to_send_message,
