@@ -54,7 +54,7 @@ def extract_cv_whatsapp(
 
     # Extract context with potential WhatsApp contacts
     cv_text = get_section_for_field(cv_sections, "WhatsApp")
-    whatsapp_context = extract_context_by_patterns(cv_text, whatsapp_patterns)
+    whatsapp_context = cv_text # extract_context_by_patterns(cv_text, whatsapp_patterns)
 
     prompt = [
         {

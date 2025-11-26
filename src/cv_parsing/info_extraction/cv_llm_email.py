@@ -31,7 +31,7 @@ def extract_cv_email(
 
     # Extract context with potential email addresses
     cv_text = get_section_for_field(cv_sections, "Email")
-    email_context = extract_context_by_patterns(cv_text, email_patterns)
+    email_context = cv_text # extract_context_by_patterns(cv_text, email_patterns)
 
     prompt = [
         {

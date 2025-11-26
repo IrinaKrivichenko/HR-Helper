@@ -53,7 +53,7 @@ def extract_cv_linkedin(
 
     # Extract context with potential LinkedIn profiles
     cv_text = get_section_for_field(cv_sections, "Linkedin")
-    linkedin_context = extract_context_by_patterns(cv_text, linkedin_patterns)
+    linkedin_context = cv_text # extract_context_by_patterns(cv_text, linkedin_patterns)
 
     # Prompt for LLM
     prompt = [

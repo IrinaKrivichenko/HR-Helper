@@ -55,7 +55,7 @@ def format_candidate_string(row, stack, index,  show_reasoning=False):
 
     full_name = row['Full Name']
     # Generate a link to a row in Google Sheets
-    doc_id = os.getenv("SHEET_ID")
+    doc_id = os.getenv("STAFF_SPREADSHEET_ID")
     page_id = os.getenv("CANDIDATES_SHEET_ID")
     row_in_spreadsheets = row.get('Row in Spreadsheets', '')
     google_sheet_row_link = f"<a href='https://docs.google.com/spreadsheets/d/{doc_id}/edit#gid={page_id}&range=A{row_in_spreadsheets}'>{full_name}</a>"

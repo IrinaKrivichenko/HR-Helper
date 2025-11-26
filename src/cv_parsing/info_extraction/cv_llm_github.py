@@ -72,7 +72,7 @@ def extract_cv_github(
 
     # Extract context with potential GitHub profiles
     cv_text = get_section_for_field(cv_sections, "Github")
-    github_context = extract_context_by_patterns(cv_text, github_patterns)
+    github_context = cv_text # extract_context_by_patterns(cv_text, github_patterns)
 
     # Prompt for LLM
     prompt = [

@@ -75,7 +75,6 @@ async def extract_text_from_document(document):
 
 async def process_user_request(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Main handler for user requests."""
-    # await leadgen_reminder.remind_to_send_message()
 
     user = update.effective_user
     user_name = user.username if user.username else user.first_name

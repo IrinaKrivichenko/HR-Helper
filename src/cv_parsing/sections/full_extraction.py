@@ -32,6 +32,7 @@ class ResumeFragmentation(BaseModel):
         description=(
             "Explanation of how the resume text was split into fragments (by \\n\\n, \\n, or sentences). "
             "The goal is to capture 100% of the resume text across all sections."
+            "Please be brief."
         )
     )
     fragments: Annotated[List[FragmentClassification], MinLen(3)] = Field(description="List of classified fragments, covering the entire resume text")

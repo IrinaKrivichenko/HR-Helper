@@ -42,7 +42,7 @@ def save_cv_info(extracted_data, file_path):
 
     write_dict_to_sheet(data_dict=extracted_data, sheet_name=os.getenv("PARSE_LOGS_SHEET_NAME"))
 
-    doc_id = os.getenv("SHEET_ID")
+    doc_id = os.getenv("STAFF_SPREADSHEET_ID")
     page_id = os.getenv("CANDIDATES_SHEET_ID")
     google_sheet_row_link = f"<a href='https://docs.google.com/spreadsheets/d/{doc_id}/edit#gid={page_id}&range=A2'>{full_name} {existence_cv}CV is parsed</a>"
     return google_sheet_row_link

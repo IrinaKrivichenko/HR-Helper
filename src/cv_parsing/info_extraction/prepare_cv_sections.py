@@ -6,7 +6,7 @@ FIELD_MAPPING = {
     "Email": ["Header"],
     "Phone": ["Header"],
     "Linkedin": ["Header"],
-    "Github": ["Header"],
+    "Github": ["Header", "Experience"],
     "Telegram": ["Header"],
     "WhatsApp": ["Header"],
     "Location": ["Header"],

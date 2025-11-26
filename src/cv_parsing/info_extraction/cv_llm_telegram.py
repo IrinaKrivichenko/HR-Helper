@@ -58,7 +58,7 @@ def extract_cv_telegram(
 
     # Extract context with potential Telegram contacts
     cv_text = get_section_for_field(cv_sections, "Telegram")
-    telegram_context = extract_context_by_patterns(cv_text, telegram_patterns)
+    telegram_context = cv_text # extract_context_by_patterns(cv_text, telegram_patterns)
 
     prompt = [
         {
