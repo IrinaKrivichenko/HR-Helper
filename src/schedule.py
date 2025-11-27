@@ -83,15 +83,15 @@ def setup_scheduler():
     scheduler = BackgroundScheduler(executors=executors)
     scheduler.add_job(
         clear_downloads_folder,
-        'cron', hour=1, minute=1
+        'cron', hour=1, minute=2
     )
     scheduler.add_job(
         run_async_reset_authorized_users,
-        'cron', hour=2, minute=0
+        'cron', hour=1, minute=0
     )
     scheduler.add_job(
         run_async_remind_to_send_message,
-        'cron', hour=11, minute=1
+        'cron', hour=10, minute=0
     )
     scheduler.start()
     print("Scheduler started!")

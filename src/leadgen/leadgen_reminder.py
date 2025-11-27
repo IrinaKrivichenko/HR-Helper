@@ -11,7 +11,7 @@ class LeadGenReminder:
     number_of_leads_for_a_day =10
 
     def __init__(self):
-        self.users_to_send = {"Andrus":  694614399}
+        self.users_to_send = {"Andrus":  381735431}  # 694614399}
         self.application = None
 
 
@@ -52,7 +52,8 @@ class LeadGenReminder:
         linkedin_profile = row['LinkedIn Profile']
         last_name = row['Last Name']
         index = row.name
-        message = f'Please send an M0 message to <a href="{linkedin_profile}">{last_name}</a>'
+        todays_number = f"{done_today+1} of {LeadGenReminder.number_of_leads_for_a_day}\n"
+        message = f'{todays_number}Please send an M0 message to <a href="{linkedin_profile}">{last_name}</a>'
         keyboard = [
             [
                 InlineKeyboardButton("Done", callback_data=f"done_{index}_{last_name}"),
