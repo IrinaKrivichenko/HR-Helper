@@ -1,6 +1,8 @@
 import asyncio
 from datetime import datetime
 
+import os
+import shutil
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.executors.pool import ThreadPoolExecutor
@@ -27,8 +29,6 @@ def clear_downloads():
     if os.path.exists("downloads"):
         os.makedirs("downloads")
 
-import os
-import shutil
 
 def clear_downloads_folder():
     downloads_path = "downloads"
@@ -91,7 +91,7 @@ def setup_scheduler():
     )
     scheduler.add_job(
         run_async_remind_to_send_message,
-        'cron', hour=10, minute=0
+        'cron', hour=11, minute=0
     )
     scheduler.start()
     print("Scheduler started!")

@@ -73,18 +73,17 @@ def filter_candidates_by_location(df: pd.DataFrame, location_requirements: List[
     if 'Remote' in location_requirements:
         return df
 
-    # If 'European Union' is in the requirements, return candidates with at least one EU country
-    if 'European Union' in location_requirements:
-        df = df[df['Location'].apply(has_eu_country)]
-        return df
-
     # If none of the previous conditions worked, return candidates with at least one country from the requirements
     valid_locations = [
         country for country in location_requirements
         if not country.startswith('NOT ') and country not in ['Remote', 'European Union']
     ]
+    # If 'European Union' is in the requirements, return candidates with at least one EU country
+    if 'European Union' in location_requirements:
+        valid_locations.extend(EU_COUNTRIES)
     if valid_locations:
         df = df[df['Location'].apply(lambda x: has_valid_location(x, valid_locations))]
+
     return df
 
 

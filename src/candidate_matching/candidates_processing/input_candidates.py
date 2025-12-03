@@ -100,7 +100,7 @@ def get_df_for_vacancy_search():
     df = filter_candidates_by_engagement(df)
 
     df['Full Name'] = df.apply(lambda row: f"{clean_and_extract_first_word(row['First Name'])} {clean_and_extract_first_word(row['Last Name'])}", axis=1)
-    df['Role'] = df['Main Roles'] + ", " + df['Additional Roles']
+    df['Role'] = df['Main Roles'] # + ", " + df['Additional Roles']
     df.drop(columns=['Main Roles', 'Additional Roles'], inplace=True)
 
     # Calculate 'margin' as the difference between 'Sell rate' and 'Entry wage rate (EWR)'

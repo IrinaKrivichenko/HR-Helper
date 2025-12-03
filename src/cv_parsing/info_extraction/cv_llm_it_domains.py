@@ -2,7 +2,7 @@
 
 from typing import List, Optional, Literal, Dict, Any
 from pydantic import BaseModel, Field
-from annotated_types import MinLen
+from annotated_types import MinLen, MaxLen
 from typing_extensions import Annotated
 
 def create_project_it_domains_model(predefined_it_domains: List[str]) -> type[BaseModel]:
@@ -18,7 +18,7 @@ def create_project_it_domains_model(predefined_it_domains: List[str]) -> type[Ba
 
     # Define the ITDomainAnalysis model
     class ITDomainAnalysis(BaseModel):
-        supporting_evidence: List[str] = Field(default=[], description="Phrases from the resume supporting the IT domain choice.")
+        supporting_evidence: Annotated[List[str], MaxLen(5)] = Field(default=[], description="Phrases from the resume supporting the IT domain choice.")
         reasoning: Optional[str] = Field(default=None, description="Reasoning for selecting the IT domain.")
         selected_it_domain: Optional[ITDomainLiteral] = Field(default=None, description="Selected IT domain from the predefined list.")
         new_it_domain: Optional[str] = Field(default=None, description="New IT domain if none from the predefined list fits.")
@@ -27,9 +27,9 @@ def create_project_it_domains_model(predefined_it_domains: List[str]) -> type[Ba
     # Define the main ProjectITDomainsAnalysis model
     class ProjectITDomainsAnalysis(BaseModel):
         project_name: str = Field(description="Name or description of the project.")
-        reasoning: str = Field(description="Overall reasoning for IT domain selection.")
+        reasoning: str = Field(description="Overall reasoning for IT domain selection. Please be brief.")
         has_enough_info: bool = Field(description="Whether there is enough information to determine IT domains.")
-        it_domains: Annotated[List[ITDomainAnalysis], MinLen(5)] = Field(description="List of IT domain analyses for the project.")
+        it_domains: Annotated[List[ITDomainAnalysis], MinLen(5), MaxLen(15)] = Field(description="List of IT domain analyses for the project.")
 
     return ProjectITDomainsAnalysis
 

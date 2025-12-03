@@ -73,7 +73,7 @@ def filter_candidates_by_rate(df, vacancy_rate_str: str, rate_tolerance:int=5):
     # 1. Keep candidates with no rate specified
     # 2. Keep candidates with rate <= max_allowed_rate
     filtered_df = df[
-        (df['Entry wage rate (EWR)'].isna()) |
+        (df['Rate USD'].isna()) |
         (df['Rate USD'] <= max_allowed_rate)
     ]
     # Drop temporary column

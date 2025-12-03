@@ -51,13 +51,17 @@ def save_cv_info(extracted_data, file_path):
 def check_the_original_file_name(extracted_data, file_path):
     # 1. Check the original file name
     original_file_name = os.path.basename(file_path)
-    file_name_without_ext = original_file_name.split(".")[0]
-    match = re.match(r"(\d{4}-\d{2}-\d{2})\s+CV\s+(.+?)(?:\s+(.+?))?$", file_name_without_ext)
+    file_name_without_ext = os.path.splitext(original_file_name)[0]
 
-    if match:
-        # If the original file name matches the pattern, use it
-        date_from_file, name_from_file, surname_from_file = match.groups()
+    date_match = re.match(r"^(\d{4}-\d{2}-\d{2})", file_name_without_ext)
+    if date_match:
+        date_from_file = date_match.group(1)
         extracted_data["Date of CV"] = date_from_file
+
+    full_match = re.match(r"(\d{4}-\d{2}-\d{2})\s+CV\s+(.+?)(?:\s+(.+?))?$", file_name_without_ext)
+    if full_match:
+        # If the original file name matches the pattern, use it
+        date_from_file, name_from_file, surname_from_file = full_match.groups()
         extracted_data["First Name"] = name_from_file
         extracted_data["Last Name"] = surname_from_file or ""
         full_name = f"{name_from_file} {surname_from_file}".strip()
@@ -68,8 +72,10 @@ def check_the_original_file_name(extracted_data, file_path):
         surname = extracted_data.get("Last Name", "")
         full_name = f"{name} {surname}".strip()
         current_date = datetime.now().strftime('%Y-%m-%d')
-        extracted_data["Date of CV"] = current_date
-        drive_file_name = f"{current_date} CV {full_name}.{original_file_name.split('.')[-1]}"
+        if "Date of CV" not in extracted_data:
+            extracted_data["Date of CV"] = current_date
+        file_extension = os.path.splitext(original_file_name)[1]
+        drive_file_name = f"{extracted_data['Date of CV']} CV {full_name}{file_extension}"
     return extracted_data, full_name, drive_file_name
 
 def save_cv_to_google_drive(extracted_data, file_path, full_name, drive_file_name):

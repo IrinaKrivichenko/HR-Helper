@@ -52,7 +52,7 @@ def parse_locations(extraction: VacancyLocationExtraction, vacancy_text: str):
         extracted_location.append("Remote")
     # Add "European Union" if european_union is True
     if extraction.european_union:
-        if extraction.eu_term and extraction.eu_term.lower() not in vacancy_text.lower():
+        if extraction.eu_term in vacancy_text.lower() or extraction.eu_term.lower() in vacancy_text.lower():
             extracted_location.append("European Union")
     # Add the combined list of preferred countries and timezone countries (sorted alphabetically)
     if preferred_locations_list and len(preferred_locations_list)<15:
@@ -66,7 +66,7 @@ def parse_locations(extraction: VacancyLocationExtraction, vacancy_text: str):
 def extract_vacancy_location(
     vacancy: str,
     llm_handler: 'LLMHandler',
-    model: str = "gpt-4.1-nano",
+    model: str = "gpt-4.1-mini",
     add_tokens_info: bool = False
 ) -> Dict[str, str]:
     """

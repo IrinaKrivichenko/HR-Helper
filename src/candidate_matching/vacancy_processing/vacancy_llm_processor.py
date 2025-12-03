@@ -18,7 +18,7 @@ def extract_vacancy_info(vacancy: str, llm_handler: LLMHandler):
         future1 = executor.submit(extract_vacancy_technologies, vacancy,  llm_handler, model="gpt-4.1-mini")
         future2 = executor.submit(extract_vacancy_role, vacancy,  llm_handler, model="gpt-4.1-nano") # SGR
         future3 = executor.submit(extract_vacancy_industries, vacancy, llm_handler, model="gpt-4.1-nano")
-        future4 = executor.submit(extract_vacancy_location, vacancy, llm_handler, model="gpt-4.1-nano")
+        future4 = executor.submit(extract_vacancy_location, vacancy, llm_handler, model="gpt-4.1-mini")
         future5 = executor.submit(extract_vacancy_rate, vacancy, llm_handler, model="gpt-4.1-nano") # SGR
         future6 = executor.submit(extract_vacancy_languages, vacancy,  llm_handler, model="gpt-4.1-nano")
 

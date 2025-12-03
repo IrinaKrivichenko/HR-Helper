@@ -48,6 +48,7 @@ def extract_cv_certificates(
     response = llm_handler.get_answer(
         prompt=prompt,
         model=model,
+        max_tokens=3077,
         response_format=CertificatesResponse,  # Используем обёртку
     )
 

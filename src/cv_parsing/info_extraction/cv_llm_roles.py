@@ -2,7 +2,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Literal, Dict, Any, Set, Optional, Type, Union
 from pydantic import BaseModel, Field, create_model
-from annotated_types import MinLen
+from annotated_types import MinLen, MaxLen
 from typing_extensions import Annotated
 from src.cv_parsing.info_extraction.new_role_analysis import process_proposed_roles, process_roles_list
 from src.cv_parsing.info_extraction.prepare_cv_sections import get_section_for_field
@@ -26,15 +26,16 @@ def create_role_match_model(roles_list: List[str]) -> Type[BaseModel]:
     RoleType = Literal[*roles_list]  # For Python < 3.11: Literal.__getitem__(tuple(roles_list))
     return create_model(
         'RoleMatch',
-        supporting_evidence=(List[str], Field(default_factory=list, max_length=9, description="Job titles or responsibilities that support this role (provide evidence first)")),
+        supporting_evidence=(Annotated[List[str], MaxLen(5)], Field(default_factory=list, description="Job titles or responsibilities that support this role (provide evidence first)")),
         primary_language=(Optional[str], Field(default=None, description="Primary programming language IF role involves coding. Leave empty for non-technical roles.")),
         name=(RoleType, Field(description="Final decision: exact role name from predefined list based on above analysis")),
-        confidence=(Literal["high", "medium", "low"], Field(description="Confidence based on evidence strength: high=direct match, medium=inferred, low=partial")),
-        )
+        confidence=(float, Field(ge=0, le=1, description="Confidence level (0 to 1) based on evidence strength."))
+
+    )
 
 class ProposedRole(BaseModel):
     """Model for proposed new roles not in the predefined list."""
-    supporting_evidence: List[str] = Field(default_factory=list, max_length=9, description="Job titles or responsibilities that fit this role (provide evidence first)")
+    supporting_evidence: Annotated[List[str], MaxLen(5)] = Field(default_factory=list, description="Job titles or responsibilities that fit this role (provide evidence first)")
     primary_language: Optional[str] = Field(default=None, description="Primary programming language IF role involves coding. Leave empty for non-technical roles.")
     justification: str = Field(description="Why this role is needed based on resume analysis (explain reasoning)")
     name: str = Field(description="Final decision: proposed new role name based on above analysis")
@@ -54,8 +55,8 @@ def create_cv_role_extraction_model(roles_list: List[str]) -> Type[BaseModel]:
     # Create CVRoleExtraction model
     CVRoleExtraction = create_model(
         'CVRoleExtraction',
-        reasoning_steps=(List[str], Field(default_factory=list, description="Step-by-step analysis in bullet points")),
-        matched_roles=(Annotated[List[RoleMatch], MinLen(5)], Field(default_factory=list, description="Roles matched from predefined list, with primary language if applicable")),
+        reasoning_steps=(Annotated[List[str], MaxLen(5)], Field(default_factory=list, description="Step-by-step analysis in bullet points.  Please be brief.")),
+        matched_roles=(Annotated[List[RoleMatch], MinLen(5), MaxLen(10)], Field(default_factory=list, description="Roles matched from predefined list, with primary language if applicable")),
         proposed_roles=(List[ProposedRole_model], Field(default_factory=list, description="New roles not in predefined list, with primary language if applicable")),
     )
     return CVRoleExtraction
@@ -146,6 +147,7 @@ def extract_additional_roles_for_project(
     response = llm_handler.get_answer(
         prompt=prompt,
         model=model,
+        max_tokens=3022,
         response_format=CVRoleExtraction,
     )
     return response
@@ -207,16 +209,20 @@ def extract_cv_roles(
     # Extract all role names
     main_roles_names = []
     for role in main_roles_data.matched_roles:
-        if role.confidence == "high":
-            main_roles_names.append(role.name)
+        if role.confidence >= 0.6:
+            if role.name not in main_roles_names:
+                main_roles_names.append(role.name)
     for proposed_role in main_roles_data.proposed_roles:
-        main_roles_names.append(f"NEW {proposed_role.name}")
+        if proposed_role.name not in main_roles_names:
+            main_roles_names.append(f"NEW {proposed_role.name}")
 
+# знаю в полях на вакансию встречалась
+    # еще где-нибудь
     additional_roles_names = []
     for response in additional_roles_responses:
         parsed_data = response['parsed']
         for role in parsed_data.matched_roles:
-            if role.confidence == "high":
+            if role.confidence >= 0.6:
                 if role.name not in main_roles_names and role.name not in additional_roles_names:
                     additional_roles_names.append(role.name)
         for proposed_role in parsed_data.proposed_roles:

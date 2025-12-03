@@ -444,7 +444,7 @@ def write_value_to_cell(
     cell_range,
     service=None,
     spreadsheet_env_name='STAFF_SPREADSHEET_ID'
-):
+) -> dict:
     """
     Записывает значение в указанную ячейку Google Sheets.
 
@@ -494,7 +494,7 @@ def write_value_to_cell(
     cell_range: str,
     service=None,
     spreadsheet_env_name: str = 'STAFF_SPREADSHEET_ID'
-) -> dict:
+) -> None:
     """
     Writes a single value to a specific cell in a Google Sheet.
     Args:
@@ -527,7 +527,6 @@ def write_value_to_cell(
             body=update_body
         ).execute()
         logger.info(f"Successfully wrote value '{value}' to cell {full_range}")
-        return response
     except Exception as e:
         logger.error(f"Error writing to cell {full_range}: {str(e)}")
         raise e

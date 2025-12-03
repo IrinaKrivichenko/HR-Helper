@@ -76,6 +76,7 @@ async def extract_text_from_document(document):
 async def process_user_request(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Main handler for user requests."""
 
+
     user = update.effective_user
     user_name = user.username if user.username else user.first_name
     text = update.message.text
@@ -93,8 +94,8 @@ async def process_user_request(update: Update, context: ContextTypes.DEFAULT_TYP
                 elif text.startswith(os.getenv("GOOGLE_OAUTH_REDIRECT_URI")):
                     await handle_oauth_callback(update, context)
                     return
-                elif text == "logs":
-                    # await check_google_token(update, context)
+                elif text.lower() == "leadgen":
+                    await leadgen_reminder.remind_to_send_message()
                     return
 
         if await auth_manager.is_user_authorized(user_name, text, update):

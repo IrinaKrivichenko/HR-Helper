@@ -174,7 +174,7 @@ def generate_final_response(better_fit_df, lesser_fit_df, llm_extracted_data):
         )
 
     if better_fit_summaries == "_" and lesser_fit_summaries == "_":
-        telegram_response += "There are no candidates matching for the vacancy in the specified location\n"
+        telegram_response += "There are no candidates matching for the vacancy\n"
         telegram_response += 'Consider <a href="https://www.linkedin.com/my-items/posted-jobs/">adding hiring job post</a> to increase our DB.'
     else:
         telegram_response += f"\n<b>🎯 Best-fit:</b>{better_fit_summaries}\n"

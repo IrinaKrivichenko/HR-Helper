@@ -89,7 +89,7 @@ def extract_vacancy_languages(vacancy: str, llm_handler: 'LLMHandler', model: st
                 "   - 'Any of the listed languages is required' if any of the listed languages is acceptable.\n"
                 "3. **Extract languages and their levels**:\n"
                 "   - The language should be explicitly mentioned in the job description.\n"
-                "   - Consider 'Fluent' as 'B2'.\n"
+                "   - Consider 'Fluent' and 'Good' as 'B2'.\n"
                 f"   - If a range is provided, such as '{cefrlevels[exml_lvl]}-{cefrlevels[exml_lvl+1]}', "
                 f"return the lower edge of the range ('{cefrlevels[exml_lvl]}' in that case).\n"
                 "   - If the level is not specified, default to 'B1'.\n"
