@@ -15,7 +15,22 @@ class LocationExtraction(BaseModel):
     locations: List[str] = Field(default=[], description="Locations, cities, countries mentioned in resume")
     detected_country: Optional[str] = Field(default=None, description="Primary country detected from resume context")
     current_candidate_country: CountryFlag = Field(description="Final candidate country with emoji flag, no space")
+    is_consistent: bool = Field(description="Whether the selected country matches the evidence and detection")
+    corrected_location: CountryFlag = Field(description=("Corrected country with emoji flag if initial selection is inconsistent; repeat the same if the choice was correct"))
     confidence: Literal["high", "medium", "low"] = Field(description="Confidence in extraction")
+
+def format_reasoning_from_model(extraction: LocationExtraction) -> str:
+    lines = []
+    lines.append("Reasoning steps:")
+    for i, step in enumerate(extraction.reasoning_steps, 1):
+        lines.append(f"{i}. {step}")
+    lines.append(f"Locations: {', '.join(extraction.locations)}")
+    lines.append(f"Detected country: {extraction.detected_country if extraction.detected_country is not None else 'None'}")
+    lines.append(f"Current candidate country: {extraction.current_candidate_country}")
+    lines.append(f"Is consistent: {extraction.is_consistent}")
+    lines.append(f"Corrected location: {extraction.corrected_location}")
+    lines.append(f"Confidence: {extraction.confidence}")
+    return "\n".join(lines)
 
 def extract_cv_location(
         cv_sections: Dict,
@@ -70,16 +85,19 @@ def extract_cv_location(
         cost_info = response['cost']
 
         # Format main location field
-        location_value = extraction.current_candidate_country if extraction.current_candidate_country else ""
-        if location_value.startswith("NO"):
+        if extraction.confidence == "high":
+            location_value = extraction.corrected_location if not extraction.is_consistent and extraction.corrected_location else extraction.current_candidate_country
+            if location_value.startswith("NO"):
+                location_value = ""
+            elif "🇧🇾" in location_value: # Replace Belarus flag if needed
+                location_value = location_value.replace("🇧🇾", "🏰", 1)
+        else:
             location_value = ""
-        elif "🇧🇾" in location_value: # Replace Belarus flag if needed
-            location_value = location_value.replace("🇧🇾", "🏰", 1)
 
         # Build result dictionary with all fields
         result = {
             "Location": location_value,
-            "Reasoning about Location": "\n".join(f"• {step}" for step in extraction.reasoning_steps),
+            "Reasoning about Location": format_reasoning_from_model(extraction),
             "Detected Countries": ", ".join(extraction.locations) if extraction.locations else "",
             "Model of_Location_CV_extraction": model,
             "Completion Tokens of_Location_CV_extraction": str(usage.completion_tokens),

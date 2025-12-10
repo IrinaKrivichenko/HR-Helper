@@ -50,3 +50,36 @@ def get_section_for_field(cv_sections: Dict[str, str], field_name: str) -> str:
 
     # Fallback: all non-internal sections
     return "\n\n".join(v for k, v in cv_sections.items() if v and not k.startswith("_"))
+
+from typing import Dict, List, Optional
+
+def collect_sections_by_keywords(
+    cv_sections: Dict[str, str],
+    name_keywords: List[str],                 # передаем [] теперь
+    content_keywords: Optional[List[str]] = None,
+    case_insensitive: bool = True,
+    skip_internal: bool = True
+) -> str:
+    if not cv_sections:
+        return ""
+
+    def norm(s: str) -> str:
+        return s.lower() if case_insensitive and isinstance(s, str) else (s or "")
+
+    name_kws = [norm(k) for k in name_keywords if k]
+    content_kws = [norm(k) for k in (content_keywords or []) if k]
+    parts: List[str] = []
+    for sec_name, sec_text in cv_sections.items():
+        if not sec_text:
+            continue
+        if skip_internal and str(sec_name).startswith("_"):
+            continue
+        nname = norm(str(sec_name))
+        ntext = norm(str(sec_text))
+        name_hit = any(kw in nname for kw in name_kws) if name_kws else False
+        content_hit = any(kw in ntext for kw in content_kws) if content_kws else False
+        if name_hit or content_hit:
+            parts.append(str(sec_text))
+    return "\n".join(dict.fromkeys(parts)).strip()  # легкая дедупликация
+
+

@@ -60,7 +60,7 @@ def extract_cv_email(
         response = llm_handler.get_answer(
             prompt,
             model=model,
-            max_tokens=400,
+            max_tokens=1400,
             response_format=EmailExtraction
         )
 

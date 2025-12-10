@@ -2,8 +2,8 @@ import re
 from typing import Dict
 
 from src.cv_parsing.info_extraction.cv_llm_email import extract_cv_email
-from src.cv_parsing.info_extraction.cv_llm_expertise import extract_cv_expertise
-from src.cv_parsing.info_extraction.cv_llm_expertise_certificates import extract_cv_certificates_and_awards
+from src.cv_parsing.info_extraction.cv_llm_certificates import extract_cv_certificates_and_awards
+from src.cv_parsing.info_extraction.cv_llm_expertise_achievements import extract_cv_expertise
 from src.cv_parsing.info_extraction.cv_llm_github import extract_cv_github
 from src.cv_parsing.info_extraction.cv_llm_industries import extract_cv_domains_and_industries
 from src.cv_parsing.info_extraction.cv_llm_linkedin import extract_cv_linkedin

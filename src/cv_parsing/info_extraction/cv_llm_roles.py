@@ -35,7 +35,7 @@ def create_role_match_model(roles_list: List[str]) -> Type[BaseModel]:
 
 class ProposedRole(BaseModel):
     """Model for proposed new roles not in the predefined list."""
-    supporting_evidence: Annotated[List[str], MaxLen(5)] = Field(default_factory=list, description="Job titles or responsibilities that fit this role (provide evidence first)")
+    supporting_evidence: Annotated[List[str], MaxLen(4)] = Field(default_factory=list, description="Job titles or responsibilities that fit this role (provide evidence first)")
     primary_language: Optional[str] = Field(default=None, description="Primary programming language IF role involves coding. Leave empty for non-technical roles.")
     justification: str = Field(description="Why this role is needed based on resume analysis (explain reasoning)")
     name: str = Field(description="Final decision: proposed new role name based on above analysis")
@@ -55,8 +55,8 @@ def create_cv_role_extraction_model(roles_list: List[str]) -> Type[BaseModel]:
     # Create CVRoleExtraction model
     CVRoleExtraction = create_model(
         'CVRoleExtraction',
-        reasoning_steps=(Annotated[List[str], MaxLen(5)], Field(default_factory=list, description="Step-by-step analysis in bullet points.  Please be brief.")),
-        matched_roles=(Annotated[List[RoleMatch], MinLen(5), MaxLen(10)], Field(default_factory=list, description="Roles matched from predefined list, with primary language if applicable")),
+        reasoning_steps=(Annotated[List[str], MaxLen(3)], Field(default_factory=list, description="Step-by-step analysis in bullet points.  Please be brief.")),
+        matched_roles=(Annotated[List[RoleMatch], MinLen(3), MaxLen(6)], Field(default_factory=list, description="Roles matched from predefined list, with primary language if applicable")),
         proposed_roles=(List[ProposedRole_model], Field(default_factory=list, description="New roles not in predefined list, with primary language if applicable")),
     )
     return CVRoleExtraction
@@ -93,7 +93,7 @@ def extract_main_roles(
                 f"1. Scan job titles and project responsibilities\n"
                 f"2. Ignore seniority (e.g., Senior/Junior/Middle)\n"
                 f"3. Match to existing roles when possible\n"
-                f"4. Propose new roles only when no good match exists\n\n"
+                f"4. Propose new roles only when no good match exists. Avoid generic roles like 'Software Developer' or 'Software Engineer'.\n\n"
                 f"**Resume:**\n{cv_text}"
             )
         }
@@ -209,7 +209,7 @@ def extract_cv_roles(
     # Extract all role names
     main_roles_names = []
     for role in main_roles_data.matched_roles:
-        if role.confidence >= 0.6:
+        if role.confidence >= 0.7:
             if role.name not in main_roles_names:
                 main_roles_names.append(role.name)
     for proposed_role in main_roles_data.proposed_roles:
@@ -222,7 +222,7 @@ def extract_cv_roles(
     for response in additional_roles_responses:
         parsed_data = response['parsed']
         for role in parsed_data.matched_roles:
-            if role.confidence >= 0.6:
+            if role.confidence >= 0.7:
                 if role.name not in main_roles_names and role.name not in additional_roles_names:
                     additional_roles_names.append(role.name)
         for proposed_role in parsed_data.proposed_roles:

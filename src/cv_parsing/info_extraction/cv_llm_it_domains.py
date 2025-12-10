@@ -19,7 +19,7 @@ def create_project_it_domains_model(predefined_it_domains: List[str]) -> type[Ba
     # Define the ITDomainAnalysis model
     class ITDomainAnalysis(BaseModel):
         supporting_evidence: Annotated[List[str], MaxLen(5)] = Field(default=[], description="Phrases from the resume supporting the IT domain choice.")
-        reasoning: Optional[str] = Field(default=None, description="Reasoning for selecting the IT domain.")
+        reasoning: Optional[str] = Field(default=None, description="Reasoning for selecting the IT domain. Please be brief.")
         selected_it_domain: Optional[ITDomainLiteral] = Field(default=None, description="Selected IT domain from the predefined list.")
         new_it_domain: Optional[str] = Field(default=None, description="New IT domain if none from the predefined list fits.")
         confidence: float = Field(ge=0, le=1, description="Confidence level (0 to 1) in the IT domain selection.")
@@ -29,7 +29,7 @@ def create_project_it_domains_model(predefined_it_domains: List[str]) -> type[Ba
         project_name: str = Field(description="Name or description of the project.")
         reasoning: str = Field(description="Overall reasoning for IT domain selection. Please be brief.")
         has_enough_info: bool = Field(description="Whether there is enough information to determine IT domains.")
-        it_domains: Annotated[List[ITDomainAnalysis], MinLen(5), MaxLen(15)] = Field(description="List of IT domain analyses for the project.")
+        it_domains: Annotated[List[ITDomainAnalysis], MinLen(5), MaxLen(10)] = Field(description="List of IT domain analyses for the project.")
 
     return ProjectITDomainsAnalysis
 
@@ -136,7 +136,7 @@ def analyze_single_project_it_domains(
     response = llm_handler.get_answer(
         prompt=prompt,
         model=model,
-        max_tokens=3021,
+        max_tokens=8021,
         response_format=ProjectITDomainsModel,
     )
     # Format the result
@@ -144,4 +144,8 @@ def analyze_single_project_it_domains(
     project_analysis["usage"] = response["usage"]
     project_analysis["cost"] = response["cost"]
     return project_analysis
+
+
+
+
 

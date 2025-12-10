@@ -1,5 +1,8 @@
+import traceback
+
 import pandas as pd
 
+from src import logger
 from src.cv_parsing.info_extraction.cv_llm_it_domains import format_it_domains_reasoning, \
     analyze_single_project_it_domains
 # from src.cv_parsing.info_extraction.new_industy_analysis import process_proposed_industries
@@ -224,7 +227,7 @@ def generate_industry_prompt(
 def extract_cv_domains_and_industries(
     cv_sections: Dict,
     llm_handler: LLMHandler,
-    model: str = "gpt-4.1-nano"
+    model: str = "gpt-4.1-mini"
 ) -> Dict[str, Any]:
     """
     Extracts and analyzes industries from a resume using parallel processing.

@@ -30,22 +30,7 @@ def extract_vacancy_info(vacancy: str, llm_handler: LLMHandler):
         extracted_data5 = future5.result()
         extracted_data6 = future6.result()
 
-    # # Extract 'Vacancy Reasoning' from each result and combine them
-    # vacancy_reasoning_1 = extracted_data1.get('Vacancy Reasoning', '')
-    # vacancy_reasoning_2 = extracted_data2.get('Vacancy Reasoning', '')
-    # vacancy_reasoning_3 = extracted_data3.get('Vacancy Reasoning', '')
-    # vacancy_reasoning_4 = extracted_data4.get('Vacancy Reasoning', '')
-    # vacancy_reasoning_5 = extracted_data5.get('Vacancy Reasoning', '')
-    # vacancy_reasoning_6 = extracted_data6.get('Vacancy Reasoning', '')
-    #
-    # combined_reasoning = '\n\n'.join(reasoning for reasoning in [vacancy_reasoning_1, vacancy_reasoning_2,
-    #                                                              vacancy_reasoning_3, vacancy_reasoning_4,
-    #                                                              vacancy_reasoning_5, vacancy_reasoning_6] if reasoning)
-    #
-    # # Create a new dictionary with the combined reasoning
-    # extracted_data = {
-    #     'Vacancy Reasoning': combined_reasoning
-    # }
+
 
     # Combine the rest of the fields
     extracted_data ={k: v for d in [extracted_data1, extracted_data2,

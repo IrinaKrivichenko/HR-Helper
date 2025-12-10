@@ -24,8 +24,9 @@ def create_vacancy_role_extraction_model(roles_list: List[str]) -> Type[BaseMode
         """ Model for a single role matched from the vacancy."""
         reasoning_about_matching: Annotated[List[str], MaxLen(5)] = Field(default_factory=list, description="Reasoning why this role matches the vacancy")
         name: RoleType = Field(description="Final role name from the predefined list")
-        match_percentage: int = Field(ge=0, le=100,
-                                      description="Percentage of how well the role matches the vacancy (0-100)"
+        is_consistent: bool =  Field(description="Whether the selected role matches the reasoning_about_matching"),
+        corrected_role : Optional[RoleType] = Field(default=None, description="Corrected role if is_consistent=False or repeat the same role if the choice was correct."),
+        match_percentage: int = Field(ge=0, le=100, description="Percentage of how well the role matches the vacancy (0-100)"
                                                 " - 80-100%: The role is a direct specialization or synonym."
                                                 " - 60-79%: The role is semantically close"
                                                 " - 0%: The role is unrelated."
@@ -166,8 +167,6 @@ The role involves working on projects related to Computer Vision (CV) and Natura
 
     return few_shot_example, few_shot_response
 
-from collections import Counter
-from typing import List, Dict, Any
 
 def filter_roles(
     matched_roles: List[Any],  # Теперь matched_roles — это список объектов VacancyRoleMatch
@@ -176,40 +175,50 @@ def filter_roles(
     """
     Filters roles by match percentage and returns the names of the most suitable roles.
     Logic:
-    1. Returns all role names with match_percentage >= match_threshold.
-    2. If no roles meet the threshold, returns all role names with the highest match_percentage.
-    3. If all match_percentage are 0, returns repeated role names.
-    4. If none of the above, returns ["No Role is specified"].
+    1. Uses corrected_role if is_consistent=False.
+    2. Returns all role names with match_percentage >= match_threshold.
+    3. If no roles meet the threshold, returns all role names with the highest match_percentage.
+    4. If all match_percentage are 0, returns repeated role names.
+    5. If none of the above, returns ["No Role is specified"].
     """
-    # Step 1: Filter role names by threshold
+    # Step 1: Replace role names with corrected_role if is_consistent=False
+    corrected_roles = []
+    for role in matched_roles:
+        final_role = role.corrected_role if not role.is_consistent and role.corrected_role else role.name
+        corrected_roles.append({
+            'name': final_role,
+            'match_percentage': role.match_percentage
+        })
+
+    # Step 2: Filter role names by threshold
     filtered_role_names = [
-        role.name
-        for role in matched_roles
-        if role.match_percentage >= match_threshold
+        role['name']
+        for role in corrected_roles
+        if role['match_percentage'] >= match_threshold
     ]
 
     # If roles remain after filtering, return their names
     if filtered_role_names:
         return filtered_role_names
 
-    # Step 2: If no roles above threshold, find role names with the highest match_percentage
-    max_percentage = max(role.match_percentage for role in matched_roles)  # Используем role.match_percentage
+    # Step 3: If no roles above threshold, find role names with the highest match_percentage
+    max_percentage = max(role['match_percentage']  for role in corrected_roles)  # Используем role.match_percentage
 
     if max_percentage > 0:
         # Return names of all roles with the maximum percentage
         return [
-            role.name  # Обращаемся к полю name через точку
-            for role in matched_roles
-            if role.match_percentage == max_percentage  # Используем role.match_percentage
+            role['name']
+            for role in corrected_roles
+            if role['match_percentage'] == max_percentage
         ]
     else:
-        # Step 3: All match_percentage are 0, find repeated role names
-        role_names = [role.name for role in matched_roles]  # Обращаемся к полю name через точку
+        # Step 4: All match_percentage are 0, find repeated role names
+        role_names = [role['name'] for role in corrected_roles]
         name_counts = Counter(role_names)
         repeated_role_names = [
-            role.name  # Обращаемся к полю name через точку
-            for role in matched_roles
-            if name_counts[role.name] > 1
+            role['name']
+            for role in corrected_roles
+            if name_counts[role['name']] > 1
         ]
         if repeated_role_names:
             # Remove duplicates while preserving order
@@ -221,7 +230,7 @@ def filter_roles(
                     unique_repeated_role_names.append(name)
             return unique_repeated_role_names
         else:
-            # Step 4: If nothing matches, return ["No Role is specified"]
+            # Step 5: If nothing matches, return ["No Role is specified"]
             return ["No Role is specified"]
 
 
@@ -342,6 +351,8 @@ def extract_vacancy_role(
                 [
                     f"Role: {role.name}\n"
                     f"Reasoning: {'; '.join(role.reasoning_about_matching)}\n"
+                    f"Consistent: {role.is_consistent}\n"
+                    f"Corrected role name: {role.corrected_role}\n"
                     f"Match Percentage: {role.match_percentage}"
                     for role in role_extraction.matched_roles
                 ]

@@ -192,7 +192,7 @@ class LLMHandler:
         retry_delay = 1  # seconds
 
         for attempt in range(max_retries):
-            try:
+            # try:
                 completion_params = {
                     "model": model,
                     "messages": prompt,
@@ -253,14 +253,14 @@ class LLMHandler:
                     answer += token_info
                     return answer
 
-            except Exception as e:
-                if isinstance(e, TimeoutError) or "timeout" in str(e).lower():
-                    if attempt < max_retries - 1:
-                        logger.warning(f"Timeout occurred, retrying... (attempt {attempt + 1}/{max_retries})")
-                        time.sleep(retry_delay * (attempt + 1))
-                        continue
-                logger.error(f"An error occurred while getting the answer from model {model}: {e}")
-                raise
+            # except Exception as e:
+            #     if isinstance(e, TimeoutError) or "timeout" in str(e).lower():
+            #         if attempt < max_retries - 1:
+            #             logger.warning(f"Timeout occurred, retrying... (attempt {attempt + 1}/{max_retries})")
+            #             time.sleep(retry_delay * (attempt + 1))
+            #             continue
+            #     logger.error(f"An error occurred while getting the answer from model {model}: {e}")
+            #     raise
 
     def _handle_structured_response(self, response, model):
         """Handle structured output response"""

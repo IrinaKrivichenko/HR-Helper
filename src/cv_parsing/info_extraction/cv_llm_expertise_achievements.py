@@ -94,11 +94,11 @@ def format_project(project: Dict[str, Any]) -> str:
 
     formatted = []
     project_info = []
-    if project.get('project_name', ''):
-        project_info.append(f"Project: {project.get('project_name}')}")
-    if project.get('company_name', ''):
+    if project.get('project_name', '') and project.get('project_name')!="None":
+        project_info.append(f"Project: {project.get('project_name')}")
+    if project.get('company_name', '') and project.get('company_name')!="None":
         project_info.append(f"Company: {project.get('company_name', '')}")
-    if project.get('project_company_name', ''):
+    if project.get('project_company_name', '') and project.get('project_company_name')!="None":
         project_info.append(f"Client/Company: {project.get('project_company_name', '')}")
     if project.get('project_locations', ''):
         project_info.append(f"Locations: {', '.join(project.get('project_locations', ''))}")
@@ -125,7 +125,7 @@ def format_project(project: Dict[str, Any]) -> str:
     return "\n\n".join(formatted)
 
 
-def extract_cv_projects_achievements(
+def extract_cv_expertise(
     cv_sections: Dict,
     llm_handler: LLMHandler,
     model: str = "gpt-4.1-nano"
@@ -134,6 +134,7 @@ def extract_cv_projects_achievements(
     Extracts achievements for each project in parallel.
     Returns combined text, tokens, and cost.
     """
+    start_time = time.time()
     projects_list = get_section_for_field(cv_sections, "Projects")
 
     projects = []
@@ -157,14 +158,21 @@ def extract_cv_projects_achievements(
             projects.append(result["project"])
             total_completion_tokens += result["completion_tokens"]
             total_prompt_tokens += result["prompt_tokens"]
+            total_prompt_tokens += result["prompt_tokens"]
             total_cost += result["cost"]
 
     combined_text = "\n\n".join(format_project(project) for project in projects)
 
-    return {
-        "combined_text": combined_text,
-        "completion_tokens": total_completion_tokens,
-        "prompt_tokens": total_prompt_tokens,
-        "cost": total_cost,
-    }
+    result = {
+            "Expertise": combined_text,
+            "Reasoning about Expertise": "",
+            "Model of_Expertise_CV_extraction": model,
+            "Completion Tokens of_Expertise_CV_extraction": str(total_completion_tokens),
+            "Prompt Tokens _of_Expertise_CV_extraction": str(total_prompt_tokens),
+            "Cost_of_Expertise_CV_extraction": total_cost,
+            "Time" : time.time()-start_time
+        }
+    logger.info(f"Field extraction completed - Field: 'Expertise' | Response: {json.dumps(result, ensure_ascii=False)}")
+    return result
+
 
