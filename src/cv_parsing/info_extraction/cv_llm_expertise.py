@@ -4,8 +4,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, Any
 
-from src.cv_parsing.info_extraction.cv_llm_expertise_achievements import extract_cv_projects_achievements
-from src.cv_parsing.info_extraction.cv_llm_expertise_certificates import extract_cv_certificates
+from src.cv_parsing.info_extraction.prepare_cv_sections import get_section_for_field
 from src.data_processing.nlp.llm_handler import LLMHandler
 
 
@@ -18,49 +17,13 @@ def extract_cv_expertise(
     Extracts expertise (projects achievements and certificates) from a resume in parallel.
     Returns combined expertise text with tokens and cost.
     """
-    start_time = time.time()
 
-    with ThreadPoolExecutor() as executor:
-        achievements_future = executor.submit(
-            extract_cv_projects_achievements,
-            cv_sections,
-            llm_handler,
-            model
-        )
-        certificates_future = executor.submit(
-            extract_cv_certificates,
-            cv_sections,
-            llm_handler,
-            model
-        )
+    projects_list = get_section_for_field(cv_sections, "Projects")
 
-        projects_achievements = achievements_future.result()
-        certificates = certificates_future.result()
-
-    # Combine all expertise into a single text field
-    expertise_parts = []
-    # Add projects achievements
-    expertise_parts.append(f"Projects:\n{projects_achievements['combined_text']}")
-    # Add certificates only if they exist
-    certificates_text = certificates['combined_text'].strip()
-    if certificates_text:
-        expertise_parts.append(f"Certificates:\n{certificates_text}")
-    # Join all parts with double newlines
-    expertise_text = "\n\n".join(expertise_parts)
+    expertise_text = ["\n\n ".join(projects_list)]
 
     result = {
         "Expertise": expertise_text,
-        "Model of_Expertise_CV_extraction": model,
-        "Completion Tokens of_Expertise_CV_extraction": str(
-            projects_achievements["completion_tokens"] + certificates["completion_tokens"]
-        ),
-        "Prompt Tokens of_Expertise_CV_extraction": str(
-            projects_achievements["prompt_tokens"] + certificates["prompt_tokens"]
-        ),
-        "Cost_of_Expertise_CV_extraction": (
-            projects_achievements["cost"] + certificates["cost"]
-        ),
-        "Time": time.time() - start_time,
     }
 
     return result

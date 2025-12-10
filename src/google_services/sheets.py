@@ -339,6 +339,18 @@ def get_spreadsheet_id(sheet_name, sheet=None, spreadsheet_env_name='STAFF_SPREA
         raise e
 
 
+def _prepare_cell_value(value):
+    if value is None:
+        return ''
+    # List or tuple of STRINGS
+    if isinstance(value, (list, tuple)) and all(isinstance(x, str) for x in value):
+        if any(len(x) > 22 for x in value):
+            return "\n\n".join(value)
+        return ", ".join(value)
+    # Other types
+    return str(value)
+
+
 def write_dict_to_sheet(data_dict, sheet_name, service=None, row_number=None, spreadsheet_env_name='STAFF_SPREADSHEET_ID'):
     """
     Writes dictionary data to a Google Sheet row, matching keys to column names.
@@ -408,7 +420,7 @@ def write_dict_to_sheet(data_dict, sheet_name, service=None, row_number=None, sp
 
             updates.append({
                 'range': cell_range,
-                'values': [[str(value) if value is not None else '']]
+                'values': [[_prepare_cell_value(value)]]
             })
 
         # Batch update all cells

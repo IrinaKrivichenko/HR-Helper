@@ -3,6 +3,7 @@ from typing import Dict
 
 from src.cv_parsing.info_extraction.cv_llm_email import extract_cv_email
 from src.cv_parsing.info_extraction.cv_llm_expertise import extract_cv_expertise
+from src.cv_parsing.info_extraction.cv_llm_expertise_certificates import extract_cv_certificates_and_awards
 from src.cv_parsing.info_extraction.cv_llm_github import extract_cv_github
 from src.cv_parsing.info_extraction.cv_llm_industries import extract_cv_domains_and_industries
 from src.cv_parsing.info_extraction.cv_llm_linkedin import extract_cv_linkedin
@@ -65,14 +66,15 @@ def extract_cv_info(cv: Dict, llm_handler: LLMHandler):
         (extract_cv_roles, "gpt-4.1-mini", "Roles"),
         (extract_cv_expertise, "gpt-4.1-nano", "Expertise"),
         (extract_cv_stack, "gpt-4.1", "Stack"),
-        (extract_cv_domains_and_industries, "gpt-4.1-nano", "IT Domains and Industries"),
+        (extract_cv_domains_and_industries, "gpt-4.1-mini", "IT Domains and Industries"),
         (extract_cv_linkedin, "gpt-4.1-nano", "LinkedIn"),
         (extract_cv_telegram, "gpt-4.1-nano", "Telegram"),
         (extract_cv_whatsapp, "gpt-4.1-nano", "WhatsApp"),
         (extract_cv_phone, "gpt-4.1-nano", "Phone"),
         (extract_cv_email, "gpt-4.1-nano", "Email"),
         (extract_cv_github, "gpt-4.1-nano", "GitHub"),
-        (extract_cv_location, "gpt-4.1-nano", "Location")
+        (extract_cv_location, "gpt-4.1-nano", "Location"),
+        (extract_cv_certificates_and_awards, "gpt-4.1-nano", "Certificates and Awards")
     ]
 
     field_times = {}

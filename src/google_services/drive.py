@@ -29,7 +29,7 @@ def extract_text_from_docx(file_path):
     """Extracts text from DOCX file."""
     try:
         doc = Document(file_path)
-        return "\n".join([para.text for para in doc.paragraphs])
+        return "".join([para.text for para in doc.paragraphs])
     except Exception as e:
         print(f"Error extracting text from DOCX: {e}")
         return None
