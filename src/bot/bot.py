@@ -39,9 +39,10 @@ async def process_lead(update: Update, text: str,   user_name: str):
     write_dict_to_sheet(data_dict=lead_dict, sheet_name="Leads2", spreadsheet_env_name='ΛV_LINKEDIN_LEADGEN_SPREADSHEET_ID')
     await send_answer_message(update, f"Lead {lead_dict['Company']} is parsed")
 
-async def process_cv(update: Update, text: str,  file_path: str,   user_name: str, llm_handler):
+async def process_cv(message: str, update: Update, text: str,  file_path: str,   user_name: str, llm_handler):
     await send_answer_message(update, f"Parsing CV")
     extracted_data = await parse_cv(text, llm_handler)
+    extracted_data['Original file'] = message
     message_to_user = save_cv_info(extracted_data, file_path)
     await send_answer_message(update, message_to_user)
 
@@ -79,7 +80,8 @@ async def process_user_request(update: Update, context: ContextTypes.DEFAULT_TYP
 
     user = update.effective_user
     user_name = user.username if user.username else user.first_name
-    text = update.message.text
+    message = update.message.text
+    text = message
     file_path = None
     try:
         if text is not None:
@@ -100,8 +102,9 @@ async def process_user_request(update: Update, context: ContextTypes.DEFAULT_TYP
 
         if await auth_manager.is_user_authorized(user_name, text, update):
             if update.message.document is not None:
-                file_text, file_path = await extract_text_from_document(update.message.document)
-                text = file_text if text is None else f"Additional message from user: {text}\n\n {file_text}"
+                text, file_path = await extract_text_from_document(update.message.document)
+                text = text if message is None else f"Additional message from user: {message}\n\n {text}"
+                message = file_path
                 input_type = "CV"
             elif "#available" in text:
                 await update.message.reply_text("The message contains '#available'.")
@@ -119,7 +122,7 @@ async def process_user_request(update: Update, context: ContextTypes.DEFAULT_TYP
             if input_type == "vacancy":
                 await process_vacancy(update, text, user_name, llm_handler)
             elif input_type == "CV":
-                await process_cv(update, text,  file_path, user_name, llm_handler)
+                await process_cv(message, update, text,  file_path, user_name, llm_handler)
     except Exception as e:
         logger.error(f"{str(e)}\n{traceback.format_exc()}")
         await update.message.reply_text(f"Please forward this message to @irina_199: {str(e)}")
