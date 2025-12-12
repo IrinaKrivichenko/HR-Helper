@@ -10,11 +10,11 @@ def find_lead_pattern(text: str):
 def parse_lead_text(text):
     # Regular expressions for data extraction
     patterns = {
-        "Company": r"Company:\s*(.+?)\n",
-        "Domain": r"• Domain:\s*(.+?)\n",
+        "Company Name": r"Company:\s*(.+?)\n",
+        "Company Website": r"• Domain:\s*(.+?)\n",
         "Company location / relevant office": r"• Company location / relevant office:\s*(.+?)\n",
-        "Person: Company": r"• Person:\s*(.+?)\n",
-        "LinkedIn": r"• LinkedIn:\s*(http[s]?://[^\s]+)",
+        "Title": r"• Person:\s*(.+?)\n",
+        "LinkedIn Profile": r"• LinkedIn:\s*(http[s]?://[^\s]+)",
         "Signals": r"• Signals:\s*(.*?)(?=\n• Why Relevant Now:|\Z)",
         "Why Relevant Now": r"• Why Relevant Now:\s*([^\n]+)",
         "Suggested Outreach": r"•\s*Suggested Outreach:\s*\n\s*([^\n]+)",
@@ -25,16 +25,16 @@ def parse_lead_text(text):
     for key, pattern in patterns.items():
         match = re.search(pattern, text, re.DOTALL)
         if match:
-            if key == "LinkedIn":
+            if key == "LinkedIn Profile":
                 result[key] = match.group(1).strip() if match.group(1) else ""
             else:
                 result[key] = match.group(1).strip()
         else:
             result[key] = ""
 
-    domain = result["Domain"]
+    domain = result["Company Website"]
     if not domain.startswith(("http://", "https://")):
-        result["Domain"] = f"http://{domain}"
+        result["Company Website"] = f"http://{domain}"
 
     # Clearing data from unnecessary characters
     for key in result:
