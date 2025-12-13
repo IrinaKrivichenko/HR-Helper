@@ -80,14 +80,15 @@ def get_column_letters(columns, sheet_name, ignore_missing=False, sheet=None, sp
                 f"Колонка '{col}' не найдена на листе '{sheet_name}'. Доступные колонки: {list(sheet_dict.keys())}")
         return sheet_dict[col]
     elif isinstance(columns, list):
-        result = []
+        result = {}
         for col in columns:
             if col not in sheet_dict:
                 if ignore_missing:
                     continue
                 raise ValueError(
-                    f"Колонка '{col}' не найдена на листе '{sheet_name}'. Доступные колонки: {list(sheet_dict.keys())}")
-            result.append(sheet_dict[col])
+                    f"Колонка '{col}' не найдена на листе '{sheet_name}'. Доступные колонки: {list(sheet_dict.keys())}"
+                )
+            result[col] = sheet_dict[col]
         return result
     else:
         raise ValueError("Параметр columns функции get_column_letters() должен быть строкой или списком строк.")
@@ -169,7 +170,7 @@ def read_specific_columns(columns_to_extract, sheet_name=CANDIDATES_SHEET_NAME, 
 
     sheet = service.spreadsheets()
     # Convert column names to letters
-    columns_letters = get_column_letters(columns_to_extract, sheet_name, sheet=sheet, spreadsheet_env_name=spreadsheet_env_name)
+    columns_dict = get_column_letters(columns_to_extract, sheet_name, sheet=sheet, spreadsheet_env_name=spreadsheet_env_name)
 
     # Get the full sheet data with includeGridData
     spreadsheet = sheet.get(spreadsheetId=spreadsheet_id, ranges=[sheet_name], includeGridData=True).execute()
@@ -180,8 +181,7 @@ def read_specific_columns(columns_to_extract, sheet_name=CANDIDATES_SHEET_NAME, 
     headers = [cell.get('formattedValue', '').strip() for cell in headers_row]
 
     # Check if the headers match the expected column names
-    for i, column_name in enumerate(columns_to_extract):
-        column_letter = get_column_letters(column_name, sheet_name, sheet=sheet)
+    for column_name, column_letter in columns_dict.items():
         i = letter_to_index(column_letter)
         if i < len(headers) and headers[i] != column_name:
             logger.error(f"Column name mismatch at column {column_letter}: Expected '{column_name}', found '{headers[i]}'")
@@ -192,8 +192,8 @@ def read_specific_columns(columns_to_extract, sheet_name=CANDIDATES_SHEET_NAME, 
     for row in rows:
         row_values = row.get('values', [])
         row_data = []
-        for col_letter in columns_letters:
-            col_index = letter_to_index(col_letter)
+        for column_name, column_letter in columns_dict.items():
+            col_index = letter_to_index(column_letter)
             if col_index is not None and col_index < len(row_values):
                 cell = row_values[col_index]
                 if 'hyperlink' in cell:
@@ -249,9 +249,9 @@ def write_specific_columns(
     if highlight_color is None:
         highlight_color = {'red': 1.0, 'green': 1.0, 'blue': 0.0}
 
+    columns_dict = get_column_letters(df.columns, sheet_name, sheet=sheet)
     # Update each column
-    for column_name in df.columns:
-        column_letter = get_column_letters(column_name, sheet_name, sheet=sheet)
+    for column_name, column_letter in columns_dict.items():
         if column_letter is None:
             raise ValueError(f"Column name '{column_name}' is invalid or not mapped in column_dict.")
 
@@ -276,37 +276,6 @@ def write_specific_columns(
             body=update_body
         ).execute()
 
-    # Highlight rows if requested
-    if rows_to_highlight:
-        requests = []
-        for row in rows_to_highlight:
-            for column_name in df.columns:
-                column_letter = get_column_letters(column_name, sheet_name, sheet=sheet)
-                cell_range = f"{sheet_name}!{column_letter}{row + 2}"  # +2 because data starts at row 2
-                requests.append({
-                    "repeatCell": {
-                        "range": {
-                            "sheetId": 0,  # Assuming the first sheet
-                            "startRowIndex": row + 1,  # +1 because headers are in row 0
-                            "endRowIndex": row + 2,
-                            "startColumnIndex": ord(column_letter) - ord('A'),
-                            "endColumnIndex": ord(column_letter) - ord('A') + 1,
-                        },
-                        "cell": {
-                            "userEnteredFormat": {
-                                "backgroundColor": highlight_color
-                            }
-                        },
-                        "fields": "userEnteredFormat.backgroundColor"
-                    }
-                })
-
-        # Apply formatting
-        body = {'requests': requests}
-        sheet.batchUpdate(
-            spreadsheetId=spreadsheet_id,
-            body=body
-        ).execute()
 
 def get_spreadsheet_id(sheet_name, sheet=None, spreadsheet_env_name='STAFF_SPREADSHEET_ID'):
     """

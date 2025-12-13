@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
 from pathlib import Path
+import re
 
 import pandas as pd
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -9,13 +10,30 @@ from telegram.ext import CallbackQueryHandler
 from src.google_services.sheets import read_specific_columns, write_value_to_cell, get_column_letters
 
 
+def extract_links_from_text(text):
+    # Регулярное выражение для поиска ссылок в формате <a href="URL">TEXT</a>
+    pattern = r'<a\s+href="([^"]+)">[^<]+<\/a>'
+    links = re.findall(pattern, text)
+    return links
+
 class LeadGenReminder:
 
-    number_of_leads_for_a_day = 10
+
 
     def __init__(self):
         self.users_to_send = {"Andrus":  381735431}  # 694614399}
-        self.users_to_send = {"Andrus":  694614399}
+        # self.users_to_send = {"Andrus":  694614399}
+        self.number_of_leads_for_a_day = 10
+        columns = ["First Name", "Last Name", "LinkedIn Profile", "Статус ліда (Andrus)", "M0 Andrus",
+                   "Статус ліда (Juras)", "Company Desc"]
+        self.leads_df = read_specific_columns(columns_to_extract=columns, sheet_name="Leads CRM",
+                                              spreadsheet_env_name='ΛV_LINKEDIN_LEADGEN_SPREADSHEET_ID')
+        columns_to_extract = []
+        for user in self.users_to_send:
+            columns_to_extract.append(f"Статус ліда ({user})")
+            columns_to_extract.append(f"M0 {user}")
+        self.columns_letters = get_column_letters(columns_to_extract, "Leads CRM",
+                                                  spreadsheet_env_name='ΛV_LINKEDIN_LEADGEN_SPREADSHEET_ID')
         self.application = None
 
 
@@ -28,7 +46,7 @@ class LeadGenReminder:
         today = datetime.now().strftime("%Y-%m-%d")
         downloads_dir = Path("downloads")
         downloads_dir.mkdir(exist_ok=True)
-        return downloads_dir / f"leads_processed_{today}.json"
+        return downloads_dir / f" {today}.json"
 
     def _read_processed_leads(self):
         file_path = self._get_today_file_path()
@@ -62,21 +80,19 @@ class LeadGenReminder:
         data = self._read_processed_leads()
         done_today = data["processed_counts"].get(user, 0)
         skipped_indices = data["skipped_indices"].get(user, [])
-        if done_today >= LeadGenReminder.number_of_leads_for_a_day:
+        if done_today >= self.number_of_leads_for_a_day:
                 return None, done_today
 
-        columns = ["First Name", "Last Name", "LinkedIn Profile", "Статус ліда (Andrus)", "M0 Andrus", "Статус ліда (Juras)"]
-        leads_df = read_specific_columns(columns_to_extract=columns, sheet_name="Leads CRM", spreadsheet_env_name='ΛV_LINKEDIN_LEADGEN_SPREADSHEET_ID')
-        contact_leads = leads_df[(leads_df[f"Статус ліда ({user})"] == "Contact")
-                                 & (leads_df["LinkedIn Profile"] != '')
-                                 & (~leads_df.index.isin(skipped_indices))]
+        contact_leads = self.leads_df[(self.leads_df[f"Статус ліда ({user})"] == "Contact")
+                                 & (self.leads_df["LinkedIn Profile"] != '')
+                                 & (~self.leads_df.index.isin(skipped_indices))]
         if not contact_leads.empty:
             for index, row in contact_leads.iterrows():
                 return row, done_today
 
-        filtered_leads = leads_df[(leads_df["Статус ліда (Juras)"] != "Не ЦА")
-                                  & (leads_df["LinkedIn Profile"] != '')
-                                  & (~leads_df.index.isin(skipped_indices))]
+        filtered_leads = self.leads_df[(self.leads_df["Статус ліда (Juras)"] != "Не ЦА")
+                                  & (self.leads_df["LinkedIn Profile"] != '')
+                                  & (~self.leads_df.index.isin(skipped_indices))]
         user_filtered_leads = filtered_leads[(filtered_leads[f"Статус ліда ({user})"] == "")]
         if len(user_filtered_leads) == 0:
             return None, done_today
@@ -88,7 +104,7 @@ class LeadGenReminder:
     async def send_next_message(self, user):
         row, done_today = await self.get_next_lead(user)
         if row is None:
-            if done_today >= LeadGenReminder.number_of_leads_for_a_day:
+            if done_today >= self.number_of_leads_for_a_day:
                 await self.application.bot.send_message(
                     chat_id=self.users_to_send[user],
                     text="The leadgen task for today is complete."
@@ -102,7 +118,7 @@ class LeadGenReminder:
         linkedin_profile = row['LinkedIn Profile']
         last_name = row['Last Name']
         index = row.name
-        todays_number = f"{done_today+1} of {LeadGenReminder.number_of_leads_for_a_day}\n"
+        todays_number = f"{done_today+1} of {self.number_of_leads_for_a_day}\n"
         links = f'<a href="{linkedin_profile}">{last_name}</a> - <a href="https://docs.google.com/spreadsheets/d/1ksKFLOutQZI4MgQxvodqeAuHBri5IYQVPTFXXd1SyXo/edit?gid=404358083#gid=404358083&range={index+2}:{index+2}">LeadGen</a>'
         if row[f"Статус ліда ({user})"] == "Contact":
             keyboard = [
@@ -140,48 +156,43 @@ class LeadGenReminder:
             await query.answer()
         except Exception as e:
             print(f"Error answering callback query: {e}")
-        data = query.data
-        btn, index_str, user, todays_number = data.split("_")
-        index = int(index_str)
-        todays_number = int(todays_number)
-        columns_to_extract = [f"Статус ліда ({user})", f"M0 {user}"]
-        columns_letters = get_column_letters(columns_to_extract, "Leads CRM", spreadsheet_env_name= 'ΛV_LINKEDIN_LEADGEN_SPREADSHEET_ID')
-        columns = ["Last Name", "LinkedIn Profile"]
-        df = read_specific_columns(columns_to_extract=columns, sheet_name="Leads CRM", spreadsheet_env_name='ΛV_LINKEDIN_LEADGEN_SPREADSHEET_ID')
-        row = df.iloc[index]
-        linkedin_profile = row['LinkedIn Profile']
-        last_name = row['Last Name']
-        links = f'<a href="{linkedin_profile}">{last_name}</a> - <a href="https://docs.google.com/spreadsheets/d/1ksKFLOutQZI4MgQxvodqeAuHBri5IYQVPTFXXd1SyXo/edit?gid=404358083#gid=404358083&range={index + 2}:{index + 2}">LeadGen</a>'
         try:
-            prefix = f"{todays_number}/{LeadGenReminder.number_of_leads_for_a_day} ({index + 2}/{df.shape[0]}) "
-            if btn == "thanks":
-                lead_status = "Thanks message"
-                new_message = f"{prefix}Status for {links} updated to 'Thanks message'."
-                write_value_to_cell(lead_status,
-                                    sheet_name="Leads CRM", cell_range=f"{columns_letters[0]}{index + 2}",
-                                    spreadsheet_env_name='ΛV_LINKEDIN_LEADGEN_SPREADSHEET_ID')
-            elif btn in ["request", "moreInfo", "notTA"]:
-                if btn == "request":
-                    lead_status = "Request"
-                    new_message = f"{prefix}Status for {links} updated to 'Request'."
-                elif btn == "moreInfo":
-                    lead_status = "More Information"
-                    new_message = f"{prefix}Status for {links} updated to 'More Information'."
-                elif btn == "notTA":
-                    lead_status = "Не ЦА"
-                    new_message = f"{prefix}Status for {links} updated to 'Не ЦА'."
-                write_value_to_cell(lead_status,
-                                    sheet_name="Leads CRM", cell_range=f"{columns_letters[0]}{index + 2}",
-                                    spreadsheet_env_name='ΛV_LINKEDIN_LEADGEN_SPREADSHEET_ID')
-                today = datetime.now().strftime("%d-%m-%Y")
-                write_value_to_cell(value=today,
-                                    sheet_name="Leads CRM", cell_range=f"{columns_letters[1]}{index + 2}",
-                                    spreadsheet_env_name='ΛV_LINKEDIN_LEADGEN_SPREADSHEET_ID')
-            else:
+            data = query.data
+            btn, index_str, user, todays_number = data.split("_")
+            index = int(index_str)
+            todays_number = int(todays_number)
+            current_message_text = query.message.text
+            row = self.leads_df.iloc[index]
+            linkedin_profile = row['LinkedIn Profile']
+            last_name = row['Last Name']
+            links = f'<a href="{linkedin_profile}">{last_name}</a> - <a href="https://docs.google.com/spreadsheets/d/1ksKFLOutQZI4MgQxvodqeAuHBri5IYQVPTFXXd1SyXo/edit?gid=404358083#gid=404358083&range={index + 2}:{index + 2}">LeadGen</a>'
+            if btn == "skip":
                 self._add_skipped_lead(user, index)
                 new_message = f"{links} was just skipped."
-            await query.edit_message_text(text=new_message, parse_mode='HTML')
-            self._update_processed_lead(user)
+                await query.edit_message_text(text=new_message, parse_mode='HTML')
+            else:
+                if btn == "thanks":
+                    lead_status = "Thanks message"
+                elif btn in ["request", "moreInfo", "notTA"]:
+                    if btn == "request":
+                        lead_status = "Request"
+                    elif btn == "moreInfo":
+                        lead_status = "More Information"
+                    elif btn == "notTA":
+                        lead_status = "Не ЦА"
+                    today = datetime.now().strftime("%d-%m-%Y")
+                    write_value_to_cell(value=today,
+                                        sheet_name="Leads CRM", cell_range=f"{self.columns_letters[f'M0 {user}']}{index + 2}",
+                                        spreadsheet_env_name='ΛV_LINKEDIN_LEADGEN_SPREADSHEET_ID')
+                write_value_to_cell(lead_status,
+                                    sheet_name="Leads CRM", cell_range=f"{self.columns_letters[f'Статус ліда ({user})']}{index + 2}",
+                                    spreadsheet_env_name='ΛV_LINKEDIN_LEADGEN_SPREADSHEET_ID')
+                prefix = f"{todays_number}/{self.number_of_leads_for_a_day} ({index + 2}/{len(self.leads_df)}) "
+                new_message = f"{prefix}Status for {links} updated to '{lead_status}'."
+                await query.edit_message_text(text=new_message, parse_mode='HTML')
+                self.leads_df.at[index, f"Статус ліда ({user})"] = lead_status
+
+                self._update_processed_lead(user)
 
             await self.send_next_message(user)
         except ValueError as e:
@@ -192,6 +203,16 @@ class LeadGenReminder:
             await query.edit_message_text(text=f"Error: {e}")
 
     async def remind_to_send_message(self):
+        columns = ["First Name", "Last Name", "LinkedIn Profile", "Статус ліда (Andrus)", "M0 Andrus",
+                   "Статус ліда (Juras)", "Company Desc", "Suggested Outreach"]
+        self.leads_df = read_specific_columns(columns_to_extract=columns, sheet_name="Leads CRM",
+                                              spreadsheet_env_name='ΛV_LINKEDIN_LEADGEN_SPREADSHEET_ID')
+        columns_to_extract = []
+        for user in self.users_to_send:
+            columns_to_extract.append(f"Статус ліда ({user})")
+            columns_to_extract.append(f"M0 {user}")
+        self.columns_letters = get_column_letters(columns_to_extract, "Leads CRM",
+                                             spreadsheet_env_name='ΛV_LINKEDIN_LEADGEN_SPREADSHEET_ID')
         for user in self.users_to_send:
             await self.send_next_message(user)
 

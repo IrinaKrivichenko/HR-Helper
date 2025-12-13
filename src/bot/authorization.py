@@ -92,7 +92,7 @@ class UserAuthorizationManager:
         with self.lock:
             users_to_notify = self.authorized_users.copy()
             for user in users_to_notify:
-                if True: # user != 'irina_199':
+                if user != 'irina_199':
                     chat_id = self.authorized_users.pop(user)
                     await self.send_logout_message(user, chat_id)
 
