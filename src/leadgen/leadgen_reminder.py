@@ -2,6 +2,8 @@ import json
 from datetime import datetime
 from pathlib import Path
 import re
+import locale
+from datetime import datetime, timedelta
 
 import pandas as pd
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -24,16 +26,7 @@ class LeadGenReminder:
         self.users_to_send = {"Andrus":  381735431}  # 694614399}
         # self.users_to_send = {"Andrus":  694614399}
         self.number_of_leads_for_a_day = 10
-        columns = ["First Name", "Last Name", "LinkedIn Profile", "Статус ліда (Andrus)", "M0 Andrus",
-                   "Статус ліда (Juras)", "Company Desc"]
-        self.leads_df = read_specific_columns(columns_to_extract=columns, sheet_name="Leads CRM",
-                                              spreadsheet_env_name='ΛV_LINKEDIN_LEADGEN_SPREADSHEET_ID')
-        columns_to_extract = []
-        for user in self.users_to_send:
-            columns_to_extract.append(f"Статус ліда ({user})")
-            columns_to_extract.append(f"M0 {user}")
-        self.columns_letters = get_column_letters(columns_to_extract, "Leads CRM",
-                                                  spreadsheet_env_name='ΛV_LINKEDIN_LEADGEN_SPREADSHEET_ID')
+        self._update_in_cache_leads_df()
         self.application = None
 
 
@@ -83,17 +76,18 @@ class LeadGenReminder:
         if done_today >= self.number_of_leads_for_a_day:
                 return None, done_today
 
-        contact_leads = self.leads_df[(self.leads_df[f"Статус ліда ({user})"] == "Contact")
-                                 & (self.leads_df["LinkedIn Profile"] != '')
-                                 & (~self.leads_df.index.isin(skipped_indices))]
-        if not contact_leads.empty:
-            for index, row in contact_leads.iterrows():
-                return row, done_today
+        # contact_leads = self.leads_df[(self.leads_df[f"Статус ліда ({user})"] == "Contact")
+        #                          & (self.leads_df["LinkedIn Profile"] != '')
+        #                          & (~self.leads_df.index.isin(skipped_indices))]
+        # if not contact_leads.empty:
+        #     for index, row in contact_leads.iterrows():
+        #         return row, done_today
 
         filtered_leads = self.leads_df[(self.leads_df["Статус ліда (Juras)"] != "Не ЦА")
                                   & (self.leads_df["LinkedIn Profile"] != '')
                                   & (~self.leads_df.index.isin(skipped_indices))]
-        user_filtered_leads = filtered_leads[(filtered_leads[f"Статус ліда ({user})"] == "")]
+        user_filtered_leads = filtered_leads[(filtered_leads[f"Статус ліда ({user})"] == "")
+                                | (self.leads_df[f"Статус ліда ({user})"] == "Contact")]
         if len(user_filtered_leads) == 0:
             return None, done_today
         for index, row in user_filtered_leads.iterrows():
@@ -116,10 +110,12 @@ class LeadGenReminder:
                 )
             return
         linkedin_profile = row['LinkedIn Profile']
+        first_name = row['First Name'] if row['First Name'] else "name not defined"
         last_name = row['Last Name']
+        suggested_outreach = row['Suggested Outreach']
         index = row.name
         todays_number = f"{done_today+1} of {self.number_of_leads_for_a_day}\n"
-        links = f'<a href="{linkedin_profile}">{last_name}</a> - <a href="https://docs.google.com/spreadsheets/d/1ksKFLOutQZI4MgQxvodqeAuHBri5IYQVPTFXXd1SyXo/edit?gid=404358083#gid=404358083&range={index+2}:{index+2}">LeadGen</a>'
+        links = f'<a href="{linkedin_profile}">{first_name} {last_name}</a> - <a href="https://docs.google.com/spreadsheets/d/1ksKFLOutQZI4MgQxvodqeAuHBri5IYQVPTFXXd1SyXo/edit?gid=404358083#gid=404358083&range={index+2}:{index+2}">LeadGen</a>'
         if row[f"Статус ліда ({user})"] == "Contact":
             keyboard = [
                 [
@@ -128,6 +124,7 @@ class LeadGenReminder:
                 ]
             ]
             message = f'{todays_number}Please send a Thanks message to {links}'
+            # suggested_outreach = ""
         else:
             keyboard = [
                 [
@@ -141,12 +138,9 @@ class LeadGenReminder:
 
         reply_markup = InlineKeyboardMarkup(keyboard)
         try:
-            await self.application.bot.send_message(
-                chat_id=self.users_to_send[user],
-                text=message,
-                parse_mode='HTML',
-                reply_markup=reply_markup
-            )
+            await self.application.bot.send_message(chat_id=self.users_to_send[user], text=message, parse_mode='HTML', reply_markup=reply_markup)
+            if suggested_outreach:
+                await self.application.bot.send_message(chat_id=self.users_to_send[user],text=suggested_outreach)
         except Exception as e:
             print(f"Error sending message to {user}: {e}")
 
@@ -171,6 +165,7 @@ class LeadGenReminder:
                 new_message = f"{links} was just skipped."
                 await query.edit_message_text(text=new_message, parse_mode='HTML')
             else:
+                today = datetime.now().strftime("%Y-%m-%d %a")
                 if btn == "thanks":
                     lead_status = "Thanks message"
                 elif btn in ["request", "moreInfo", "notTA"]:
@@ -180,10 +175,13 @@ class LeadGenReminder:
                         lead_status = "More Information"
                     elif btn == "notTA":
                         lead_status = "Не ЦА"
-                    today = datetime.now().strftime("%d-%m-%Y")
                     write_value_to_cell(value=today,
                                         sheet_name="Leads CRM", cell_range=f"{self.columns_letters[f'M0 {user}']}{index + 2}",
                                         spreadsheet_env_name='ΛV_LINKEDIN_LEADGEN_SPREADSHEET_ID')
+                write_value_to_cell(value=today,
+                                    sheet_name="Leads CRM",
+                                    cell_range=f"{self.columns_letters[f'Datetime of the last touch {user}']}{index + 2}",
+                                    spreadsheet_env_name='ΛV_LINKEDIN_LEADGEN_SPREADSHEET_ID')
                 write_value_to_cell(lead_status,
                                     sheet_name="Leads CRM", cell_range=f"{self.columns_letters[f'Статус ліда ({user})']}{index + 2}",
                                     spreadsheet_env_name='ΛV_LINKEDIN_LEADGEN_SPREADSHEET_ID')
@@ -203,6 +201,11 @@ class LeadGenReminder:
             await query.edit_message_text(text=f"Error: {e}")
 
     async def remind_to_send_message(self):
+        self._update_in_cache_leads_df()
+        for user in self.users_to_send:
+            await self.send_next_message(user)
+
+    def _update_in_cache_leads_df(self):
         columns = ["First Name", "Last Name", "LinkedIn Profile", "Статус ліда (Andrus)", "M0 Andrus",
                    "Статус ліда (Juras)", "Company Desc", "Suggested Outreach"]
         self.leads_df = read_specific_columns(columns_to_extract=columns, sheet_name="Leads CRM",
@@ -211,10 +214,9 @@ class LeadGenReminder:
         for user in self.users_to_send:
             columns_to_extract.append(f"Статус ліда ({user})")
             columns_to_extract.append(f"M0 {user}")
+            columns_to_extract.append(f"Datetime of the last touch {user}")
         self.columns_letters = get_column_letters(columns_to_extract, "Leads CRM",
-                                             spreadsheet_env_name='ΛV_LINKEDIN_LEADGEN_SPREADSHEET_ID')
-        for user in self.users_to_send:
-            await self.send_next_message(user)
+                                                  spreadsheet_env_name='ΛV_LINKEDIN_LEADGEN_SPREADSHEET_ID')
 
     def register_handlers(self, application):
         application.add_handler(CallbackQueryHandler(self.handle_callback))
