@@ -10,6 +10,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackQueryHandler
 
 from src.google_services.sheets import read_specific_columns, write_value_to_cell, get_column_letters
+from src.leadgen.thnx_for_connection_msg import generate_thnx_for_connection_msg
 
 
 def extract_links_from_text(text):
@@ -76,12 +77,12 @@ class LeadGenReminder:
         if done_today >= self.number_of_leads_for_a_day:
                 return None, done_today
 
-        # contact_leads = self.leads_df[(self.leads_df[f"Статус ліда ({user})"] == "Contact")
-        #                          & (self.leads_df["LinkedIn Profile"] != '')
-        #                          & (~self.leads_df.index.isin(skipped_indices))]
-        # if not contact_leads.empty:
-        #     for index, row in contact_leads.iterrows():
-        #         return row, done_today
+        contact_leads = self.leads_df[(self.leads_df[f"Статус ліда ({user})"] == "Contact")
+                                 & (self.leads_df["LinkedIn Profile"] != '')
+                                 & (~self.leads_df.index.isin(skipped_indices))]
+        if not contact_leads.empty:
+            for index, row in contact_leads.iterrows():
+                return row, done_today
 
         filtered_leads = self.leads_df[(self.leads_df["Статус ліда (Juras)"] != "Не ЦА")
                                   & (self.leads_df["LinkedIn Profile"] != '')
@@ -124,7 +125,7 @@ class LeadGenReminder:
                 ]
             ]
             message = f'{todays_number}Please send a Thanks message to {links}'
-            # suggested_outreach = ""
+            suggested_messages = generate_thnx_for_connection_msg(row)
         else:
             keyboard = [
                 [
@@ -135,12 +136,14 @@ class LeadGenReminder:
                 ]
             ]
             message = f'{todays_number}Please send an M0 message to {links}'
+            suggested_messages = [suggested_outreach]
 
         reply_markup = InlineKeyboardMarkup(keyboard)
         try:
             await self.application.bot.send_message(chat_id=self.users_to_send[user], text=message, parse_mode='HTML', reply_markup=reply_markup)
-            if suggested_outreach:
-                await self.application.bot.send_message(chat_id=self.users_to_send[user],text=suggested_outreach)
+            if suggested_messages and suggested_messages[0]:
+                for suggested_outreach in suggested_messages:
+                    await self.application.bot.send_message(chat_id=self.users_to_send[user],text=suggested_outreach)
         except Exception as e:
             print(f"Error sending message to {user}: {e}")
 
@@ -207,7 +210,9 @@ class LeadGenReminder:
 
     def _update_in_cache_leads_df(self):
         columns = ["First Name", "Last Name", "LinkedIn Profile", "Статус ліда (Andrus)", "M0 Andrus",
-                   "Статус ліда (Juras)", "Company Desc", "Suggested Outreach"]
+                   "Статус ліда (Juras)", "Suggested Outreach",
+                   "Company Name", "Company Desc",
+                   "Founded", "Company size", "Company location / relevant office", "Company Motto"]
         self.leads_df = read_specific_columns(columns_to_extract=columns, sheet_name="Leads CRM",
                                               spreadsheet_env_name='ΛV_LINKEDIN_LEADGEN_SPREADSHEET_ID')
         columns_to_extract = []
