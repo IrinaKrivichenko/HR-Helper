@@ -64,8 +64,10 @@ def extract_years_since_founded(founded_str: str) -> Optional[int]:
 
 def generate_personalized_message(row: pd.Series, tone: str = "friendly",
                                   llm_handler: LLMHandler = None, model: str = "gpt-4.1-nano") -> str:
+    company_decr = row['Company Desc'] if row['Company Desc'] else f"{row['Why Relevant Now']} \n\n{row['Signals']}"
+
     years_since_founded = None
-    if "Founded" in row and pd.notna(row["Founded"]):
+    if "Founded" in row and not row["Founded"]=='':
         years_since_founded = extract_years_since_founded(row["Founded"])
 
     additional_fields = [
@@ -98,7 +100,7 @@ def generate_personalized_message(row: pd.Series, tone: str = "friendly",
                 f"Recipient Details:\n"
                 f"- Recipient’s First Name: {row['First Name']}\n"
                 f"- Recipient’s Company: {row['Company Name']}\n"
-                f"- Recipient’s Company Description: {row['Company Desc']}\n"
+                f"- Recipient’s Company Description: {company_decr}\n"
                 f"{additional_info_str}\n\n"
                 f"User Info:\n"
                 f"- Name: {USER_FIRST_NAME}\n"

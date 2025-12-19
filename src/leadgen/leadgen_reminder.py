@@ -209,10 +209,11 @@ class LeadGenReminder:
             await self.send_next_message(user)
 
     def _update_in_cache_leads_df(self):
-        columns = ["First Name", "Last Name", "LinkedIn Profile", "Статус ліда (Andrus)", "M0 Andrus",
-                   "Статус ліда (Juras)", "Suggested Outreach",
+        columns = ["First Name", "Last Name", "LinkedIn Profile", "Статус ліда (Juras)",
+                   "Статус ліда (Andrus)", "M0 Andrus", "Datetime of the last touch Andrus",
                    "Company Name", "Company Desc",
-                   "Founded", "Company size", "Company location / relevant office", "Company Motto"]
+                   "Founded", "Company size", "Company location / relevant office", "Company Motto",
+                   "Suggested Outreach", 'Why Relevant Now', 'Signals']
         self.leads_df = read_specific_columns(columns_to_extract=columns, sheet_name="Leads CRM",
                                               spreadsheet_env_name='ΛV_LINKEDIN_LEADGEN_SPREADSHEET_ID')
         columns_to_extract = []

@@ -15,7 +15,11 @@ def days_since(s: str, today: date | None = None) -> int:
     """
     Returns the number of calendar days from the dates in the string to "today."
     Ignores any extra characters (including the day of the week).
+    If no date in YYYY-MM-DD is found, returns 1000.
     """
-    d = parse_date_only(s)
+    try:
+        d = parse_date_only(s)
+    except ValueError:
+        return 1000
     today = today or date.today()
     return (today - d).days
