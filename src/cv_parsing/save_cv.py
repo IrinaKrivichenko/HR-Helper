@@ -24,10 +24,10 @@ def save_cv_info(extracted_data, file_path):
     else:
         existence_cv = "you haven't send me file"
         full_name = f'{extracted_data["First Name"]} {extracted_data["Last Name"]}'.strip()
-    extracted_data["№"] = "=A3+1"
+    extracted_data["№"] = "=[№]3+1"
     extracted_data["LVL of engagement"] = "➕Added"
-    extracted_data["EWR 168hr/mnth"] = "=CEILING(AA2*168;10)"
-    extracted_data["PWR 168hr/mnth"] = "=CEILING(AC2*168;10)"
+    extracted_data["EWR 168hr/mnth"] = "=CEILING([Entry wage rate (EWR)]2*168;10)"
+    extracted_data["PWR 168hr/mnth"] = "=CEILING([Entry wage rate (PWR)]2*168;10)"
     local_timezone = get_localzone()
     extracted_data["Date of CV parsing"] = datetime.now(local_timezone).strftime('%Y-%m-%d %H:%M:%S %Z')
     if  "Phone" in extracted_data and extracted_data["Phone"]:

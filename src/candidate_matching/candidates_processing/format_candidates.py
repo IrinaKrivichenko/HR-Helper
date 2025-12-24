@@ -34,7 +34,7 @@ def format_candidate_string(row, stack, index,  show_reasoning=False):
             contacts_list.append(f"<a href='{row['WhatsApp']}'>WhatsApp</a>")
         else:
             contacts_list.append(row['WhatsApp'])
-    if len(row['LinkedIn'])>2 and len(contacts_list) < 2:
+    if len(row['LinkedIn'])>2 and len(contacts_list) < 3:
         contacts_list.append(f"<a href='{row['LinkedIn']}'>LinkedIn</a>")
     if len(row['Phone'])>2 and len(contacts_list) < 2:
         phone = row['Phone']
@@ -63,7 +63,7 @@ def format_candidate_string(row, stack, index,  show_reasoning=False):
     # Create a string for the candidate
     suitability = int(float(row.get('Suitability Score', '0'))*100)
     person_from = row.get('From', '_')
-    engagement = extract_emoji(row['LVL of engagement'])
+    engagement = row['LVL of engagement'] # extract_emoji(row['LVL of engagement'])
     seniority = row.get('Seniority', '_')
     roles = ", ".join(row.get('Matched Roles', []))
     location = row.get('Location', '_')

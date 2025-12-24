@@ -1,10 +1,8 @@
 import traceback
 from typing import Optional
-
 import pandas as pd
 from pydantic import BaseModel, Field
 from datetime import datetime
-
 from src.data_processing.nlp.llm_handler import LLMHandler
 from src.logger import logger
 
@@ -16,36 +14,20 @@ USER_COMPANY_DESC = "AI-driven solutions for businesses"
 USER_COMPANY_MISSION = "help businesses leverage artificial intelligence to enhance operations and achieve goals"
 USER_COMPANY_FOCUS = "developing and implementing tailored AI solutions"
 
+class FollowUpMessage(BaseModel):
+    greeting: str = Field(..., max_length=50, description="Casual greeting and well-wishing.")
+    connection_mention: str = Field(..., max_length=50, description="Mention of previous connection.")
+    interest_question: str = Field(..., max_length=120, description="Question or interest in their work, challenges, or experience.")
+    stay_in_touch: str = Field(..., max_length=100, description="Offer to stay in touch and potential collaboration. Use word 'nice'")
 
-class PersonalizedThanksMessage(BaseModel):
-    # Reasoning: Why this message is being sent to this recipient
-    reasoning: str = Field(..., description="Brief reasoning for sending this message (e.g., shared interests, mutual connections, or admiration for their work)." )
-    # Greeting and gratitude
-    greeting: str = Field( ..., description="Brief greeting and thanks for connecting.  ")
-    # Admiration for the recipient’s mission or achievements
-    admiration: str = Field( ..., description="Mention of the recipient’s company mission or achievements.")
-    # Specific mention of technologies or projects
-    specific_mention: str = Field( default="", description="If there is enough information to fill in this field, otherwise leave it empty string. Specific project or technology that impresses you.")
-    # One-sentence introduction to Ostlab company
-    company_intro: str = Field( ..., description="Brief description of OstLab’s mission.")
-    # Connection between IT and their field
-    connection: str = Field( ..., max_length=100, description="How IT complements their work or shared vision.")
-    # Offer to stay in touch
-    stay_in_touch: str = Field(..., description="Polite offer to stay in touch and learn from them.")
-    # Closing gratitude
-    closing: str = Field(..., description="Final thanks and compliment.")
-
-def format_thanks_message(extraction: PersonalizedThanksMessage) -> str:
-    specific_mention = extraction.specific_mention if extraction.specific_mention else ''
+def format_follow_up_message(extraction: FollowUpMessage) -> str:
     message_parts = [
         f"{extraction.greeting}",
-        f"\n{extraction.admiration} {specific_mention}",
-        f"\n{extraction.company_intro} {extraction.connection}",
-        f"\n{extraction.stay_in_touch} {extraction.closing}"
+        f"\n{extraction.connection_mention} {extraction.interest_question}",
+        f"\n{extraction.stay_in_touch}"
     ]
     formatted_message = "\n".join(message_parts)
     return formatted_message
-
 
 def extract_years_since_founded(founded_str: str) -> Optional[int]:
     try:
@@ -61,13 +43,12 @@ def extract_years_since_founded(founded_str: str) -> Optional[int]:
         pass
     return None
 
-
-def generate_personalized_message(row: pd.Series, tone: str = "friendly",
-                                  llm_handler: LLMHandler = None, model: str = "gpt-4.1-nano") -> str:
+def generate_follow_up_message(row: pd.Series, tone: str = "friendly",
+                                llm_handler: LLMHandler = None, model: str = "gpt-4.1-nano") -> str:
     company_decr = row['Company Desc'] if row['Company Desc'] else f"{row['Why Relevant Now']} \n\n{row['Signals']}"
 
     years_since_founded = None
-    if "Founded" in row and not row["Founded"]=='':
+    if "Founded" in row and pd.notna(row["Founded"]):
         years_since_founded = extract_years_since_founded(row["Founded"])
 
     additional_fields = [
@@ -87,17 +68,19 @@ def generate_personalized_message(row: pd.Series, tone: str = "friendly",
             "role": "system",
             "content": (
                 f"You are a professional assistant helping {USER_FIRST_NAME}, {USER_POSITION} at {USER_COMPANY}, "
-                f"to draft personalized LinkedIn thank-you messages. "
-                f"The message should be concise, warm, and professional. "
-                f"Follow the provided structure and adapt if some details are missing. "
-                f"Use a {tone} and relax tone, but don't be intrusive."
-                f"Be brief and less complimentary words (1 or 2 compliments will be enough) ."
+                f"to draft a follow-up LinkedIn message for someone they connected with earlier. "
+                f"The message should be on equal terms but respectful, concise, warm, friendly, and professional, but not pushy. "
+                f"Use fewer compliments (1-2 compliments are enough). "
+                f"Make one small grammatical or punctuation mistake to make it sound more natural. "
+                f"Ask about their challenges, tools, or ways they use AI, depending on the information about their company. "
+                "Use neutral and less emotionally charged language."
+                f"Be brief."
             )
         },
         {
             "role": "user",
             "content": (
-                f"Draft a LinkedIn thank-you message using the following details:\n\n"
+                f"Draft a LinkedIn follow-up message using the following details:\n\n"
                 f"Recipient Details:\n"
                 f"- Recipient’s First Name: {row['First Name']}\n"
                 f"- Recipient’s Company: {row['Company Name']}\n"
@@ -111,13 +94,11 @@ def generate_personalized_message(row: pd.Series, tone: str = "friendly",
                 f"- Company Mission: {USER_COMPANY_MISSION}\n"
                 f"- Company Focus: {USER_COMPANY_FOCUS}\n\n"
                 f"Message Structure:\n"
-                f"1. Greeting and thanks for connecting.\n"
-                f"2. Personal admiration for the recipient’s company mission or achievements.\n"
-                f"3. Specific mention of their technologies or projects. If there is enough information to fill in this field, otherwise leave it empty string. \n"
-                f"4. One sentence about OstLab’s mission and your role.\n"
-                f"5. Connection between AI and their field.\n"
-                f"6. Offer to stay in touch and collaborate.\n"
-                f"7. Closing gratitude and signature with your name and position."
+                f"1. Casual greeting and well-wishing.\n"
+                f"2. Mention of previous connection and following their progress.\n"
+                f"3. Admiration for their work or achievements.\n"
+                f"4. Personal appreciation for insights or contributions they've shared (optional).\n"
+                f"5. Offer to stay in touch and learn more about their work."
             )
         }
     ]
@@ -130,15 +111,14 @@ def generate_personalized_message(row: pd.Series, tone: str = "friendly",
             model=model,
             max_tokens=1000,
             temperature=1,
-            response_format=PersonalizedThanksMessage
+            response_format=FollowUpMessage
         )
         extraction = response['parsed']
         usage = response['usage']
         cost_info = response['cost']
-        return format_thanks_message(extraction)
+        return format_follow_up_message(extraction)
     except Exception as e:
-        logger.error(f"failed: {e}")
+        logger.error(f"Failed to generate follow-up message: {e}")
         traceback_info = f"Traceback: {traceback.format_exc()}"
         logger.error(traceback_info)
         return traceback_info
-

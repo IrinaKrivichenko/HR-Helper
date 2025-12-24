@@ -8,6 +8,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.executors.pool import ThreadPoolExecutor
 from apscheduler.schedulers.background import BackgroundScheduler
 
+from src.candidate_matching.candidates_processing.input_candidates import check_and_update_past_available_dates
 from src.google_services.sheets import read_specific_columns, initialize_google_sheets_api
 from src.bot.authorization import  auth_manager
 from src.leadgen.leadgen_reminder import leadgen_reminder
@@ -82,12 +83,16 @@ def setup_scheduler():
     executors = {'default': ThreadPoolExecutor(max_workers=1)}
     scheduler = BackgroundScheduler(executors=executors)
     scheduler.add_job(
+        run_async_reset_authorized_users,
+        'cron', hour=1, minute=0
+    )
+    scheduler.add_job(
         clear_downloads_folder,
         'cron', hour=1, minute=2
     )
     scheduler.add_job(
-        run_async_reset_authorized_users,
-        'cron', hour=1, minute=0
+        check_and_update_past_available_dates,
+        'cron', hour=1, minute=4
     )
     scheduler.add_job(
         run_async_remind_to_send_message,

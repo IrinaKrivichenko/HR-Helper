@@ -21,11 +21,8 @@ def generate_thnx_for_connection_msg(row: pd.Series) -> list[str]:
     else:
         llm_handler = LLMHandler()
         if days_since(row['Datetime of the last touch Andrus'])<14:
-            messages = [generate_personalized_message(row, tone="friendly", llm_handler=llm_handler, model="gpt-4.1-nano"),
-                        generate_personalized_message(row, tone="inspirational", llm_handler=llm_handler, model="gpt-4.1-nano")]
+            messages = [generate_personalized_message(row, tone="friendly", llm_handler=llm_handler, model="gpt-4.1")]
         else:
-            messages = [
-                generate_follow_up_message(row, tone="friendly", llm_handler=llm_handler, model="gpt-4.1-nano"),
-                generate_follow_up_message(row, tone="inspirational", llm_handler=llm_handler, model="gpt-4.1-nano")]
+            messages = [generate_follow_up_message(row, tone="friendly", llm_handler=llm_handler, model="gpt-4.1")]
 
         return messages

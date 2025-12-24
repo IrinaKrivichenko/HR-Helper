@@ -221,6 +221,28 @@ def read_specific_columns(columns_to_extract, sheet_name=CANDIDATES_SHEET_NAME, 
     df['Row in Spreadsheets'] = df.index + 2
     return df
 
+
+def convert_formula_with_column_names(formula_with_names: str, sheet_dict: dict) -> str:
+    """
+    Converts a formula with column names to a formula with column letters.
+    Args:
+        formula_with_names: Formula with column names (e.g., "=SUM([Amount]1:[Amount]10)").
+        sheet_dict: Dictionary mapping column names to their letter designations.
+    Returns:
+        str: Formula with column letters (e.g., "=SUM(C1:C10)").
+    """
+    # Replace column names in the formula with their corresponding letters
+    for col_name, col_letter in sheet_dict.items():
+        # Escape special regex characters in the column name
+        escaped_col_name = re.escape(col_name)
+        # Replace occurrences of the column name in the formula
+        formula_with_names = re.sub(
+            rf'\[{escaped_col_name}\]',
+            col_letter,
+            formula_with_names
+        )
+    return formula_with_names
+
 def write_specific_columns(
     df,
     sheet_name=CANDIDATES_SHEET_NAME,
@@ -266,7 +288,7 @@ def write_specific_columns(
         ).execute()
 
         # Update data
-        values = df[column_name].fillna('').astype(str).tolist()
+        values = df[column_name].fillna('').apply(lambda x: _prepare_cell_value(x, columns_dict)).tolist()
         range_to_update = f"{sheet_name}!{column_letter}2:{column_letter}{len(df) + 1}"
         update_body = {'values': [[value] for value in values]}
         sheet.values().update(
@@ -308,15 +330,23 @@ def get_spreadsheet_id(sheet_name, sheet=None, spreadsheet_env_name='STAFF_SPREA
         raise e
 
 
-def _prepare_cell_value(value):
+def _prepare_cell_value(value, sheet_dict: dict = None):
     if value is None:
         return ''
-    # List or tuple of STRINGS
+    # Handle formulas (strings starting with '=')
+    if isinstance(value, str) and value.startswith('='):
+        if sheet_dict:
+            # Convert column names in the formula to letters
+            for col_name, col_letter in sheet_dict.items():
+                escaped_col_name = re.escape(col_name)
+                value = re.sub(rf'\[{escaped_col_name}\]', col_letter, value)
+        return value
+    # Handle lists or tuples of strings
     if isinstance(value, (list, tuple)) and all(isinstance(x, str) for x in value):
         if any(len(x) > 22 for x in value):
             return "\n\n".join(value)
         return ", ".join(value)
-    # Other types
+    # Handle other types
     return str(value)
 
 
@@ -389,7 +419,7 @@ def write_dict_to_sheet(data_dict, sheet_name, service=None, row_number=None, sp
 
             updates.append({
                 'range': cell_range,
-                'values': [[_prepare_cell_value(value)]]
+                'values': [[_prepare_cell_value(value, sheet_dict)]]
             })
 
         # Batch update all cells
@@ -421,56 +451,6 @@ def write_dict_to_sheet(data_dict, sheet_name, service=None, row_number=None, sp
 
 def write_value_to_cell(
     value,
-    sheet_name,
-    cell_range,
-    service=None,
-    spreadsheet_env_name='STAFF_SPREADSHEET_ID'
-) -> dict:
-    """
-    Записывает значение в указанную ячейку Google Sheets.
-
-    Args:
-        value: Значение для записи (строка, число, формула и т.д.).
-        sheet_name (str): Название листа.
-        cell_range (str): Адрес ячейки (например, "A1", "B2", "C3").
-        service: Объект Google Sheets API (если не передан, будет инициализирован).
-        spreadsheet_env_name (str): Название переменной окружения с идентификатором документа.
-
-    Returns:
-        dict: Ответ от Google Sheets API.
-    """
-    try:
-        if service is None:
-            service = initialize_google_sheets_api()
-
-        spreadsheet_id = os.getenv(spreadsheet_env_name)
-        sheet = service.spreadsheets()
-
-        # Формируем диапазон для обновления (например, "Cash Search!A1")
-        full_range = f"{sheet_name}!{cell_range}"
-
-        # Подготавливаем тело запроса
-        update_body = {
-            'values': [[value]]
-        }
-
-        # Обновляем значение в ячейке
-        response = sheet.values().update(
-            spreadsheetId=spreadsheet_id,
-            range=full_range,
-            valueInputOption='USER_ENTERED',  # Позволяет записывать формулы и форматированные значения
-            body=update_body
-        ).execute()
-
-        logger.info(f"Successfully wrote value '{value}' to cell {full_range}")
-        return response
-
-    except Exception as e:
-        logger.error(f"Error writing to cell {full_range}: {str(e)}")
-        raise e
-
-def write_value_to_cell(
-    value,
     sheet_name: str,
     cell_range: str,
     service=None,
@@ -498,8 +478,10 @@ def write_value_to_cell(
         sheet = service.spreadsheets()
         # Format the full range (e.g., "Cash Search!A1")
         full_range = f"{sheet_name}!{cell_range}"
+        # Prepare the value using _prepare_cell_value
+        prepared_value = _prepare_cell_value(value, sheet_dict=None)
         # Prepare the request body
-        update_body = {'values': [[value]]}
+        update_body = {'values': [[prepared_value]]}
         # Update the cell value
         response = sheet.values().update(
             spreadsheetId=spreadsheet_id,
