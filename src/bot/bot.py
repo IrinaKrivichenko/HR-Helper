@@ -120,6 +120,10 @@ async def process_user_request(update: Update, context: ContextTypes.DEFAULT_TYP
 
             llm_handler = LLMHandler()
             if input_type == "vacancy":
+                bot_user = await context.bot.get_me()
+                if bot_user.name == '@ostlab_hr_bot':
+                    text = f"TEST {text}"
+                    pass
                 await process_vacancy(update, text, user_name, llm_handler)
             elif input_type == "CV":
                 await process_cv(message, update, text,  file_path, user_name, llm_handler)

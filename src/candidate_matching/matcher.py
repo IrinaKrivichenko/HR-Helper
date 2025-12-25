@@ -8,21 +8,31 @@ from src.candidate_matching.candidates_processing.filtering import primary_filte
 from src.candidate_matching.candidates_processing.format_candidates import generate_candidates_summary, \
     generate_final_response
 from src.candidate_matching.candidates_processing.input_candidates import get_df_for_vacancy_search
+from src.candidate_matching.vacancy_processing.save_vacancy_to_sales import save_vacancy_to_sales
 from src.candidate_matching.vacancy_processing.vacancy_llm_processor import extract_vacancy_info
 from src.candidate_matching.vacancy_processing.vacancy_googlesheet import check_existing_vacancy, save_vacancy_description
 from src.candidate_matching.vacancy_processing.vacancy_splitter import split_vacancies
 from src.logger import logger
 from src.data_processing.nlp.llm_handler import LLMHandler
 
-def get_roles(df):
-    # Split the roles and explode them into separate rows
-    roles_series = df['Role'].str.split(',').explode()
-    # Get unique roles
-    unique_roles = roles_series.str.strip().unique()
-    unique_roles.sort()
-    return unique_roles
+# def get_roles(df):
+#     # Split the roles and explode them into separate rows
+#     roles_series = df['Role'].str.split(',').explode()
+#     # Get unique roles
+#     unique_roles = roles_series.str.strip().unique()
+#     unique_roles.sort()
+#     return unique_roles
 
-async def find_candidates_for_vacancy(vacancy, llm_handler, user):
+def extract_keyword(text: str) -> str:
+    if not text:
+        return None
+    first_word = text.strip().split()[0].upper()
+    if first_word in {"ALL", "TEST"}:
+        return first_word
+    return None
+
+
+async def find_candidates_for_vacancy(vacancy, llm_handler, user, keyword=None):
     start_time = time.time()
     vacancy_dict = {}  # Initialize vacancy_dict to store all necessary information
 
@@ -38,7 +48,7 @@ async def find_candidates_for_vacancy(vacancy, llm_handler, user):
 
     # Step 1: Initialize list of candidates
     step1_start_time = time.time()
-    initial_candidates_df = get_df_for_vacancy_search()
+    initial_candidates_df = get_df_for_vacancy_search(keyword)
     vacancy_dict['step1_candidates_number'] = len(initial_candidates_df)
     vacancy_dict['step1_time'] = time.time() - step1_start_time
 
@@ -75,13 +85,17 @@ async def find_candidates_for_vacancy(vacancy, llm_handler, user):
     vacancy_dict['total_time'] = time.time() - start_time
     save_vacancy_description(vacancy, prev_call, vacancy_dict, user)
 
-    return vacancy_dict['tg_answer']
+    return vacancy_dict['tg_answer'], vacancy_dict["Selected Candidates"]
 
 
 
 async def match_candidats(update: Update,  text, user_name, llm_handler=None) -> None:
     if llm_handler is None:
         llm_handler = LLMHandler()
+
+    keyword = extract_keyword(text)
+    if keyword:
+        text = text[len(keyword):].strip()
     vacancies = split_vacancies(text, llm_handler)
 
     message = f"Found {len(vacancies)} vacancies"
@@ -96,14 +110,16 @@ async def match_candidats(update: Update,  text, user_name, llm_handler=None) ->
           vacancy = vacancies[0]
           if len(vacancy) > len(text):
               vacancy = text
-          result = await find_candidates_for_vacancy(vacancy, llm_handler, user_name)
+          result, candidates = await find_candidates_for_vacancy(vacancy, llm_handler, user_name, keyword)
           logger.info("ready_to_send_message")
+          save_vacancy_to_sales(update, vacancy, candidates, keyword)
           await send_answer_message(update, result)
       else:
           results = []
           for vacancy in vacancies:
-              candidates = await find_candidates_for_vacancy(vacancy, llm_handler, user_name)
-              result = f"{vacancy}\n{candidates}\n"
+              result, candidates  = await find_candidates_for_vacancy(vacancy, llm_handler, user_name, keyword)
+              result = f"{vacancy}\n{result}\n"
+              save_vacancy_to_sales(update, vacancy, candidates, keyword)
               await send_answer_message(update, result)
               # update.message.reply_text(result)
 

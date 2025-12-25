@@ -30,7 +30,7 @@ def extract_numeric_value(value):
     except ValueError:
         return np.nan
 
-def filter_candidates_by_engagement(df: pd.DataFrame, col: str = "LVL of engagement") -> pd.DataFrame:
+def filter_candidates_by_engagement(df: pd.DataFrame, keyword=None, col: str = "LVL of engagement") -> pd.DataFrame:
     """
     Filters the DataFrame to include only rows where 'LVL of engagement' has specific values.
     Args:
@@ -89,7 +89,6 @@ def filter_candidates_by_engagement(df: pd.DataFrame, col: str = "LVL of engagem
     red_emojis = build_emoji_set(red_engagement_levels)
     yellow_emojis = build_emoji_set(yellow_engagement_levels)
     green_emojis = build_emoji_set(green_engagement_levels)
-
     df2 = df.copy()
     emoji_col = df2[col].astype(str).map(lambda s: extract_emoji(s) or "")
 
@@ -102,12 +101,13 @@ def filter_candidates_by_engagement(df: pd.DataFrame, col: str = "LVL of engagem
     has_red = has_any(red_emojis)
     has_yellow = has_any(yellow_emojis)
     has_green = has_any(green_emojis)
-
-    # Final logic:
-    # - remove if there are red ones
-    # - remove if there are yellow ones and no green ones (only yellow ones)
-    keep_mask = (~has_red) & (~(has_yellow & ~has_green))
-
+    # Filtering logic based on keyword
+    if keyword == "ALL":
+        # Keep all those without red emojis
+        keep_mask = ~has_red
+    else:
+        # Current logic: exclude red emojis and those with only yellow emojis
+        keep_mask = (~has_red) & (~(has_yellow & ~has_green))
     return df2.loc[keep_mask]
 
 
@@ -119,7 +119,7 @@ def clean_and_extract_first_word(name):
     first_word = cleaned_name.split()[0] if cleaned_name else ''
     return first_word
 
-def get_df_for_vacancy_search():
+def get_df_for_vacancy_search(keyword=None):
 
     # Define the columns to extract to find candidates for vacancy
     columns_to_extract = [
@@ -134,7 +134,7 @@ def get_df_for_vacancy_search():
     # Get specific columns with hyperlinks
     df = read_specific_columns(columns_to_extract)
     logger.info(f"number of candidates after reading {len(df)}" )
-    df = filter_candidates_by_engagement(df)
+    df = filter_candidates_by_engagement(df, keyword)
     df = df[df['Available From'].isna() | (df['Available From'] == '')]
 
     df['Full Name'] = df.apply(lambda row: f"{clean_and_extract_first_word(row['First Name'])} {clean_and_extract_first_word(row['Last Name'])}", axis=1)
