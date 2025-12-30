@@ -108,9 +108,9 @@ def filter_candidates_by_engagement(df: pd.DataFrame, keyword=None, col: str = "
     else:
         # Current logic: exclude red emojis and those with only yellow emojis
         keep_mask = (~has_red) & (~(has_yellow & ~has_green))
+        available_from_condition = df2['Available From'].isna() | (df2['Available From'] == '')
+        keep_mask = keep_mask & available_from_condition
     return df2.loc[keep_mask]
-
-
 
 
 
@@ -135,7 +135,7 @@ def get_df_for_vacancy_search(keyword=None):
     df = read_specific_columns(columns_to_extract)
     logger.info(f"number of candidates after reading {len(df)}" )
     df = filter_candidates_by_engagement(df, keyword)
-    df = df[df['Available From'].isna() | (df['Available From'] == '')]
+
 
     df['Full Name'] = df.apply(lambda row: f"{clean_and_extract_first_word(row['First Name'])} {clean_and_extract_first_word(row['Last Name'])}", axis=1)
     df['Role'] = df['Main Roles'] # + ", " + df['Additional Roles']
