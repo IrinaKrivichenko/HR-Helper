@@ -14,23 +14,25 @@ def find_telegram_username_link(text):
         return ""
 
 def parse_candidates_from_answer(text):
+    text = re.sub(r'Available From \d{4}-\d{2}-\d{2}', '', text)
     candidate_pattern = re.compile(
-        r'(\d+)\.\s*<a\s+href=[\'"](https://docs\.google\.com/spreadsheets/d/.*?)[\'"]>(.*?)<\/a>.*?(?:🟥(.*?)🟨|$)',
+        r'(\d+)\.\s*<a\s+href=[\'"](https://docs\.google\.com/spreadsheets/d/.*?)[\'"]>(.*?)<\/a>\s*(\d+)%.*?(?:🟥(.*?)🟨|$)',
         re.DOTALL
     )
     candidates = []
     for match in candidate_pattern.finditer(text):
         number = match.group(1)
+        suitability = match.group(4).strip()
         name = match.group(3).strip()
         link = match.group(2)
-        ewr_text = match.group(4).strip()
-        candidate_str = f"{number}. {name}"
+        ewr_text = match.group(5).strip() if match.group(5) else None
+
+        candidate_str = f"{number}. {suitability}% {name}"
         if ewr_text and ewr_text != "_":
-            candidate_str += f" EWR {ewr_text}"
+            candidate_str += f" {ewr_text}"
         candidate_str += f" {link}"
         candidates.append(candidate_str)
     return "\n".join(candidates)
-
 
 def save_vacancy_to_sales(update: Update, vacancy_text: str, answer: str, keyword: str|None = None):
     if "Best-fit:" in answer and keyword is None:

@@ -1,6 +1,8 @@
 import re
 from datetime import date
 
+import pandas as pd
+
 # Finds the first substring of the form YYYY-MM-DD in a string
 DATE_RE = re.compile(r'(\d{4})-(\d{2})-(\d{2})')
 
@@ -23,3 +25,36 @@ def days_since(s: str, today: date | None = None) -> int:
         return 1000
     today = today or date.today()
     return (today - d).days
+
+
+def is_available_soon(
+                            value: str | pd.Series,
+                            column_name: str | None = None,
+                            days_threshold: int = 30,
+                            today: date | None = None
+                        ) -> bool:
+    """
+    Checks if a date in the value is relevant:
+    - If empty, NaN, or blank → True.
+    - If days until date ≤ days_threshold → True.
+    - Otherwise → False.
+
+    :param value: Cell value (str) or DataFrame row (pd.Series).
+    :param column_name: Column name if value is a DataFrame row.
+    :param days_threshold: Day threshold (default: 30).
+    :param today: Current date (default: today).
+    :return: bool
+    """
+    today = today or date.today()
+
+    if isinstance(value, pd.Series):
+        if column_name is None:
+            raise ValueError("Specify column_name for pd.Series")
+        value = value.get(column_name, '')
+
+    if pd.isna(value) or value == '':
+        return True
+
+    days_left = days_since(value, today)
+    return days_left <= days_threshold
+

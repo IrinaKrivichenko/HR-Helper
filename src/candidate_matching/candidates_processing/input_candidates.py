@@ -5,6 +5,7 @@ from typing import Iterable, Set
 import numpy as np
 import pandas as pd
 
+from src.data_processing.date_parser import is_available_soon
 from src.data_processing.nlp.emoji_processing import extract_emoji
 from src.google_services.sheets import read_specific_columns, write_specific_columns
 from src.logger import logger
@@ -108,7 +109,10 @@ def filter_candidates_by_engagement(df: pd.DataFrame, keyword=None, col: str = "
     else:
         # Current logic: exclude red emojis and those with only yellow emojis
         keep_mask = (~has_red) & (~(has_yellow & ~has_green))
-        available_from_condition = df2['Available From'].isna() | (df2['Available From'] == '')
+        available_from_condition = df2.apply(
+            lambda row: is_available_soon(row, column_name='Available From', days_threshold=30),
+            axis=1
+        )
         keep_mask = keep_mask & available_from_condition
     return df2.loc[keep_mask]
 
@@ -128,7 +132,7 @@ def get_df_for_vacancy_search(keyword=None):
         'From', 'LinkedIn', 'Telegram', 'Phone', 'Email', 'WhatsApp',
         'Stack', 'Industries', 'Expertise', 'Languages',
         'Work hrs/mnth', 'Location', 'CV (original)', 'CV White Label',
-        'Entry wage rate (EWR)', 'Sell rate'
+        'Entry wage rate (EWR)', 'Sell rate', 'NDA'
     ]
 
     # Get specific columns with hyperlinks

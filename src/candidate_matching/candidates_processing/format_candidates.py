@@ -54,6 +54,8 @@ def format_candidate_string(row, stack, index,  show_reasoning=False):
         reasoning = ''
 
     full_name = row['Full Name']
+    available_from = row.get('Available From', '_')
+    available_from = f" Available From {available_from}" if len(available_from)>2  else ""
     # Generate a link to a row in Google Sheets
     doc_id = os.getenv("STAFF_SPREADSHEET_ID")
     page_id = os.getenv("CANDIDATES_SHEET_ID")
@@ -75,6 +77,8 @@ def format_candidate_string(row, stack, index,  show_reasoning=False):
     cv = f"<a href='{original}'>CV</a>" if len(original)>2  else original
     white_label = row.get('CV White Label', '_')
     wl = f"<a href='{white_label}'>WL</a>" if len(white_label)>2  else white_label
+    nda = row.get('NDA', '_')
+    nda = f"<a href='{nda}'>NDA</a>" if len(nda)>2  else ""
 
     buy_rate = row.get('Entry wage rate (EWR)', '_')
     sell_rate = row.get('Sell rate', '_')
@@ -82,7 +86,7 @@ def format_candidate_string(row, stack, index,  show_reasoning=False):
 
 
     candidate_str = f"""
-{index}. {google_sheet_row_link} {suitability}% {person_from} {engagement} {seniority} {roles} {location} — {tech_coverage} <code>{stack}</code> {languages} {cv}/{wl} {contacts}
+{index}. {google_sheet_row_link}{available_from} {suitability}% {person_from} {engagement} {seniority} {roles} {location} — {tech_coverage} <code>{stack}</code> {languages} {cv}/{wl} {contacts} {nda}
 {reasoning}
 🟥{buy_rate} 🟨{sell_rate} 🟩{margin}"""
     return candidate_str
