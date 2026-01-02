@@ -15,7 +15,7 @@ USER_COMPANY_MISSION = "help businesses leverage artificial intelligence to enha
 USER_COMPANY_FOCUS = "developing and implementing tailored AI solutions"
 
 class FollowUpMessage(BaseModel):
-    greeting: str = Field(..., max_length=50, description="Casual greeting and well-wishing.")
+    greeting: str = Field(..., max_length=50, description="Casual greeting and well-wishing. Please write Hey instead of Hi.")
     connection_mention: str = Field(..., max_length=50, description="Mention of previous connection.")
     interest_question: str = Field(..., max_length=120, description="Question or interest in their work, challenges, or experience.")
     stay_in_touch: str = Field(..., max_length=100, description="Offer to stay in touch and potential collaboration. Use word 'nice'")

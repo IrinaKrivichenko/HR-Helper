@@ -8,7 +8,7 @@ from src.cv_parsing.sections.section_identifier import identify_resume_sections
 def identify_resume_sections_and_projects(
     cv_text: str,
     llm_handler: Any,
-    model: str = "gpt-4.1-nano"
+    model: str = "gpt-4.1-mini"
 ) -> Dict[str, Any]:
     """
     Parallelly extracts structured resume sections and projects.

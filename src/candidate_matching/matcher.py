@@ -112,13 +112,13 @@ async def match_candidats(update: Update,  text, user_name, llm_handler=None) ->
               vacancy = text
           result, candidates = await find_candidates_for_vacancy(vacancy, llm_handler, user_name, keyword)
           logger.info("ready_to_send_message")
-          save_vacancy_to_sales(update, vacancy, result, keyword)
+          save_vacancy_to_sales(update, text, result, keyword)
           await send_answer_message(update, result)
       else:
           results = []
           for vacancy in vacancies:
               result, candidates  = await find_candidates_for_vacancy(vacancy, llm_handler, user_name, keyword)
-              save_vacancy_to_sales(update, vacancy, result, keyword)
+              save_vacancy_to_sales(update, text, result, keyword)
               result = f"{vacancy}\n{result}\n"
               await send_answer_message(update, result)
               # update.message.reply_text(result)

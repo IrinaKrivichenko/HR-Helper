@@ -11,7 +11,15 @@ from src.logger import logger
 # Constants for the user (Andrus)
 USER_FIRST_NAME = "Andrus"
 USER_POSITION = "CEO & Co-Founder"
+USER_INFO = "CEO & Co-Founder @ OstLab.uk | Building AI-Powered Solutions, Smart Platforms & Chatbots | Turning complex challenges into simple, intuitive IT solutions for successful Founders "
 USER_COMPANY = "OstLab"
+# "Responsibilities:
+# Strategic Leadership: Oversee the development and implementation of the company’s strategic goals and objectives. \nOperational Management: Manage day-to-day operations to ensure the company runs efficiently and effectively.
+# \nFinancial Oversight: Monitor the company’s financial performance, budgets, and forecasts to ensure financial health and sustainability.
+# \nTeam Leadership: Lead and mentor the executive team, fostering a culture of collaboration and innovation.
+# \nStakeholder Engagement: Act as the primary liaison between the board of directors, shareholders, and other key stakeholders.
+# \nBusiness Development: Identify and pursue new business opportunities to drive growth and expansion.
+# \nAt the helm of OstLab, our team is committed to transforming AI's potential into tangible solutions, leveraging my background in IT. We're pioneering strategic AI solutions to address complex challenges. Responsibilities: Strategic Leadership: Oversee the development and implementation of the company’s strategic goals and objectives. Operational Management: Manage day-to-day operations to ensure the company runs efficiently and effectively. Financial Oversight: Monitor the company’s financial performance, budgets, and forecasts to ensure financial health and sustainability. Team Leadership: Lead and mentor the executive team, fostering a culture of collaboration and innovation. Stakeholder Engagement: Act as the primary liaison between the board of directors, shareholders, and other key stakeholders. Business Development: Identify and pursue new business opportunities to drive growth and expansion."
 USER_COMPANY_DESC = "AI-driven solutions for businesses"
 USER_COMPANY_MISSION = "help businesses leverage artificial intelligence to enhance operations and achieve goals"
 USER_COMPANY_FOCUS = "developing and implementing tailored AI solutions"
@@ -21,7 +29,7 @@ class PersonalizedThanksMessage(BaseModel):
     # Reasoning: Why this message is being sent to this recipient
     reasoning: str = Field(..., description="Brief reasoning for sending this message (e.g., shared interests, mutual connections, or admiration for their work)." )
     # Greeting and gratitude
-    greeting: str = Field( ..., description="Brief greeting and thanks for connecting.  ")
+    greeting: str = Field( ..., description="Brief greeting and thanks for connecting. Please write Hey instead of Hi. ")
     # Admiration for the recipient’s mission or achievements
     admiration: str = Field( ..., description="Mention of the recipient’s company mission or achievements.")
     # Specific mention of technologies or projects
@@ -106,6 +114,7 @@ def generate_personalized_message(row: pd.Series, tone: str = "friendly",
                 f"User Info:\n"
                 f"- Name: {USER_FIRST_NAME}\n"
                 f"- Position: {USER_POSITION}\n"
+                f"- Information: {USER_INFO}\n"
                 f"- Company: {USER_COMPANY}\n"
                 f"- Company Description: {USER_COMPANY_DESC}\n"
                 f"- Company Mission: {USER_COMPANY_MISSION}\n"
