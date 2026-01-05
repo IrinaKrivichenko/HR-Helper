@@ -101,8 +101,8 @@ class LeadGenReminder:
                     )
                 if days_condition is not None:
                     for index, row in status_leads.iterrows():
-                        last_touch = row[f"Datetime of the last touch {user}"]
-                        if days_condition is None or days_since(last_touch, today) >= days_condition:
+                        days_since_last_touch = days_since(row[f"Datetime of the last touch {user}"], today)
+                        if days_since_last_touch >= days_condition:
                             return row, total_processed
                 else:
                     for index, row in status_leads.iterrows():
@@ -169,7 +169,8 @@ class LeadGenReminder:
             ]
             message = f'{todays_number}Please send an First outreach message to {links}'
             suggested_messages = []
-
+        days_since_last_touch = days_since(row[f"Datetime of the last touch {user}"], date.today())
+        message = f'{message}\n days_since_last_touch {days_since_last_touch}'
         reply_markup = InlineKeyboardMarkup(keyboard)
         try:
             await self.application.bot.send_message(chat_id=self.users_to_send[user], text=message, parse_mode='HTML', reply_markup=reply_markup)
@@ -193,8 +194,9 @@ class LeadGenReminder:
             current_message_text = query.message.text
             row = self.leads_df.iloc[index]
             linkedin_profile = row['LinkedIn Profile']
+            first_name = row['First Name'] if row['First Name'] else "name not defined"
             last_name = row['Last Name']
-            links = f'<a href="{linkedin_profile}">{last_name}</a> - <a href="https://docs.google.com/spreadsheets/d/1ksKFLOutQZI4MgQxvodqeAuHBri5IYQVPTFXXd1SyXo/edit?gid=404358083#gid=404358083&range={index + 2}:{index + 2}">LeadGen</a>'
+            links = f'<a href="{linkedin_profile}">{first_name} {last_name}</a> - <a href="https://docs.google.com/spreadsheets/d/1ksKFLOutQZI4MgQxvodqeAuHBri5IYQVPTFXXd1SyXo/edit?gid=404358083#gid=404358083&range={index + 2}:{index + 2}">LeadGen</a>'
             if btn == "skip":
                 self._add_skipped_lead(user, index)
                 new_message = f"{links} was just skipped."
@@ -221,21 +223,23 @@ class LeadGenReminder:
                     prev_status = ""
 
                 if row[f"M0 {user}"] == "":
-                    write_value_to_cell(value=today,
+                    write_value_to_cell(value=str(today),
                                         sheet_name="Leads CRM", cell_range=f"{self.columns_letters[f'M0 {user}']}{index + 2}",
                                         spreadsheet_env_name='ΛV_LINKEDIN_LEADGEN_SPREADSHEET_ID')
-                write_value_to_cell(value=today,
+                write_value_to_cell(value=str(today),
                                     sheet_name="Leads CRM",
                                     cell_range=f"{self.columns_letters[f'Datetime of the last touch {user}']}{index + 2}",
                                     spreadsheet_env_name='ΛV_LINKEDIN_LEADGEN_SPREADSHEET_ID')
                 write_value_to_cell(lead_status,
-                                    sheet_name="Leads CRM", cell_range=f"{self.columns_letters[f'Статус ліда ({user})']}{index + 2}",
+                                    sheet_name="Leads CRM",
+                                    cell_range=f"{self.columns_letters[f'Статус ліда ({user})']}{index + 2}",
                                     spreadsheet_env_name='ΛV_LINKEDIN_LEADGEN_SPREADSHEET_ID')
                 number_of_leads_for_a_day = sum(self.status_doses[status]["dose"] for status in self.status_doses)
                 prefix = f"{todays_number}/{number_of_leads_for_a_day} ({index + 2}/{len(self.leads_df)}) "
                 new_message = f"{prefix}Status for {links} updated to '{lead_status}'."
                 await query.edit_message_text(text=new_message, parse_mode='HTML')
                 self.leads_df.at[index, f"Статус ліда ({user})"] = lead_status
+                self.leads_df.at[index, f'Datetime of the last touch {user}'] = today
 
                 self._update_processed_lead(user, prev_status)
 

@@ -1,5 +1,12 @@
 import re
 
+from telegram import Update
+from tzlocal import get_localzone
+
+from src.bot.utils import send_answer_message
+from src.google_services.sheets import write_dict_to_sheet
+
+
 def find_lead_pattern(text: str):
     # Regular expression "Lead X of Y"
     pattern = r'Lead \d+ of \d+'
@@ -42,3 +49,13 @@ def parse_lead_text(text):
             result[key] = result[key].replace("•", "").strip()
 
     return result
+
+
+async def process_lead(update: Update, text: str,   user_name: str):
+    lead_dict = parse_lead_text(text)
+    lead_dict["#"] = "=A3+1"
+    local_timezone = get_localzone()
+    lead_dict["Datetime"] = datetime.now(local_timezone).strftime('%Y-%m-%d %H:%M:%S %Z')
+    lead_dict["TG user"] = f"t.me/{user_name}"
+    write_dict_to_sheet(data_dict=lead_dict, sheet_name="Leads2", spreadsheet_env_name='ΛV_LINKEDIN_LEADGEN_SPREADSHEET_ID')
+    await send_answer_message(update, f"Lead {lead_dict['Company']} is parsed")

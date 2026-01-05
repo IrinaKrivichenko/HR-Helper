@@ -11,77 +11,68 @@ from src.logger import logger
 # Constants for the user (Andrus)
 USER_FIRST_NAME = "Andrus"
 USER_POSITION = "CEO & Co-Founder"
-USER_INFO = "CEO & Co-Founder @ OstLab.uk | Building AI-Powered Solutions, Smart Platforms & Chatbots | Turning complex challenges into simple, intuitive IT solutions for successful Founders "
-USER_COMPANY = "OstLab"
-# "Responsibilities:
-# Strategic Leadership: Oversee the development and implementation of the company’s strategic goals and objectives. \nOperational Management: Manage day-to-day operations to ensure the company runs efficiently and effectively.
-# \nFinancial Oversight: Monitor the company’s financial performance, budgets, and forecasts to ensure financial health and sustainability.
-# \nTeam Leadership: Lead and mentor the executive team, fostering a culture of collaboration and innovation.
-# \nStakeholder Engagement: Act as the primary liaison between the board of directors, shareholders, and other key stakeholders.
-# \nBusiness Development: Identify and pursue new business opportunities to drive growth and expansion.
-# \nAt the helm of OstLab, our team is committed to transforming AI's potential into tangible solutions, leveraging my background in IT. We're pioneering strategic AI solutions to address complex challenges. Responsibilities: Strategic Leadership: Oversee the development and implementation of the company’s strategic goals and objectives. Operational Management: Manage day-to-day operations to ensure the company runs efficiently and effectively. Financial Oversight: Monitor the company’s financial performance, budgets, and forecasts to ensure financial health and sustainability. Team Leadership: Lead and mentor the executive team, fostering a culture of collaboration and innovation. Stakeholder Engagement: Act as the primary liaison between the board of directors, shareholders, and other key stakeholders. Business Development: Identify and pursue new business opportunities to drive growth and expansion."
-USER_COMPANY_DESC = "AI-driven solutions for businesses"
-USER_COMPANY_MISSION = "help businesses leverage artificial intelligence to enhance operations and achieve goals"
-USER_COMPANY_FOCUS = "developing and implementing tailored AI solutions"
+USER_COMPANY = "OstLab.uk"
+USER_COMPANY_DESC = "Building AI-Powered Solutions, Smart Platforms & Chatbots"
+USER_COMPANY_MISSION = "Turning complex challenges into simple, intuitive IT solutions for successful Founders"
+USER_COMPANY_FOCUS = "Strategic AI solutions to address complex challenges"
+USER_RESPONSIBILITIES = (
+    "Strategic Leadership: Oversee the development and implementation of the company’s strategic goals and objectives. "
+    "Operational Management: Manage day-to-day operations to ensure the company runs efficiently and effectively. "
+    "Financial Oversight: Monitor the company’s financial performance, budgets, and forecasts to ensure financial health and sustainability. "
+    "Team Leadership: Lead and mentor the executive team, fostering a culture of collaboration and innovation. "
+    "Stakeholder Engagement: Act as the primary liaison between the board of directors, shareholders, and other key stakeholders. "
+    "Business Development: Identify and pursue new business opportunities to drive growth and expansion."
+)
+
+# class PersonalizedThanksMessage(BaseModel):
+#     # Reasoning: Why this message is being sent to this recipient
+#     reasoning: str = Field(..., description="Brief reasoning for sending this message (e.g., shared interests, mutual connections, or admiration for their work)." )
+#     # Greeting and gratitude
+#     greeting: str = Field( ..., description="Brief greeting and thanks for connecting. Please write Hey instead of Hi. ")
+#     # Admiration for the recipient’s mission or achievements
+#     admiration: str = Field( ..., description="Mention of the recipient’s company mission or achievements.")
+#     # Specific mention of technologies or projects
+#     specific_mention: str = Field( default="", description="If there is enough information to fill in this field, otherwise leave it empty string. Specific project or technology that impresses you.")
+#     # One-sentence introduction to Ostlab company
+#     company_intro: str = Field( ..., description="Brief description of OstLab’s mission.")
+#     # Connection between IT and their field
+#     connection: str = Field( ..., description="How IT complements their work or shared vision.")
+#     # Offer to stay in touch
+#     stay_in_touch: str = Field(..., description="Polite offer to stay in touch and learn from them.")
+#     # Closing gratitude
+#     closing: str = Field(..., description="Final thanks and compliment.")
+#
+# def format_thanks_message(extraction: PersonalizedThanksMessage) -> str:
+#     specific_mention = extraction.specific_mention if extraction.specific_mention else ''
+#     message_parts = [
+#         f"{extraction.greeting}",
+#         f"\n{extraction.admiration} {specific_mention}",
+#         f"\n{extraction.company_intro} {extraction.connection}",
+#         f"\n{extraction.stay_in_touch} {extraction.closing}"
+#     ]
+#     formatted_message = "\n".join(message_parts)
+#     return formatted_message
 
 
 class PersonalizedThanksMessage(BaseModel):
-    # Reasoning: Why this message is being sent to this recipient
-    reasoning: str = Field(..., description="Brief reasoning for sending this message (e.g., shared interests, mutual connections, or admiration for their work)." )
-    # Greeting and gratitude
-    greeting: str = Field( ..., description="Brief greeting and thanks for connecting. Please write Hey instead of Hi. ")
-    # Admiration for the recipient’s mission or achievements
-    admiration: str = Field( ..., description="Mention of the recipient’s company mission or achievements.")
-    # Specific mention of technologies or projects
-    specific_mention: str = Field( default="", description="If there is enough information to fill in this field, otherwise leave it empty string. Specific project or technology that impresses you.")
-    # One-sentence introduction to Ostlab company
-    company_intro: str = Field( ..., description="Brief description of OstLab’s mission.")
-    # Connection between IT and their field
-    connection: str = Field( ..., max_length=100, description="How IT complements their work or shared vision.")
-    # Offer to stay in touch
-    stay_in_touch: str = Field(..., description="Polite offer to stay in touch and learn from them.")
-    # Closing gratitude
-    closing: str = Field(..., description="Final thanks and compliment.")
+    reasoning: str = Field(..., description="Brief reasoning for sending this message.")
+    holiday_mention: Optional[str] = Field(default=None, description="Mention of a holiday in the recipient's location on the current date, if applicable.")
+    message: str = Field(..., description="The full thank-you message text.")
 
 def format_thanks_message(extraction: PersonalizedThanksMessage) -> str:
-    specific_mention = extraction.specific_mention if extraction.specific_mention else ''
-    message_parts = [
-        f"{extraction.greeting}",
-        f"\n{extraction.admiration} {specific_mention}",
-        f"\n{extraction.company_intro} {extraction.connection}",
-        f"\n{extraction.stay_in_touch} {extraction.closing}"
-    ]
-    formatted_message = "\n".join(message_parts)
+    formatted_message = extraction.message
     return formatted_message
 
-
-def extract_years_since_founded(founded_str: str) -> Optional[int]:
-    try:
-        year = None
-        for word in founded_str.split():
-            if word.isdigit() and len(word) == 4:
-                year = int(word)
-                break
-        if year is not None:
-            current_year = datetime.now().year
-            return current_year - year
-    except:
-        pass
-    return None
-
-
-def generate_personalized_message(row: pd.Series, tone: str = "friendly",
-                                  llm_handler: LLMHandler = None, model: str = "gpt-4.1-nano") -> str:
-    company_decr = row['Company Desc'] if row['Company Desc'] else f"{row['Why Relevant Now']} \n\n{row['Signals']}"
-
-    years_since_founded = None
-    if "Founded" in row and not row["Founded"]=='':
-        years_since_founded = extract_years_since_founded(row["Founded"])
+def generate_personalized_message(row: pd.Series, model,
+                                llm_handler: LLMHandler = None) -> str:
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    recipient_location = row.get("Company location / relevant office", "Unknown")
+    company_decr = row['Company Desc'] if 'Company Desc' in row and pd.notna(
+        row['Company Desc']) else f"{row.get('Why Relevant Now', '')} \n\n{row.get('Signals', '')}"
 
     additional_fields = [
-        ("Recipient’s Company Age", f"{years_since_founded} years" if years_since_founded else None),
         ("Recipient’s Company Size", row.get("Company size")),
-        ("Recipient’s Company Location", row.get("Company location / relevant office")),
+        ("Recipient’s Company Location", recipient_location),
         ("Recipient’s Company Motto", row.get("Company Motto"))
     ]
     additional_info = []
@@ -95,11 +86,22 @@ def generate_personalized_message(row: pd.Series, tone: str = "friendly",
             "role": "system",
             "content": (
                 f"You are a professional assistant helping {USER_FIRST_NAME}, {USER_POSITION} at {USER_COMPANY}, "
-                f"to draft personalized LinkedIn thank-you messages. "
-                f"The message should be concise, warm, and professional. "
-                f"Follow the provided structure and adapt if some details are missing. "
-                f"Use a {tone} and relax tone, but don't be intrusive."
-                f"Be brief and less complimentary words (1 or 2 compliments will be enough) ."
+                f"to draft a personalized LinkedIn thank-you message. "
+                "Use neutral and less emotionally charged language. "
+                f"The message should be on equal terms but warm, friendly, and professional, but not pushy. "
+                f"Use fewer compliments (1-2 compliments are enough). "
+                f"Use 'Hey' instead of 'Hi' for greeting. "
+                f"Make one small grammatical or punctuation mistake to make it sound more natural. "
+                f"Be brief!!! "
+                f"The message should include the following structure:\n"
+                f"   a. Casual greeting and thanks for connecting.\n"
+                f"   b. If today is a holiday in the recipient's location, mention it briefly and congratulate them.\n"
+                f"   c. Personal admiration for the recipient’s company mission or achievements.\n"
+                f"   d. Specific mention of their technologies or projects.\n"
+                f"   e. One sentence about {USER_COMPANY}’s mission and your role.\n"
+                f"   f. Connection between AI and their field.\n"
+                f"   g. Offer to stay in touch and collaborate.\n"
+                f"Current date: {current_date}. Recipient's location: {recipient_location}."
             )
         },
         {
@@ -114,19 +116,11 @@ def generate_personalized_message(row: pd.Series, tone: str = "friendly",
                 f"User Info:\n"
                 f"- Name: {USER_FIRST_NAME}\n"
                 f"- Position: {USER_POSITION}\n"
-                f"- Information: {USER_INFO}\n"
                 f"- Company: {USER_COMPANY}\n"
                 f"- Company Description: {USER_COMPANY_DESC}\n"
                 f"- Company Mission: {USER_COMPANY_MISSION}\n"
-                f"- Company Focus: {USER_COMPANY_FOCUS}\n\n"
-                f"Message Structure:\n"
-                f"1. Greeting and thanks for connecting.\n"
-                f"2. Personal admiration for the recipient’s company mission or achievements.\n"
-                f"3. Specific mention of their technologies or projects. If there is enough information to fill in this field, otherwise leave it empty string. \n"
-                f"4. One sentence about OstLab’s mission and your role.\n"
-                f"5. Connection between AI and their field.\n"
-                f"6. Offer to stay in touch and collaborate.\n"
-                f"7. Closing gratitude and signature with your name and position."
+                f"- Company Focus: {USER_COMPANY_FOCUS}\n"
+                f"- Responsibilities: {USER_RESPONSIBILITIES}"
             )
         }
     ]
