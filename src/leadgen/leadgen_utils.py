@@ -1,4 +1,7 @@
-replacement_dict = {"—": "-"}
+replacement_dict = {
+                "—": "-",
+                "–": "-",
+            }
 
 
 def replace_text_with_dict(text):

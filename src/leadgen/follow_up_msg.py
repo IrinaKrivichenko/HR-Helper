@@ -79,6 +79,7 @@ def generate_follow_up_message(row: pd.Series, model,
             "content": (
                 f"You are a professional assistant helping {USER_FIRST_NAME}, {USER_POSITION} at {USER_COMPANY}, "
                 f"to draft a follow-up LinkedIn message for someone they connected with earlier. "
+                "Use **only English** for the message. "
                 "Use neutral and less emotionally charged language."
                 f"The message should be on equal terms but warm, friendly, and professional, but not pushy. "
                 f"Use fewer compliments (1-2 compliments are enough). "
@@ -92,7 +93,6 @@ def generate_follow_up_message(row: pd.Series, model,
                 f"   d. Question or interest in their work, challenges, tools, or ways they use AI.\n"
                 f"   e. Offer to stay in touch and potential collaboration.\n"
                 f"Current date: {current_date}. {recipient_location}"
-
             )
         },
         {

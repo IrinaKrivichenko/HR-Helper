@@ -87,6 +87,7 @@ def generate_personalized_message(row: pd.Series, model,
             "content": (
                 f"You are a professional assistant helping {USER_FIRST_NAME}, {USER_POSITION} at {USER_COMPANY}, "
                 f"to draft a personalized LinkedIn thank-you message. "
+                "Use **only English** for the message. "
                 "Use neutral and less emotionally charged language. "
                 f"The message should be on equal terms but warm, friendly, and professional, but not pushy. "
                 f"Use fewer compliments (1-2 compliments are enough). "
