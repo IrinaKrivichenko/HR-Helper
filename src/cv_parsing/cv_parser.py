@@ -1,8 +1,12 @@
 import time
 import traceback
 
+from telegram import Update
+
+from src.bot.utils import send_answer_message
 from src.cv_parsing.cv_llm_processor import extract_cv_info
 from src.cv_parsing.info_extraction.cv_llm_languages import cv_languages_processing
+from src.cv_parsing.save_cv import save_cv_info
 from src.cv_parsing.sections.section_identifier import identify_resume_sections
 from src.logger import logger
 from src.data_processing.nlp.llm_handler import LLMHandler
@@ -70,3 +74,11 @@ async def parse_cv(cv_text: str, llm_handler: LLMHandler = None) -> dict:
 
     logger.info(f"extracted_data from cv: {str(extracted_data)}")
     return extracted_data
+
+
+async def process_cv(message: str, update: Update, text: str,  file_path: str,   user_name: str, llm_handler):
+    await send_answer_message(update, f"Parsing CV")
+    extracted_data = await parse_cv(text, llm_handler)
+    extracted_data['Original file'] = message
+    message_to_user = save_cv_info(extracted_data, file_path)
+    await send_answer_message(update, message_to_user)

@@ -100,13 +100,7 @@ async def match_candidats(update: Update,  text, user_name, llm_handler=None) ->
 
     message = f"Found {len(vacancies)} vacancies"
     logger.info(message)
-    if len(vacancies)>1:
-        await send_answer_message(update, message)
-
-    if len(vacancies) == 0:
-      pass
-    else:
-      if len(vacancies) == 1:
+    if len(vacancies) == 1:
           vacancy = vacancies[0]
           if len(vacancy) > len(text):
               vacancy = text
@@ -114,7 +108,7 @@ async def match_candidats(update: Update,  text, user_name, llm_handler=None) ->
           logger.info("ready_to_send_message")
           save_vacancy_to_sales(update, text, result, keyword)
           await send_answer_message(update, result)
-      else:
+    else:
           results = []
           for vacancy in vacancies:
               result, candidates  = await find_candidates_for_vacancy(vacancy, llm_handler, user_name, keyword)
@@ -123,5 +117,7 @@ async def match_candidats(update: Update,  text, user_name, llm_handler=None) ->
               await send_answer_message(update, result)
               # update.message.reply_text(result)
 
-
+async def process_vacancy(update: Update, text: str,  user_name: str, llm_handler):
+    await send_answer_message(update, "Searching for candidates....")
+    await match_candidats(update, text, user_name, llm_handler)
 

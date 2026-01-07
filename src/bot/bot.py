@@ -3,14 +3,16 @@ from datetime import datetime
 
 from tzlocal import get_localzone
 
-from src.leadgen.tg_external_bots.RDNKLeadBot import find_lead_pattern, parse_lead_text
+from src.bot.classifier import classify_text
+from src.candidate_matching.matcher import process_vacancy
+from src.cv_parsing.cv_parser import process_cv
+from src.database_search.candidates_search import process_names
+from src.leadgen.tg_external_bots.RDNKLeadBot import find_lead_pattern, parse_lead_text, process_lead
 from src.bot.utils import send_answer_message
-from src.candidate_matching.matcher import match_candidats
-from src.cv_parsing.cv_parser import parse_cv
-from src.cv_parsing.save_cv import save_cv_info
+
 from src.google_services.drive import extract_text_from_google_file, extract_text_from_docx, extract_text_from_pdf
 from src.google_services.drive_authorization import start_google_drive_auth, handle_oauth_callback
-from src.google_services.sheets import write_dict_to_sheet
+
 from src.logger import logger
 from src.data_processing.nlp.llm_handler import LLMHandler
 from src.bot.authorization import auth_manager
@@ -29,26 +31,6 @@ import logging
 
 logging.getLogger("pdfminer.pdffont").setLevel(logging.ERROR)
 
-
-async def process_lead(update: Update, text: str,   user_name: str):
-    lead_dict = parse_lead_text(text)
-    lead_dict["#"] = "=A3+1"
-    local_timezone = get_localzone()
-    lead_dict["Datetime"] = datetime.now(local_timezone).strftime('%Y-%m-%d %H:%M:%S %Z')
-    lead_dict["TG user"] = f"t.me/{user_name}"
-    write_dict_to_sheet(data_dict=lead_dict, sheet_name="Leads2", spreadsheet_env_name='ΛV_LINKEDIN_LEADGEN_SPREADSHEET_ID')
-    await send_answer_message(update, f"Lead {lead_dict['Company']} is parsed")
-
-async def process_cv(message: str, update: Update, text: str,  file_path: str,   user_name: str, llm_handler):
-    await send_answer_message(update, f"Parsing CV")
-    extracted_data = await parse_cv(text, llm_handler)
-    extracted_data['Original file'] = message
-    message_to_user = save_cv_info(extracted_data, file_path)
-    await send_answer_message(update, message_to_user)
-
-async def process_vacancy(update: Update, text: str,  user_name: str, llm_handler):
-    await send_answer_message(update, "Searching for candidates....")
-    await match_candidats(update, text, user_name, llm_handler)
 
 async def extract_text_from_document(document):
     try:
@@ -74,10 +56,9 @@ async def extract_text_from_document(document):
         raise  # Pass the exception to `process_user_request`
 
 
+
 async def process_user_request(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Main handler for user requests."""
-
-
     user = update.effective_user
     user_name = user.username if user.username else user.first_name
     message = update.message.text
@@ -101,6 +82,7 @@ async def process_user_request(update: Update, context: ContextTypes.DEFAULT_TYP
                     return
 
         if await auth_manager.is_user_authorized(user_name, text, update):
+            llm_handler = LLMHandler()
             if update.message.document is not None:
                 text, file_path = await extract_text_from_document(update.message.document)
                 text = text if message is None else f"Additional message from user: {message}\n\n {text}"
@@ -116,9 +98,9 @@ async def process_user_request(update: Update, context: ContextTypes.DEFAULT_TYP
                 text, file_path = extract_text_from_google_file(text)
                 input_type = "CV"
             else:
-                input_type = "vacancy"
+                classification_result = classify_text(text, llm_handler, model="gpt-4.1-nano")
+                input_type = classification_result["input_type"]
 
-            llm_handler = LLMHandler()
             if input_type == "vacancy":
                 bot_user = await context.bot.get_me()
                 if bot_user.name == '@ostlab_hr_bot':
@@ -127,6 +109,11 @@ async def process_user_request(update: Update, context: ContextTypes.DEFAULT_TYP
                 await process_vacancy(update, text, user_name, llm_handler)
             elif input_type == "CV":
                 await process_cv(message, update, text,  file_path, user_name, llm_handler)
+            elif input_type == "names":
+                names_list = classification_result["names"]
+                await process_names(update, names_list, user_name, llm_handler)
+            else:
+                await send_answer_message(update, classification_result.get("message", "Unknown request type."))
     except Exception as e:
         logger.error(f"{str(e)}\n{traceback.format_exc()}")
         await update.message.reply_text(f"Please forward this message to @irina_199: {str(e)}")
