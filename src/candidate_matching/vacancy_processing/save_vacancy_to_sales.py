@@ -14,7 +14,14 @@ def find_telegram_username_link(text):
         return ""
 
 def parse_candidates_from_answer(text):
+    available_from_dict = {}
+    available_pattern = re.compile(r'>(.*?)<\/a>\s+Available From (\d{4}-\d{2}-\d{2})')
+    for match in available_pattern.finditer(text):
+        name = match.group(1).strip()
+        available_from = match.group(2)
+        available_from_dict[name] = available_from
     text = re.sub(r'Available From \d{4}-\d{2}-\d{2}', '', text)
+
     candidate_pattern = re.compile(
         r'(\d+)\.\s*<a\s+href=[\'"](https://docs\.google\.com/spreadsheets/d/.*?)[\'"]>(.*?)<\/a>\s*(\d+)%.*?(?:🟥(.*?)🟨|$)',
         re.DOTALL
@@ -28,6 +35,8 @@ def parse_candidates_from_answer(text):
         ewr_text = match.group(5).strip() if match.group(5) else None
 
         candidate_str = f"{number}. {suitability}% {name}"
+        if name in available_from_dict:
+            candidate_str += f" (Available From {available_from_dict[name]})"
         if ewr_text and ewr_text != "_":
             candidate_str += f" {ewr_text}"
         candidate_str += f" {link}"
