@@ -105,10 +105,11 @@ def generate_answer_for_candidates_df(df):
     for index, (_, row) in enumerate(df.iterrows(), start=1):
         candidate_strimg = format_candidate_string(row, index)
         list_of_candidate_strimg.append(candidate_strimg)
-    return "\n\n".join(list_of_candidate_strimg)
+    return "\n".join(list_of_candidate_strimg)
 
 
 async def process_names(update,  names_list, user_name, llm_handler=None):
+    await send_answer_message(update, "Searching for candidates by name")
     columns_to_extract = [
         'First Name', 'Last Name', 'LVL of engagement', 'Available From',
         'Seniority', 'Main Roles', 'Additional Roles',
