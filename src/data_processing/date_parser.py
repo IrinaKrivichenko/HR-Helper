@@ -13,7 +13,7 @@ def parse_date_only(s: str) -> date:
     y, mth, d = map(int, m.groups())
     return date(y, mth, d)
 
-def days_since(s: str, today: date | None = None) -> int:
+def days_since(s: str, current_date: date | None = None) -> int:
     """
     Returns the number of calendar days from the dates in the string to "today."
     Ignores any extra characters (including the day of the week).
@@ -23,8 +23,8 @@ def days_since(s: str, today: date | None = None) -> int:
         d = parse_date_only(s)
     except ValueError:
         return 1000
-    today = today or date.today()
-    return (today - d).days
+    current_date = current_date or date.today()
+    return (current_date - d).days
 
 
 def is_available_soon(

@@ -97,11 +97,11 @@ class LeadGenReminder:
                     # Для Contact: сортируем по дате последнего контакта (самые свежие первыми)
                     status_leads = status_leads.sort_values(
                         by=f"Datetime of the last touch {user}",
-                        key=lambda x: x.apply(lambda s: days_since(s, today))
+                        key=lambda x: x.apply(lambda s: days_since(s))
                     )
                 if days_condition is not None:
                     for index, row in status_leads.iterrows():
-                        days_since_last_touch = days_since(row[f"Datetime of the last touch {user}"], today)
+                        days_since_last_touch = days_since(row[f"Datetime of the last touch {user}"])
                         if days_since_last_touch >= days_condition:
                             return row, total_processed
                 else:
@@ -169,8 +169,6 @@ class LeadGenReminder:
             ]
             message = f'{todays_number}Please send an First outreach message to {links}'
             suggested_messages = []
-        days_since_last_touch = days_since(row[f"Datetime of the last touch {user}"], date.today())
-        message = f'{message}\n days_since_last_touch {days_since_last_touch}'
         reply_markup = InlineKeyboardMarkup(keyboard)
         try:
             await self.application.bot.send_message(chat_id=self.users_to_send[user], text=message, parse_mode='HTML', reply_markup=reply_markup)
@@ -253,6 +251,7 @@ class LeadGenReminder:
 
     async def remind_to_send_message(self):
         self._update_in_cache_leads_df()
+        self.reset_withdrawn_leads()
         for user in self.users_to_send:
             await self.send_next_message(user)
 
@@ -271,6 +270,43 @@ class LeadGenReminder:
             columns_to_extract.append(f"Datetime of the last touch {user}")
         self.columns_letters = get_column_letters(columns_to_extract, "Leads CRM",
                                                   spreadsheet_env_name='ΛV_LINKEDIN_LEADGEN_SPREADSHEET_ID')
+
+
+    def reset_withdrawn_leads(self):
+        """
+        Checks all leads with the "Withdrawn" status.
+        If 30 days or more have passed since the last contact,
+        changes the status to empty and updates the last contact date.
+        """
+        today = date.today()
+        for user in self.users_to_send:
+            # filter leads with "Withdrawn" status
+            withdrawn_leads = self.leads_df[
+                                    (self.leads_df[f"Статус ліда ({user})"] == "Withdrawn") &
+                                    (self.leads_df["LinkedIn Profile"] != '')
+                        ]
+            for index, row in withdrawn_leads.iterrows():
+                last_touch = row[f"Datetime of the last touch {user}"]
+                days_since_last_touch = days_since(last_touch)
+                if days_since_last_touch >= 30:
+                    column_letter = self.columns_letters[f'Статус ліда ({user})']
+                    write_value_to_cell(
+                                        value="",
+                                        sheet_name="Leads CRM",
+                                        cell_range=f"{column_letter}{index + 2}",
+                                        spreadsheet_env_name='ΛV_LINKEDIN_LEADGEN_SPREADSHEET_ID'
+                                )
+                    column_letter = self.columns_letters[f'Datetime of the last touch {user}']
+                    write_value_to_cell(
+                                        value=datetime.now().strftime("%Y-%m-%d %a"),
+                                        sheet_name="Leads CRM",
+                                        cell_range=f"{column_letter}{index + 2}",
+                                        spreadsheet_env_name='ΛV_LINKEDIN_LEADGEN_SPREADSHEET_ID'
+                                )
+                    # update cache
+                    self.leads_df.at[index, f"Статус ліда ({user})"] = ""
+                    today = datetime.now().strftime("%Y-%m-%d %a")
+                    self.leads_df.at[index, f"Datetime of the last touch {user}"] = today
 
     def register_handlers(self, application):
         application.add_handler(CallbackQueryHandler(self.handle_callback))
