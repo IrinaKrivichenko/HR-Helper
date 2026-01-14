@@ -128,6 +128,9 @@ def filter_candidates_by_languages(
     if "Single language required" in updated_vacancy_languages:
         updated_vacancy_languages.remove("Single language required")
 
+    if len(df) == 0:
+        return df, updated_vacancy_languages
+
     # Apply filtering
     df["Matches"] = df[languages_col].apply(
         lambda x: is_match(x, requirement_type, required_languages)

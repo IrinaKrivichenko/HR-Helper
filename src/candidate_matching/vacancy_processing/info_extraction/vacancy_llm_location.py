@@ -133,6 +133,8 @@ def extract_vacancy_location(
                 "   - If no location is found or if only the client's location is mentioned without implying the candidate's location, set 'remote' to true.\n"
                 "   - If the nature of the project suggests flexibility in terms of location, set 'remote' to true.\n"
                 "   - If the location is mentioned in the context of the project description without implying the candidate's location, set 'remote' to true.\n"
+                "   - If the job posting explicitly states a requirement for availability within a specific time zone, but does not prohibit remote work, assume that remote work is possible.\n"
+                "   - If the job posting explicitly specifies an office or physical presence, then remote = false.\n"
                 "11. **remote**:\n"
                 "    - Boolean indicating if remote work is possible.\n"
                 "    - Set to true if the vacancy suggests flexibility in terms of location.\n"
