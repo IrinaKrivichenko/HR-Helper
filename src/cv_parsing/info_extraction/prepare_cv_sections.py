@@ -16,6 +16,7 @@ FIELD_MAPPING = {
     "Role": ["Header", "Skills", "Experience", "Education"],
     "Seniority": ["Header", "Summary", "Skills", "Experience", "Education"],
     "Industries": ["Summary", "Skills", "Experience", "Education"],
+    "Summary": ["Summary"]
 }
 
 def get_section_for_field(cv_sections: Dict[str, str], field_name: str) -> str:
@@ -58,10 +59,14 @@ def collect_sections_by_keywords(
     name_keywords: List[str],                 # передаем [] теперь
     content_keywords: Optional[List[str]] = None,
     case_insensitive: bool = True,
-    skip_internal: bool = True
+    skip_internal: bool = True,
+    allowed_sections: Optional[List[str]] = None
 ) -> str:
     if not cv_sections:
         return ""
+
+    if allowed_sections is None:
+        allowed_sections = ["Header", "Summary", "Skills", "Experience", "Education"]
 
     def norm(s: str) -> str:
         return s.lower() if case_insensitive and isinstance(s, str) else (s or "")
@@ -72,6 +77,8 @@ def collect_sections_by_keywords(
     for sec_name, sec_text in cv_sections.items():
         if not sec_text:
             continue
+        if sec_name not in allowed_sections:
+            continue
         if skip_internal and str(sec_name).startswith("_"):
             continue
         nname = norm(str(sec_name))
@@ -80,6 +87,6 @@ def collect_sections_by_keywords(
         content_hit = any(kw in ntext for kw in content_kws) if content_kws else False
         if name_hit or content_hit:
             parts.append(str(sec_text))
-    return "\n".join(dict.fromkeys(parts)).strip()  # легкая дедупликация
+    return "\n".join(dict.fromkeys(parts)).strip()
 
 

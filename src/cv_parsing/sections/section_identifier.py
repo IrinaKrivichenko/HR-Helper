@@ -8,6 +8,7 @@ from src.logger import logger
 from .projects_extraction import iterative_project_extraction
 from .section_by_section import extract_section_by_section
 from ...data_processing.nlp.llm_handler import LLMHandler
+from src.cv_parsing.sections.section_by_section import MANDATORY_SECTIONS
 
 
 def identify_resume_sections(
@@ -35,9 +36,8 @@ def identify_resume_sections(
     fallback_result = None
 
     # Step 2: Check for missing mandatory sections
-    mandatory_sections = ["Header", "Skills", "Experience"]
     missing_sections = [
-        section for section in mandatory_sections
+        section for section in MANDATORY_SECTIONS
         if section not in result["sections"] or not result["sections"][section].strip()
     ]
 
@@ -56,7 +56,7 @@ def identify_resume_sections(
         fallback_time = time.time() - fallback_start
 
         # Update sections with fallback results
-        for section in mandatory_sections:
+        for section in MANDATORY_SECTIONS:
             if section in fallback_result["sections"] and fallback_result["sections"][section]:
                 result["sections"][section] = fallback_result["sections"][section]
 

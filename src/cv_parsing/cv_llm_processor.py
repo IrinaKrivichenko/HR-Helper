@@ -13,6 +13,7 @@ from src.cv_parsing.info_extraction.cv_llm_phone import extract_cv_phone
 from src.cv_parsing.info_extraction.cv_llm_roles import extract_cv_roles
 from src.cv_parsing.info_extraction.cv_llm_seniority import extract_cv_seniority
 from src.cv_parsing.info_extraction.cv_llm_stack import extract_cv_stack
+from src.cv_parsing.info_extraction.cv_llm_summary import extract_cv_cleaned_summary
 from src.cv_parsing.info_extraction.cv_llm_telegram import extract_cv_telegram
 from src.cv_parsing.info_extraction.cv_llm_whatsapp import extract_cv_whatsapp
 from src.data_processing.nlp.llm_handler import LLMHandler
@@ -74,7 +75,9 @@ def extract_cv_info(cv: Dict, llm_handler: LLMHandler):
         (extract_cv_email, "gpt-4.1-nano", "Email"),
         (extract_cv_github, "gpt-4.1-nano", "GitHub"),
         (extract_cv_location, "gpt-4.1-nano", "Location"),
-        (extract_cv_certificates_and_awards, "gpt-4.1-nano", "Certificates and Awards")
+        (extract_cv_certificates_and_awards, "gpt-4.1-nano", "Certificates and Awards"),
+        (extract_cv_cleaned_summary, "gpt-4.1-nano", "Cleaned Summary")
+
     ]
 
     field_times = {}

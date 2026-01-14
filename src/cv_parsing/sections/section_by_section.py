@@ -12,7 +12,7 @@ class SectionExtraction(BaseModel):
 
 
 # Required sections for extraction
-MANDATORY_SECTIONS = ["Header", "Skills", "Experience"]
+MANDATORY_SECTIONS = ["Header", "Summary", "Skills", "Experience"]
 
 
 def extract_single_section(
