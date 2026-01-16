@@ -12,8 +12,8 @@ class PublicationInterestScore(BaseModel):
 
 def format_interest_score(extraction: PublicationInterestScore) -> str:
     formatted_output = (
-        f"Reasoning: {extraction.reasoning}\n"
-        f"Interest Score: {extraction.interest_score}%"
+        f"reasoning: {extraction.reasoning}\n"
+        f"interest_score: {extraction.interest_score}%"
     )
     return formatted_output
 
@@ -84,7 +84,10 @@ def evaluate_publication_interest(
             response_format=PublicationInterestScore
         )
         extraction = response['parsed']
-        return format_interest_score(extraction)
+        return {
+            "interest_score": extraction.interest_score,
+            "reasoning": extraction.reasoning
+        }
     except Exception as e:
         logger.error(f"Error evaluating interest: {e}")
         traceback_info = f"Traceback: {traceback.format_exc()}"

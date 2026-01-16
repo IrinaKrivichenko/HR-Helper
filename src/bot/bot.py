@@ -61,7 +61,7 @@ async def process_user_request(update: Update, context: ContextTypes.DEFAULT_TYP
     """Main handler for user requests."""
     user = update.effective_user
     user_name = user.username if user.username else user.first_name
-    message = update.message.text
+    message = update.message.text or update.message.caption
     text = message
     file_path = None
     try:

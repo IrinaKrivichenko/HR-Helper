@@ -1,95 +1,104 @@
-
-
-
-
-from dotenv import load_dotenv
-
-from src.google_services.sheets import write_dict_to_sheet
-
-load_dotenv()
-
-# bot.py
-from telegram import Update
-from telegram.ext import filters, MessageHandler, ApplicationBuilder, ContextTypes, CommandHandler
-
+import logging
 import os
 
-async def handle_forwarded(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    bot_user = await context.bot.get_me()
-    print(bot_user.name == '@ostlab_hr_bot')
-
-    msg = update.message.forward_origin.sender_user_name
-
-
-
-# https://t.me/belaiplatform/1496  "👥 Кланіраванне ..." from _
-#     удалось выяснить
-#     msg.forward_origin.chat.username = belaiplatform
-#     msg.forward_origin.chat.message_id = 1496
-#
-# https://t.me/c/2442766780/1575/2363  "Hey-hey!🌞..." from ejikqueen
-#     удалось выяснить
-#     msg.forward_origin.sender_user.link = https://t.me/ejikqueen
-#     msg.forward_origin.sender_user.username = ejikqueen
-#
-# https://t.me/c/3010920963/1/644 "Дарагая, дабранач" from AndrusKr
-#     единственное что удалось выяснить про оригинальное сообщение
-#     msg.forward_origin.sender_user_name = Λndruś Kryvičenka
-#
-# https://t.me/c/2482564467/649 "Я ў Кракаве" from AndrusKr
-#     единственное что удалось выяснить про оригинальное сообщение
-#     msg.forward_origin.sender_user_name = Λndruś Kryvičenka
-
-    msg.chat.username
-    msg.date
-    sales_cells_dict = {}
-    sales_cells_dict["№"] = "=[№]3+1"
-
-    if hasattr(msg.forward_origin, 'date'):
-        msg_forward_origin_date = update.message.forward_origin.date
-        origin_msg_date = msg_forward_origin_date.strftime('%Y-%m-%d %a')
-        print(origin_msg_date)
-        sales_cells_dict['Дата'] = origin_msg_date
-
-    user = update.effective_user
-    user_name = user.username if user.username else user.first_name
-    sales_cells_dict['Хто занёс'] = user_name
-
-    if hasattr(msg.forward_origin, 'sender_user'):
-        sender_user_link = msg.forward_origin.sender_user.link
-        print(sender_user_link)
-        # sender_user_username = msg.forward_origin.sender_user.username
-        # print(sender_user_username)
-        sales_cells_dict['Прадстаўнік замоўцы'] = sender_user_link
-
-    if hasattr(msg.forward_origin, 'message_id') and hasattr(msg.forward_origin, 'chat'):
-        message_id = msg.forward_origin.message_id
-        chat_link = msg.forward_origin.chat.link
-        chat_username = msg.forward_origin.chat.username
-        message_link = f"{chat_username}/{message_id}"
-        print(message_link)
-        sales_cells_dict['Крыніца'] = message_link
-
-    write_dict_to_sheet(data_dict=sales_cells_dict, spreadsheet_env_name="SALES_SPREADSHEET_ID", sheet_name="Запыты")
-    #
-    # attrs_to_check = [
-    #     #'CHANNEL', 'CHAT', 'HIDDEN_USER', 'USER',
-    #     'message_id', 'sender_user']
-    # for attr_name in attrs_to_check:
-    #     if hasattr(msg.forward_origin, attr_name):
-    #         attr_value = getattr(msg.forward_origin, attr_name)
-    #         print(f"msg.forward_origin.{attr_name}: {attr_value}")
-    #         print()
-    #
-    # msg_forward_origin = update.message.forward_origin
-    # print("dir(msg.forward_origin)")
-    # # print(len(dir(msg_forward_origin)))
-    # # print(dir(msg_forward_origin))
+import pandas as pd
+from telegram import Update, Message
+from telegram.ext import (
+    Application,
+    MessageHandler,
+    filters,
+    ContextTypes,
+)
+from src.data_processing.nlp.llm_handler import LLMHandler
+from src.google_services.sheets import read_specific_columns, write_dict_to_sheet
+from src.leadgen.publishing.publication_interest_evaluator import evaluate_publication_interest
+from src.leadgen.publishing.publication_translator import translate_and_classify_post
 
 
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    level=logging.INFO,
+)
+logger = logging.getLogger(__name__)
 
 
-BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-app = ApplicationBuilder().token(BOT_TOKEN).build()
-app.add_handler(MessageHandler(filters.ALL, handle_forwarded))
-app.run_polling()
+columns = [
+    "First Name",
+    "Lead Position",
+    "Company Name",
+    "Company size",
+    "Company Industries",
+    "Company location / relevant office",
+    "Company Motto",
+    "Company Desc",
+    "Company Website",
+    "Specialties",
+    "Signals",
+]
+
+async def handle_forwarded_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    message: Message = update.message
+    if hasattr(message, 'forward_origin') and hasattr(message.forward_origin, 'chat') and message.forward_origin.chat != "belaiplatform":
+
+
+        publication_text = message.text or message.caption or ""
+        if not publication_text:
+            await message.reply_text("No text found in the forwarded message.")
+            return
+        print(publication_text)
+
+        df = read_specific_columns(
+            columns_to_extract=columns,
+            sheet_name="Leads CRM",
+            spreadsheet_env_name="ΛV_LINKEDIN_LEADGEN_SPREADSHEET_ID",
+        )
+        if df.empty or len(df) <= 89:
+            await message.reply_text("Error: Lead data not found or invalid index.")
+            return
+        lead_row = df.iloc[89]
+
+        llm_handler = LLMHandler()
+        translation_and_classification = translate_and_classify_post(
+                                publication_text,
+                                model="gpt-4.1-nano",
+                                llm_handler=llm_handler
+                            )
+        evaluation_result = evaluate_publication_interest(
+                                row=lead_row,
+                                publication_text=translation_and_classification["translated_text"],
+                                model="gpt-4.1-nano",
+                                llm_handler=llm_handler,
+                            )
+
+        origin_chat_username = message.forward_origin.chat.username
+        origin_chat_message_i = message.forward_origin.message_id
+        original_post_link = f"t.me/{origin_chat_username}/{origin_chat_message_i}"
+        post_info = {
+            "original post link": original_post_link,
+            "original post text": publication_text,
+            "date of original post publication": message.forward_origin.date.strftime('%Y-%m-%d %a'),
+            "classification": translation_and_classification["classification"],
+            "classification reasoning": translation_and_classification["reasoning"],
+            "interest score": evaluation_result["interest_score"],
+            "reasoning for interest score": evaluation_result["reasoning"],
+            "post text translated to English": translation_and_classification["translated_text"]
+        }
+
+        # Записываем данные в таблицу
+        write_dict_to_sheet(
+                                data_dict=post_info,
+                                spreadsheet_env_name="РUBLICATIONS_SPREADSHEET_ID",
+                                sheet_name="BelAI"
+                            )
+        await message.reply_text(evaluation_result)
+
+def main() -> None:
+    BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+    application = Application.builder().token(BOT_TOKEN).build()
+    application.add_handler(MessageHandler(filters.ALL, handle_forwarded_message))
+    application.run_polling(allowed_updates=Update.ALL_TYPES)
+
+if __name__ == "__main__":
+    main()
+
+
